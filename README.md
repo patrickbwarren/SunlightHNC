@@ -1,6 +1,6 @@
 ## General purpose hypernetted chain (HNC) integral equation code
 
-Features:
+#### Features
 
 * FORTRAN 90 based, with example python driver scripts ;
 * fast Ng solver, and Ng decomposition for electrostatics ;
@@ -9,6 +9,8 @@ Features:
 * full structural thermodynamics.
 
 See documentation for details.
+
+#### Citation
 
 You are of course welcome to use and modify this code for your own
 projects. If you end up publishing results based on this code, or a
@@ -38,7 +40,7 @@ Here is a BibTeX entry for the same :
 }
 ```
 
-### Installation Notes
+#### Installation Notes
 
 The main code is written as a FORTRAN 90 module, and can be compiled using
 `gfortran` from the [GNU compiler collection](https://gcc.gnu.org/
@@ -54,7 +56,7 @@ should be installed.
 The compiler tools including `f2py`, and pre-built versions of the
 libraries, are available for most modern GNU/Linux distributions.
 
-### Copying
+#### Copying
 
 SunlightHNC is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -70,11 +72,15 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see
 <http://www.gnu.org/licenses/>.
 
-SunlightDPD is based on an original code copyright &copy; 2007 Lucian
-Anton, with modifications copyright &copy; 2008, 2009 Andrey Vlasov, and
-additional modifications copyright &copy; 2009-2015 Unilever UK Central
+### Copyright
+
+SunlightDPD is based on an original code Copyright &copy; 2007 Lucian
+Anton, with modifications Copyright &copy; 2008, 2009 Andrey Vlasov, and
+additional modifications Copyright &copy; 2009-2015 Unilever UK Central
 Resources Ltd (Registered in England & Wales, Company No 29140;
 Registered Office: Unilever House, Blackfriars, London, EC4P 4BQ, UK).
+
+#### Contact
 
 Send email to patrick{dot}warren{at}unilever{dot}com
 
