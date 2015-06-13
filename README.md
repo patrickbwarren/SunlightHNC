@@ -38,6 +38,22 @@ Here is a BibTeX entry for the same :
 }
 ```
 
+### Installation Notes
+
+The main code is written as a FORTRAN 90 module, and can be compiled using
+`gfortran` from the [GNU compiler collection](https://gcc.gnu.org/
+"GNU website").  It is designed to work with `f2py` from
+[SciPy](http://www.scipy.org/ "SciPy website").  The default target in
+the `Makefile` builds the required files for this.
+
+The linear algebra library
+[LAPACK](http://www.netlib.org/lapack/ "LAPACK webpage") and fast
+Fourier transform library [FFTW](http://www.fftw.org/ "FFTW website")
+should be installed.
+
+The compiler tools including `f2py`, and pre-built versions of the
+libraries, are available for most modern GNU/Linux distributions.
+
 ### Copying
 
 SunlightHNC is free software: you can redistribute it and/or modify
@@ -54,16 +70,13 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see
 <http://www.gnu.org/licenses/>.
 
-Copyright &copy; is retained by the individual authors, and in
-portions by Unilever UK Central Resources Limited. Please feel free to
-get in touch if you want to discuss alternative licensing
-arrangements.
+SunlightDPD is based on an original code copyright &copy; 2007 Lucian
+Anton, with modifications copyright &copy; 2008, 2009 Andrey Vlasov, and
+additional modifications copyright &copy; 2009-2015 Unilever UK Central
+Resources Ltd (Registered in England & Wales, Company No 29140;
+Registered Office: Unilever House, Blackfriars, London, EC4P 4BQ, UK).
 
-### Authors
+Send email to patrick{dot}warren{at}unilever{dot}com
 
-Integral equations : Andrey Vlasov, Lucian Anton, [Andrew
-Masters](http://www.manchester.ac.uk/research/Andrew.masters/), [Patrick
-Warren](https://sites.google.com/site/patrickbwarren/).
-
-Contact : patrick.warren{at}unilever.com.
-
+Send paper mail to Dr Patrick B Warren, Unilever R&D Port Sunlight,
+Quarry Road East, Bebington, Wirral, CH63 3JW, UK.
