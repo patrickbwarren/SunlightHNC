@@ -72,7 +72,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see
 <http://www.gnu.org/licenses/>.
 
-### Copyright
+#### Copyright
 
 SunlightDPD is based on an original code Copyright &copy; 2007 Lucian
 Anton, with modifications Copyright &copy; 2008, 2009 Andrey Vlasov, and
