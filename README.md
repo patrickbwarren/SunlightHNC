@@ -1,4 +1,4 @@
-## General purpose hypernetted chain (HNC) integral equation code
+## General purpose HNC code
 
 #### Features
 
