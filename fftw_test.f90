@@ -2,7 +2,7 @@
 ! related to the dissipative particle dynamics (DPD) simulation
 ! method.
 
-! Copyright (c) 2009-2013 Unilever UK Central Resources Ltd
+! Copyright (c) 2009-2015 Unilever UK Central Resources Ltd
 ! (Registered in England & Wales, Company No 29140; Registered Office:
 ! Unilever House, Blackfriars, London, EC4P 4BQ, UK).
 

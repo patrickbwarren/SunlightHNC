@@ -8,7 +8,7 @@
 * hard and soft core (DPD) potentials ;
 * full structural thermodynamics.
 
-See documentation for details.
+See [PDF documentation](oz_doc.pdf "oz_doc.pdf") for details.
 
 #### Citation
 
