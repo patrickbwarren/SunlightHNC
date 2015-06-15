@@ -1,5 +1,8 @@
 ## General purpose HNC code
 
+Currently at version 1.6.  Previous versions can be found at
+http://sunlightdpd.sourceforge.net/.
+
 #### Features
 
 * FORTRAN 90 based, with example python driver scripts ;
