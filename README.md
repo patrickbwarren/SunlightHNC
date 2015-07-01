@@ -77,9 +77,9 @@ along with this program.  If not, see
 
 #### Copyright
 
-SunlightDPD is based on an original code Copyright &copy; 2007 Lucian
-Anton, with modifications Copyright &copy; 2008, 2009 Andrey Vlasov, and
-additional modifications Copyright &copy; 2009-2015 Unilever UK Central
+SunlightDPD is based on an original code copyright &copy; 2007 Lucian
+Anton, with modifications copyright &copy; 2008, 2009 Andrey Vlasov, and
+additional modifications copyright &copy; 2009-2015 Unilever UK Central
 Resources Ltd (Registered in England & Wales, Company No 29140;
 Registered Office: Unilever House, Blackfriars, London, EC4P 4BQ, UK).
 
