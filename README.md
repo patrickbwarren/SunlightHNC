@@ -9,7 +9,8 @@ http://sunlightdpd.sourceforge.net/.
 * fast Ng solver, and Ng decomposition for electrostatics ;
 * multicomponent (up to three components) ;
 * hard and soft core (DPD) potentials ;
-* full structural thermodynamics.
+* full structural thermodynamics ;
+* fully open source.
 
 See [PDF documentation](oz_doc.pdf "oz_doc.pdf") for details.
 
