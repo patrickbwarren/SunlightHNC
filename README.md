@@ -52,10 +52,9 @@ The main code is written as a FORTRAN 90 module, and can be compiled using
 [SciPy](http://www.scipy.org/ "SciPy website").  The default target in
 the `Makefile` builds the required files for this.
 
-The linear algebra library
-[LAPACK](http://www.netlib.org/lapack/ "LAPACK webpage") and fast
-Fourier transform library [FFTW](http://www.fftw.org/ "FFTW website")
-should be installed.
+The [LAPACK](http://www.netlib.org/lapack/ "LAPACK webpage")
+linear algebra library and [FFTW](http://www.fftw.org/ "FFTW website")
+fast Fourier transform library are both required.
 
 The compiler tools including `f2py`, and pre-built versions of the
 libraries, are available for most modern GNU/Linux distributions.
