@@ -57,7 +57,7 @@ linear algebra library and [FFTW](http://www.fftw.org/ "FFTW website")
 fast Fourier transform library are both required.
 
 The compiler tools including `f2py`, and pre-built versions of 
-the LAPCK and FFTW
+the `lapack` and `fftw`
 libraries, are available for most modern GNU/Linux distributions.
 
 #### Copying
