@@ -28,12 +28,15 @@ INCFLAGS = -I/usr/include/
 
 default: oz.so
 
-all : driver fftw_test
+all : driver urpm fftw_test
 
 oz.so : oz_mod.f90
 	f2py3 -c $< -m oz $(INCFLAGS) $(LIBFLAGS)
 
 driver : driver.o oz_mod.o
+	$(F90) -o $@ $^ $(LIBFLAGS)
+
+urpm : urpm.o oz_mod.o
 	$(F90) -o $@ $^ $(LIBFLAGS)
 
 fftw_test : fftw_test.o
@@ -43,8 +46,9 @@ fftw_test : fftw_test.o
 	$(F90) -c $(FFLAGS) $(INCFLAGS) $<
 
 driver.o : driver.f90 oz_mod.o
+urpm.o : urpm.f90 oz_mod.o
 
 clean:
 	rm -f *~
 	rm -f *.mod *.o *.so
-	rm -f driver fftw_test
+	rm -f driver urpm fftw_test
