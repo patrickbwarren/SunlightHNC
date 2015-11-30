@@ -9,7 +9,8 @@ http://sunlightdpd.sourceforge.net/.
 * fast Ng solver, and Ng decomposition for electrostatics ;
 * multicomponent (up to three components) ;
 * hard and soft core (DPD) potentials ;
-* full structural thermodynamics.
+* full structural thermodynamics ;
+* fully open source.
 
 See [PDF documentation](oz_doc.pdf "oz_doc.pdf") for details.
 
@@ -51,19 +52,19 @@ The main code is written as a FORTRAN 90 module, and can be compiled using
 [SciPy](http://www.scipy.org/ "SciPy website").  The default target in
 the `Makefile` builds the required files for this.
 
-The linear algebra library
-[LAPACK](http://www.netlib.org/lapack/ "LAPACK webpage") and fast
-Fourier transform library [FFTW](http://www.fftw.org/ "FFTW website")
-should be installed.
+The [LAPACK](http://www.netlib.org/lapack/ "LAPACK webpage")
+linear algebra library and [FFTW](http://www.fftw.org/ "FFTW website")
+fast Fourier transform library are both required.
 
-The compiler tools including `f2py`, and pre-built versions of the
+The compiler tools including `f2py`, and pre-built versions of 
+the `lapack` and `fftw`
 libraries, are available for most modern GNU/Linux distributions.
 
 #### Copying
 
 SunlightHNC is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 2 of the License, or
+the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
 SunlightHNC is distributed in the hope that it will be useful, but
@@ -77,9 +78,9 @@ along with this program.  If not, see
 
 #### Copyright
 
-SunlightDPD is based on an original code Copyright &copy; 2007 Lucian
-Anton, with modifications Copyright &copy; 2008, 2009 Andrey Vlasov, and
-additional modifications Copyright &copy; 2009-2015 Unilever UK Central
+SunlightDPD is based on an original code copyright &copy; 2007 Lucian
+Anton, with modifications copyright &copy; 2008, 2009 Andrey Vlasov, and
+additional modifications copyright &copy; 2009-2015 Unilever UK Central
 Resources Ltd (Registered in England & Wales, Company No 29140;
 Registered Office: Unilever House, Blackfriars, London, EC4P 4BQ, UK).
 
