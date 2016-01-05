@@ -3,6 +3,13 @@
 Currently at version 1.6.  Previous versions can be found at
 http://sunlightdpd.sourceforge.net/.
 
+The code is in the process of being upgraded to version 1.7 which will
+be able to handle an arbitrary number of components.  Whilst
+this is going on the latest development snapshot may not work properly and
+may be at odds with the documentation.  For stability please stick with
+version 1.6 until the new version is released.  Version 1.6 can be found by 
+clicking on the 'release' tab at the top of the file listing.
+
 #### Features
 
 * FORTRAN 90 based, with example python driver scripts ;
