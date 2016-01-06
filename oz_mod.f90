@@ -73,9 +73,30 @@
 ! Note that the indirect correlation function 'e' is called gamma by
 ! Vrbka et al [JCP v131, 154109 (2009)], and 'b' in Hansen and McDonald.
 
-! Encoding mapping symmetric species pairs to functions
-! species pairs: (0,0), (0,1), (1,1), (0,2), (1,2), (2,2)
-! function:        1      2      3      4      5      6
+! Species pair index (i, j) is mapped to function index ij using the
+! following rule:
+!
+!  if (i <= j) then ij = i + j*(j-1)/2
+!  else ij = j + i*(i-1)/2
+!
+! This effectively labels the upper triangular entries in a symmetric
+! matrix as (i labels the row, j labels the columm)
+!
+!     | 1  2  3  4 ...
+!  ---------------------
+!   1 | 1  2  4  7 ...
+!   2 |    3  5  8 ...
+!   3 |       6  9 ...
+!   4 |         10 ...
+!  ...|            ...
+!
+! A common idiom used below to walk through the function index is
+!
+!  do j = 1, nfnc
+!    do i = 1, j
+!      ij = i + j*(j-1)/2
+!      .....
+!
 
 module wizard
 
@@ -207,6 +228,7 @@ contains
 
   subroutine write_params
     implicit none
+    integer :: i
     print *, '====================================================='
     print *, 'GRID DETAILS'
     print *, ' ng = ', ng, ' ncomp = ', ncomp, ' nfnc = ', nfnc, ' nps = ', nps
@@ -217,18 +239,10 @@ contains
     if (model_type.eq.0) then
        print *, 'No potential has been selected'
     else if (model_type.lt.10) then
-       print *, 'DPD potential was selected'
-       if (ncomp.eq.1) then
-          print *, ' A = ', arep(1,1)
-       else if (ncomp.eq.2) then
-          print *, ' A_11 = ', arep(1,1), ' A_12 = ', arep(1,2)
-          print *, ' A_22 = ', arep(2,2)
-       else if (ncomp.eq.3) then
-          print *, ' A_11 = ', arep(1,1), ' A_12 = ', arep(1,2), &
-               & ' A_13 =', arep(1,3)
-          print *, ' A_22 = ', arep(2,2), ' A_23 = ', arep(2,3)
-          print *, ' A_33 = ', arep(3,3)
-       end if
+       print *, 'DPD potential was selected, matrix A = '
+       do i = 1, ncomp
+          print *, ' ', arep(i, :)
+       end do
        print *, ' valencies, z = ', z
        print *, ' rc = ', rc, ' lb = ', lb, ' sigma = ', sigma
        if (model_type.eq.1) then
@@ -285,28 +299,38 @@ contains
   subroutine dpd_potential(charge_type)
     implicit none 
     integer, intent(in) :: charge_type
-    integer :: i, irc
+    integer :: i, j, ij, irc
     double precision :: aa(nfnc), zz(nfnc)
     double precision :: rootpi
 
     rootpi = sqrt(pi)
 
+    ! Force the amplitude matrix to be symmetric, set by upper
+    ! triangular entries.  This enforces the rule in the
+    ! documentation and also simplifies the printing.
+
+    if (ncomp.gt.1) then 
+       do j = 2, ncomp
+          do i = 1, j-1
+             arep(j, i) = arep(i, j)
+          end do
+       end do
+    end if
+
     ! Sort out some recoded potential parameters
-    
-    aa(1) = arep(1, 1); zz(1) = z(1)**2
-    if (ncomp .gt. 1) then
-       aa(2) = arep(1, 2); zz(2) = z(1) * z(2)
-       aa(3) = arep(2, 2); zz(3) = z(2)**2
-    end if
-    if (ncomp .gt. 2) then
-       aa(4) = arep(1, 3); zz(4) = z(1) * z(3)
-       aa(5) = arep(2, 3); zz(5) = z(2) * z(3)
-       aa(6) = arep(3, 3); zz(6) = z(3)**2
-    end if
+
+    do j = 1, ncomp
+       do i = 1, j
+          ij = i + j*(j-1)/2
+          aa(ij) = arep(i, j)
+          zz(ij) = z(i) * z(j)
+       end do
+    end do
 
     irc = nint(rc/deltar)
     
     ! Leave out the amplitude, then the function can be re-used
+    ! (see below)
 
     ushort(:,1) = 0.0d0
     ushort(1:irc,1) = 0.5d0 * (1.0d0 - r(1:irc)/rc)**2
@@ -375,9 +399,7 @@ contains
     ! first function.  The cycle statements ensure we don't try to
     ! generate functions where we shouldn't.
 
-    do i = 6, 1, -1
-       if (ncomp.eq.1 .and. i.gt.1) cycle
-       if (ncomp.eq.2 .and. i.gt.3) cycle
+    do i = nfnc, 1, -1
        ushort(:,i)  = aa(i) * ushort(:,1)
        dushort(:,i) = aa(i) * dushort(:,1)
        ulong(:,i)   = zz(i) * ulong(:,1)
@@ -416,7 +438,8 @@ contains
     rootpi = sqrt(pi)
 
     if (ncomp.ne.2) then
-       print *, 'oz_mod.f90: soft_urpm_potential: ncomp = ', ncomp
+       print *, 'oz_mod.f90: soft_urpm_potential: ncomp = ', ncomp, &
+            '(should be ncomp = 2)'
        stop
     end if
 
@@ -498,7 +521,8 @@ contains
     rootpi = sqrt(pi)
 
     if (ncomp.ne.2) then
-       print *, 'oz_mod.f90: soft_rpm_potential: ncomp = ', ncomp
+       print *, 'oz_mod.f90: soft_urpm_potential: ncomp = ', ncomp, &
+            '(should be ncomp = 2)'
        stop
     end if
 
@@ -728,7 +752,7 @@ contains
 
   subroutine oz_solve2
     implicit none 
-    integer :: i1, i, ik
+    integer :: i1, i, j, ij, ik
     double precision :: &
          & h(ng-1, nfnc), m1(ncomp, ncomp), &
          & m1i(ncomp, ncomp), m2(ncomp, ncomp), &
@@ -745,16 +769,12 @@ contains
        unita(i,i) = 1.0d0
     end do
 
-    h(:, 1) = hr(:,1,1)
-    if (ncomp .gt. 1) then
-       h(:, 2) = hr(:,1,2)
-       h(:, 3) = hr(:,2,2)
-    end if
-    if (ncomp .gt. 2) then
-       h(:, 4) = hr(:,1,3)
-       h(:, 5) = hr(:,2,3)
-       h(:, 6) = hr(:,3,3)
-    end if
+    do j = 1, ncomp
+       do i = 1, j
+          ij = i + j*(j-1)/2
+          h(:, ij) = hr(:, i, j)
+       end do
+    end do
 
     do i=1, nfnc
        fftwx(1:ng-1) = r(1:ng-1) * h(1:ng-1, i)
@@ -776,7 +796,7 @@ contains
           hmat(2,1) = hk(ik, 2)
           hmat(2,2) = hk(ik, 3)
 
-          m1 = unita + matmul(rhomat, hmat)
+          m1 = unita + matmul(hmat, rhomat)
 
           det = m1(1,1)*m1(2,2) - m1(1,2)*m1(2,1)
 
@@ -790,7 +810,7 @@ contains
           m1i(2,1) = - m1(2,1) / det
           m1i(2,2) =   m1(1,1) / det
 
-          m2 = matmul(hmat, m1i)
+          m2 = matmul(m1i, hmat)
 
           ck(ik, 1) = m2(1,1) + ulongk(ik, 1)
           ck(ik, 2) = m2(1,2) + ulongk(ik, 2)
@@ -812,7 +832,7 @@ contains
           hmat(3,2) = hk(ik, 5)
           hmat(3,3) = hk(ik, 6)
 
-          m1 = unita + matmul(rhomat, hmat)
+          m1 = unita + matmul(hmat, rhomat)
 
           det =       m1(1,1) * m1(2,2) * m1(3,3)
           det = det - m1(1,1) * m1(2,3) * m1(3,2)
@@ -838,7 +858,7 @@ contains
 
           m1i = aux / det
 
-          m2 = matmul(hmat, m1i)
+          m2 = matmul(m1i, hmat)
 
           ck(ik, 1) = m2(1,1) + ulongk(ik, 1)
           ck(ik, 2) = m2(1,2) + ulongk(ik, 2)
@@ -1086,20 +1106,19 @@ contains
 
   subroutine make_structure_factors
     implicit none
+    integer :: i, j, ij
     hk = ck + ek
-    sk(:,1,1) = rho(1) * (1.0d0 + rho(1) * hk(:,1))
-    if (ncomp .gt. 1) then
-       sk(:,1,2) = rho(1) * rho(2) * hk(:,2)
-       sk(:,2,1) = sk(:,1,2)
-       sk(:,2,2) = rho(2) * (1.0d0 + rho(2) * hk(:,3))
-    end if
-    if (ncomp .gt. 2) then
-       sk(:,1,3) = rho(1) * rho(3) * hk(:,4)
-       sk(:,3,1) = sk(:,1,3)
-       sk(:,2,3) = rho(2) * rho(3) * hk(:,5)
-       sk(:,3,2) = sk(:,2,3)
-       sk(:,3,3) = rho(3) * (1.0d0 + rho(3) * hk(:,6))
-    end if
+    do j = 1, ncomp
+       do i = 1, j
+          ij = i + j*(j-1)/2
+          if (i.eq.j) then
+             sk(:, i, i) = rho(i) * (1.0 + rho(i) * hk(:, ij))
+          else
+             sk(:, i, j) = rho(i) * rho(j) * hk(:, ij)
+             sk(:, j, i) = sk(:, i, j)
+          end if
+       end do
+    end do
   end subroutine make_structure_factors
 
 ! Construct the total correlation functions out of the direct
@@ -1111,21 +1130,15 @@ contains
 
   subroutine make_pair_functions
     implicit none
-    integer :: i1
+    integer :: i, j, ij, i1
     i1 = mod(istep-1, nps) + 1
-    hr(:,1,1) = c(:,1,i1) + e(:,1,i1)
-    if (ncomp .gt. 1) then
-       hr(:,1,2) = c(:,2,i1) + e(:,2,i1)
-       hr(:,2,1) = hr(:,1,2)
-       hr(:,2,2) = c(:,3,i1) + e(:,3,i1)
-    end if
-    if (ncomp .gt. 2) then
-       hr(:,1,3) = c(:,4,i1) + e(:,4,i1)
-       hr(:,3,1) = hr(:,1,3)
-       hr(:,2,3) = c(:,5,i1) + e(:,5,i1)
-       hr(:,3,2) = hr(:,2,3)
-       hr(:,3,3) = c(:,6,i1) + e(:,6,i1)
-    end if
+    do j = 1, ncomp
+       do i = 1, j
+          ij = i + j*(j-1)/2
+          hr(:, i, j) = c(:, ij, i1) + e(:, ij, i1)
+          hr(:, j, i) = hr(:, i, j)
+       end do
+    end do
   end subroutine make_pair_functions
 
 ! Calculate various thermodynamics properties by spatial integration
@@ -1145,25 +1158,27 @@ contains
 
   subroutine make_thermodynamics
     implicit none 
-    integer :: i, i1, irc
+    integer :: i, j, ij, i1, irc
     double precision :: rhotot, r1, r2, g1, g2, gc
     double precision :: rhoxx(nfnc), t(nfnc)
     double precision :: du12(ng-1), g12(ng-1)
+    
     i1 = mod(istep-1, nps) + 1
 
     ! rhoxx is rho x_i x_j, doubled up for the off-diagonal components
 
     rhotot = sum(rho)
-    rhoxx(1) = rho(1) * rho(1) / rhotot
-    if (ncomp .gt. 1) then
-       rhoxx(2) = 2.0 * rho(1) * rho(2) / rhotot
-       rhoxx(3) = rho(2) * rho(2) / rhotot
-    end if
-    if (ncomp .gt. 2) then
-       rhoxx(4) = 2.0 * rho(1) * rho(3) / rhotot
-       rhoxx(5) = 2.0 * rho(2) * rho(3) / rhotot
-       rhoxx(6) = rho(3) * rho(3) / rhotot
-    end if
+
+    do j = 1, ncomp
+       do i = 1, j
+          ij = i + j*(j-1)/2
+          if (i.eq.j) then
+             rhoxx(ij) = rho(i)**2 / rhotot
+          else
+             rhoxx(ij) = 2.0 * rho(i) * rho(j) / rhotot
+          end if
+       end do
+    end do
 
     ! Calculate the various contributions to the virial-route
     ! pressure.  This is the mean field contribution.
@@ -1268,24 +1283,19 @@ contains
     ! The excess chemical potential of the ith component is then sum_j
     ! rho_j t_ij
 
-    if (ncomp.eq.1) then
-       muex(1) =  rho(1) * (t(1) + tl(1))
-    else if (ncomp.eq.2) then
-       muex(1) = rho(1) * (t(1) + tl(1)) &
-            & + rho(2) * (t(2) + tl(2))
-       muex(2) = rho(1) * (t(2) + tl(2)) &
-            & + rho(2) * (t(3) + tl(3))
-    else if (ncomp.eq.3) then
-       muex(1) =  rho(1) * (t(1) + tl(1)) &
-            & + rho(2) * (t(2) + tl(2)) &
-            & + rho(3) * (t(4) + tl(4))
-       muex(2) =  rho(1) * (t(2) + tl(2)) &
-            & + rho(2) * (t(3) + tl(3)) &
-            & + rho(3) * (t(5) + tl(5))
-       muex(3) =  rho(1) * (t(4) + tl(4)) &
-            & + rho(2) * (t(5) + tl(5)) &
-            & + rho(3) * (t(6) + tl(6))
-    end if
+    muex = 0.0
+
+    do i = 1, ncomp
+       do j = 1, ncomp
+          if (i.le.j) then
+             ij = i + j*(j-1)/2
+          else
+             ij = j + i*(i-1)/2
+          end if
+          muex(i) = muex(i) + rho(j) * (t(ij) + tl(ij))
+!          print *, 'muex(',i,') += rho(',j,') * t(',ij,')'
+       end do
+    end do
 
     ! Also valid ONLY for HNC is the expression for the free energy
     ! density f = sum_mu rho_mu mu_mu - p (we compute the excess).

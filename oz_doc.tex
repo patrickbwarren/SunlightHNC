@@ -423,7 +423,7 @@ required to compute the corresponding direct and indirect correlation
 functions.  To do this we rewrite the OZ relation in \Eqref{eq:oz2a} as
 %
 \begin{equation}
-{\tilde C}' = (I+R\cdot{\tilde H})^{-1}\cdot{\tilde H}
+{\tilde C}' = (I+{\tilde H}\cdot R)^{-1}\cdot{\tilde H}
  + \beta{\tilde U}\lr\,.
 \label{eq:ozndb}
 \end{equation}
@@ -1029,19 +1029,20 @@ columns)
     2 &   & 3 & 5 & 8 & \cdots\\
     3 &   &   & 6 & 9 & \cdots\\
     4 &   &   &   & \zeroset{10} & \cdots\\
-    \cdot & & & & & \cdots
+    \cdots & & & & & \cdots
   \end{array}\label{eq:mat}
 \end{equation}
 %
 If necessary, one can recover the array indices $(i, j)$ from the the
-index $n$ by the following rule (the proof is left as an exercise),
+index $n$ by the following rule, where $\lfloor\cdots\rfloor$ is the
+`floor' function,
 %
 \begin{equation}
   j = \Bigl\lfloor{\frac{1+\sqrt{8n-7}}{2}}\Bigr\rfloor\,,\quad
   i = n - {j(j-1)}/{2}\,.
 \end{equation}
 %
-This is not used in the code though.
+This is not used in the code though.  The proof is left as an exercise.
 
 The matrix operations in \Eqsref{eq:oznd} and \eqref{eq:ozndb} are
 implemented using the standard \verb+MATMUL+ function in \FORTRAN\ 90.

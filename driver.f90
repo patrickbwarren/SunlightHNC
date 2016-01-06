@@ -37,6 +37,12 @@ program driver
 
   lb = 200.0
   arep = 25.0
+  arep(1, 2) = 30.0
+  arep(1, 3) = 35.0
+  arep(2, 3) = 20.0
+  arep(2, 1) = -5
+  arep(3, 1) = -10
+  arep(3, 2) = -15
   z(1) = 1
   z(2) = -1
 
