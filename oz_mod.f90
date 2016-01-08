@@ -92,7 +92,7 @@
 !
 ! A common idiom used below to walk through the function index is
 !
-!  do j = 1, nfnc
+!  do j = 1, ncomp
 !    do i = 1, j
 !      ij = i + j*(j-1)/2
 !      .....
@@ -1385,7 +1385,6 @@ contains
              ij = j + i*(i-1)/2
           end if
           muex(i) = muex(i) + rho(j) * (t(ij) + tl(ij))
-          !          print *, 'muex(',i,') += rho(',j,') * t(',ij,')'
        end do
     end do
 
