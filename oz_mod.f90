@@ -27,7 +27,7 @@
 ! for the Ornstein-Zernike equations for up to three components.  The
 ! closures provided are RPA and HNC.
 
-! Better documentation (which reproduces the below) is found in the 
+! Better documentation (which reproduces the below) is found in the
 ! accompanying LaTeX document.
 
 ! Note on Fourier transforms, based on "A fast solver for the
@@ -37,18 +37,18 @@
 
 ! Let h(k) be the 3d Fourier transform of h(r), with
 !   h(k) = int d^3r exp(-ik.r) h(r)
-! then one can show 
+! then one can show
 !   h(k) = (4 pi / k) int_0^infty dr sin(kr) r h(r)
 ! which defines the forward Fourier-Bessel transform.  Likewise, if
 !   h(r) = int d^3k/(2pi)^3 exp(ik.r) h(k)
-! then one can show 
+! then one can show
 !   h(r) = (1 / 2 pi^2 r) int_0^infty dk sin(kr) k h(k)
-! which defines the backward Fourier-Bessel transform. 
+! which defines the backward Fourier-Bessel transform.
 ! The Ornstein-Zernike eqn in these terms is h(k) = c(k) + rho h(k) c(k)
 ! where rho is the density (with suitable generalisation to multicomponent
 ! systems).  This confirms the relevance of the standard choice of
 ! normalisation of the 3d Fourier transform pair which puts 1/(2 pi)^3 into
-! the back transform.  
+! the back transform.
 
 ! The discrete version of the forward Fourier-Bessel transform is
 !   h_j = (2 pi delta / k_j)  *  2 sum_i=1^(n-1) r_i h_i sin(pi i j / n)
@@ -56,7 +56,7 @@
 ! r_i = i*delta.  The spacing in k is delta_k = pi / L = pi / (n delta),
 ! and k_j = j*delta_k.  The quantity 2 sum_i=1^(n-1) r_i h_i sin(pi i j / n)
 ! is computed by calling the FFTW routine RODFT00 on r_i h_i, with
-! length n-1 -- see fftw_test.f90.  
+! length n-1 -- see fftw_test.f90.
 ! Note that both the arrays in real and reciprocal space are of length n-1.
 
 ! The discrete version of the backward Fourier-Bessel transform
@@ -100,7 +100,7 @@
 
 module wizard
 
-  implicit none 
+  implicit none
 
   include "fftw3.f"
 
@@ -126,11 +126,11 @@ module wizard
   integer*8 :: plan  ! FFTW plan for fast discrete sine transforms
 
   double precision :: &
-       & deltar = 0.01,   & ! real space grid spacing 
-       & deltak,          & ! reciprocal space grid spacing (computed) 
+       & deltar = 0.01,   & ! real space grid spacing
+       & deltak,          & ! reciprocal space grid spacing (computed)
        & error,           & ! difference between current and previous solns
        & alpha = 0.2,     & ! Picard method, fraction of new solution
-       & tol = 1.0d-12,   & ! Error tolerance for claiming convergence  
+       & tol = 1.0d-12,   & ! Error tolerance for claiming convergence
        & rc = 1.0,        & ! short-range DPD repulsion range
        & lb = 0.0,        & ! long-range Coulomb coupling length
        & sigma = 1.0,     & ! long-range Coulomb smearing length / hard core diameter (RPM)
@@ -153,8 +153,8 @@ module wizard
        & diam(:),           & ! hard core diameter array
        & tp(:),             & ! mean field pressure contribution
        & tu(:),             & ! mean field energy contribution
-       & tl(:),             & ! mean field long range potential 
-       & muex(:),           & ! chemical potential array 
+       & tl(:),             & ! mean field long range potential
+       & muex(:),           & ! chemical potential array
        & c(:, :, :),        & ! direct correlation functions (dcfs)
        & e(:, :, :),        & ! indirect correlation functions (icfs)
        & hr(:, :, :),       & ! total correlation functions (tcfs)
@@ -225,6 +225,7 @@ contains
          & FFTW_RODFT00, FFTW_ESTIMATE)
 
   end subroutine initialise
+
 
   subroutine write_params
     implicit none
@@ -297,7 +298,7 @@ contains
 ! Bessel (2), Groot (3), Mexican (4).
 
   subroutine dpd_potential(charge_type)
-    implicit none 
+    implicit none
     integer, intent(in) :: charge_type
     integer :: i, j, ij, irc
     double precision :: aa(nfnc), zz(nfnc)
@@ -309,7 +310,7 @@ contains
     ! triangular entries.  This enforces the rule in the
     ! documentation and also simplifies the printing.
 
-    if (ncomp.gt.1) then 
+    if (ncomp.gt.1) then
        do j = 2, ncomp
           do i = 1, j-1
              arep(j, i) = arep(i, j)
@@ -328,24 +329,24 @@ contains
     end do
 
     irc = nint(rc/deltar)
-    
+
     ! Leave out the amplitude, then the function can be re-used
     ! (see below)
 
     ushort(:,1) = 0.0d0
     ushort(1:irc,1) = 0.5d0 * (1.0d0 - r(1:irc)/rc)**2
-        
+
     dushort(:,1) = 0.0d0
     dushort(1:irc,1) = - (1.0d0 - r(1:irc)/rc) / rc
 
     ! Gaussian charges
 
-    if (charge_type .eq. 1) then 
+    if (charge_type .eq. 1) then
 
        ulong(:,1) = lb * erf(0.5d0*r/sigma) / r
-       
+
        ulongk(:,1) = fourpi * lb * exp(-k**2*sigma**2) / k**2
-        
+
        dulong(:,1) = lb * exp(-0.25d0*r**2/sigma**2) / (rootpi * r * sigma) &
             & - lb * erf(0.5d0*r/sigma) / r**2
 
@@ -353,12 +354,12 @@ contains
 
     ! Bessel charges
 
-    if (charge_type .eq. 2) then 
+    if (charge_type .eq. 2) then
 
        ulong(:,1) = lb * (1.0d0 - exp(-r/sigma)) / r
-        
+
        ulongk(:,1) = fourpi * lb / (k**2 * (1.0d0 + k**2*sigma**2))
-        
+
        dulong(:,1) = lb * exp(-r/sigma) / (r * sigma) &
             & - lb * (1.0d0 - exp(-r/sigma)) / r**2
 
@@ -368,10 +369,10 @@ contains
     ! Note we do not give the real space part here hence the
     ! thermodynamic calculations will be wrong.
 
-    if (charge_type .eq. 3) then 
+    if (charge_type .eq. 3) then
 
        ulong(:,1) = 0.0d0; dulong(:,1) = 0.0d0
-        
+
        ulongk(:,1) = (fourpi * lb / k**2) * 144.0d0 * &
             & (2.0d0 - 2.0d0*cos(k*rgroot) &
             &    - k*rgroot*sin(k*rgroot))**2 &
@@ -381,15 +382,15 @@ contains
 
     end if
 
-    ! Exponential charge smearing as in Gonzales-Melchor et al, 
+    ! Exponential charge smearing as in Gonzales-Melchor et al,
     ! [JCP v125, 224107 (2006).]
     ! Note we do not give the real space part here hence the
     ! thermodynamic calculations will be wrong.
 
-    if (charge_type .eq. 4) then 
+    if (charge_type .eq. 4) then
 
        ulong(:,1) = 0.0d0; dulong(:,1) = 0.0d0
-        
+
        ulongk(:,1) = fourpi * lb / (k**2 * (1.0d0 + k**2*sigma**2/4.0d0)**4)
 
     end if
@@ -431,7 +432,7 @@ contains
 ! controls whether ushort is used or not.
 
   subroutine soft_urpm_potential(use_ushort)
-    implicit none 
+    implicit none
     integer, intent(in) :: use_ushort
     double precision :: rootpi
 
@@ -444,18 +445,18 @@ contains
     end if
 
     z(1) = 1; z(2) = -1;
-    
+
     ulong(:,1) = lb * erf(0.5d0*r/sigma) / r
-       
+
     ulongk(:,1) = fourpi * lb * exp(-k**2*sigma**2) / k**2
-        
+
     dulong(:,1) = lb * exp(-0.25d0*r**2/sigma**2) / (rootpi * r * sigma) &
          & - lb * erf(0.5d0*r/sigma) / r**2
 
     ulong(:,2) = - lb * erf(0.5d0*r/sigmap) / r
-       
+
     ulongk(:,2) = - fourpi * lb * exp(-k**2*sigmap**2) / k**2
-        
+
     dulong(:,2) = - lb * exp(-0.25d0*r**2/sigmap**2) / (rootpi * r * sigmap) &
          & + lb * erf(0.5d0*r/sigmap) / r**2
 
@@ -513,7 +514,7 @@ contains
 ! not.  A value kappa < 0 implies kappa -> infinity should be used.
 
   subroutine soft_rpm_potential(use_ushort)
-    implicit none 
+    implicit none
     integer, intent(in) :: use_ushort
     integer :: i, irc
     double precision :: rootpi
@@ -527,10 +528,10 @@ contains
     end if
 
     z(1) = 1; z(2) = -1;
-    diam(1) = sigma 
-    diam(2) = sigma 
+    diam(1) = sigma
+    diam(2) = sigma
     diam(3) = sigma
-    
+
     ulong(:,1) = lb / r
     ulongk(:,1) = fourpi * lb / k**2
     dulong(:,1) = - lb / r**2
@@ -604,13 +605,12 @@ contains
 ! Ulong can be computed in closed form.  Note h = e + c = e' + c'.
 
   subroutine oz_solve
-    implicit none 
-    integer :: i1, i, j, ij, ik
+    implicit none
+    integer :: i1, i, j, ij, ik, irc
     double precision :: &
-         & m0(ncomp, ncomp), ainv(ncomp, ncomp), &
          & a(ncomp, ncomp), b(ncomp, ncomp), x(ncomp, ncomp), &
          & cmat(ncomp, ncomp), umat(ncomp, ncomp), rhomat(ncomp, ncomp), &
-         & aux(ncomp,ncomp), unita(ncomp, ncomp), det
+         & m0(ncomp, ncomp), unita(ncomp, ncomp)
 
     i1 = mod(istep-1, nps) + 1
 
@@ -623,7 +623,7 @@ contains
        ck(1:ng-1, i) =  (twopi * deltar) * fftwy(1:ng-1) / k(1:ng-1)
     end do
 
-    if (ncomp .eq. 1) then 
+    if (ncomp .eq. 1) then
 
        ! In the one component case the OZ inversion is
        ! straightforward.  Note the implicit indexing on wavevector k
@@ -633,10 +633,10 @@ contains
             & / ( 1.0d0 - rho(1) * (ck(:, 1) - ulongk(:, 1)) ) &
             & - ck(:, 1)
 
-    else
+    else ! Multicomponent OZ inversion
 
-       ! Multicomponent OZ inversion -- see documentation for math.
-       ! First set up a unit matrix, and the diagonal R matrix
+       ! First set up a unit matrix, and the diagonal R matrix -- see
+       ! the documentation for the math here.
 
        rhomat = 0.0d0
        unita = 0.0d0
@@ -669,60 +669,21 @@ contains
           !   A = I - (C - beta UL) . R
           !   B = (C - beta UL) . R . C - beta UL
           ! (note that beta = 1/kT = 1 is not written explicitly)
-          
+
           m0 = matmul(cmat - umat, rhomat)
           a = unita - m0
           b = matmul(m0, cmat) - umat
 
-          ! Now solve the equation A.X = B so that
+          ! Solve the equation A.X = B so that
           ! X = [I - (C - beta U) . R]^(-1) . [(C - beta U) . R . C - beta U]
           ! This is eqn (19) in the documentation.
 
-          if (ncomp .eq. 2) then 
+          call axeqb_solve(a, x, ncomp, b, ncomp, irc)
 
-             ! The ncomp = 2 case is done by hand
-
-             det = a(1,1)*a(2,2) - a(1,2)*a(2,1)
-
-             if( abs(det) .lt. 1.0D-10 ) then 
-                print *, 'oz_solve(oz_mod): zero det'
-                stop
-             end if
-
-             x(1,1) = ( a(2,2)*b(1,1) - a(1,2)*b(2,1) ) / det
-             x(1,2) = ( a(2,2)*b(1,2) - a(1,2)*b(2,2) ) / det
-             x(2,1) = ( a(2,1)*b(1,1) - a(1,1)*b(2,1) ) / det
-             x(2,2) = ( a(1,1)*b(2,2) - a(2,1)*b(1,2) ) / det
-
-          else
-
-             det =       a(1,1) * a(2,2) * a(3,3)
-             det = det - a(1,1) * a(2,3) * a(3,2)
-             det = det - a(1,2) * a(2,1) * a(3,3)
-             det = det + a(1,2) * a(2,3) * a(3,1)
-             det = det + a(1,3) * a(2,1) * a(3,2)
-             det = det - a(1,3) * a(2,2) * a(3,1)
-
-             if( abs(det) .lt. 1.0D-10 ) then 
-                print *, 'oz_solve(oz_mod): zero det'
-                stop
-             end if
-
-             aux(1,1) =   ( a(2,2) * a(3,3) - a(2,3) * a(3,2) )
-             aux(2,1) = - ( a(2,1) * a(3,3) - a(3,1) * a(2,3) )
-             aux(3,1) =   ( a(2,1) * a(3,2) - a(2,2) * a(3,1) )
-             aux(1,2) = - ( a(1,2) * a(3,3) - a(1,3) * a(3,2) )
-             aux(2,2) =   ( a(1,1) * a(3,3) - a(1,3) * a(3,1) )
-             aux(3,2) = - ( a(1,1) * a(3,2) - a(1,2) * a(3,1) )
-             aux(1,3) =   ( a(1,2) * a(2,3) - a(1,3) * a(2,2) )
-             aux(2,3) = - ( a(1,1) * a(2,3) - a(1,3) * a(2,1) )
-             aux(3,3) =   ( a(1,1) * a(2,2) - a(1,2) * a(2,1) )
-
-             ainv = aux / det
-
-             x = matmul(ainv, b)
-
-          end if ! select ncomp = 2 or ncomp > 2
+          if (irc.gt.0) then
+             print *, 'oz_solve(oz_mod): axeqb_solve returned irc = ', irc
+             stop
+          end if
 
           ! Now X is the new estimate for the reciprocal space
           ! functions ek.  They are built from the upper triangle of
@@ -738,7 +699,7 @@ contains
        end do ! loop over k vectors
 
     end if ! select single component or multicomponent case
-    
+
     do i = 1, nfnc
        fftwx(1:ng-1) = k(1:ng-1) * ek(1:ng-1, i)
        call dfftw_execute(plan)
@@ -747,13 +708,141 @@ contains
 
   end subroutine oz_solve
 
+! Routine to solve A.X = B using Gauss-Jordan elimination, with
+! pivoting (see Numerical Recipes for a discussion of this).
+!
+! The input arrays are A(N, N) and B(N, M).  The output is in X(N, M),
+! and an integer return code IRC is zero if successful.
+!
+! Note: this routine was developed independently of the gaussj routine
+! in Numerical Recipes.  Differences are that we are somewhat
+! profligate with bookkeeping, we don't attempt to overwrite the A and
+! B matrices with anything useful, and we make judicious use of
+! FORTRAN 90 language features.
+!
+! To do the pivoting, we use logical arrays to keep track of which
+! rows and columns are valid in the pivot search stage, and an integer
+! array to keep track of which row contains the pivot of each column.
+! The cases n = 1 and n = 2 are treated separately.
+
+  subroutine axeqb_solve(a, x, n, b, m, irc)
+    implicit none
+    integer, intent(in) :: n, m
+    integer, intent(out) :: irc
+    double precision, intent(inout) :: a(n, n), b(n, m)
+    double precision, intent(out) :: x(n, m)
+    integer :: i, j, ii, jj, p, irow(n)
+    logical :: row(n), col(n)
+    double precision :: alpha, amax, det
+    double precision, parameter :: eps = 1D-10
+
+    irc = 0
+
+    if (n.eq.1) then
+
+       if (abs(a(1, 1)).lt.eps) then
+          irc = 1
+          return
+       end if
+
+       x(1, :) = b(1, :) / a(1, 1)
+
+    else if (n.eq.2) then
+
+       det = a(1,1)*a(2,2) - a(1,2)*a(2,1)
+
+       if (abs(det).lt.eps) then
+          irc = 2
+          return
+       end if
+
+       x(1,1) = ( a(2,2)*b(1,1) - a(1,2)*b(2,1) ) / det
+       x(1,2) = ( a(2,2)*b(1,2) - a(1,2)*b(2,2) ) / det
+       x(2,1) = ( a(2,1)*b(1,1) - a(1,1)*b(2,1) ) / det
+       x(2,2) = ( a(1,1)*b(2,2) - a(2,1)*b(1,2) ) / det
+
+    else ! Gauss-Jordan for the n > 2 case.
+
+       ! Initially, all rows and all columns are allowed in the pivot
+       ! search.
+
+       row = .true.
+       col = .true.
+
+       do p = 1, n
+
+          ! Search for a suitable pivot in the allowed rows and
+          ! columns.  After we have done this p = 1...n times, we
+          ! will have run out of pivots and reduced A to a permutation
+          ! matrix.
+
+          amax = 0.0
+          do i = 1, n
+             do j = 1, n
+                if (row(i) .and. col(j) .and. (amax .lt. abs(a(i, j)))) then
+                   amax = abs(a(i, j))
+                   ii = i
+                   jj = j
+                end if
+             end do
+          end do
+
+          if (amax.lt.eps) then
+             irc = 3
+             return
+          end if
+
+          ! Mark the row and column as no longer valid in the pivot
+          ! search, and save the row that the pivot is in.
+
+          row(ii) = .false.
+          col(jj) = .false.
+          irow(jj) = ii
+
+          ! Now do the elimination -- first scale the pivot row, then
+          ! eliminate the entries that correspond to the pivot column
+          ! in all the non-pivot rows.  After each operation the
+          ! solution X remains unchanged, but the matrix A is
+          ! progressively simplified.
+
+          alpha = 1.0 / a(ii, jj)
+          a(ii, :) = alpha * a(ii, :)
+          b(ii, :) = alpha * b(ii, :)
+
+          do i = 1, n
+             if (i.ne.ii) then
+                alpha = a(i, jj)
+                a(i, :) = a(i, :) - alpha * a(ii, :)
+                b(i, :) = b(i, :) - alpha * b(ii, :)
+             end if
+          end do
+
+       end do
+
+       ! At this point A_ij = 1 if the ij-th element was chosen as a
+       ! pivot, and A_ij = 0 otherwise (each row, and each column,
+       ! contains exactly one unit entry, thus A is a permutation
+       ! matrix).  To find the value of X corresponding to a given
+       ! column, we only need to know which row corresponded to pivot
+       ! used for that column.  However, this is precisely the
+       ! information recorded in irow(n).  This makes it easy to
+       ! transfer the solution from the final B array to the X array.
+
+       do j = 1, n
+          x(irow(j), :) = b(j, :)
+       end do
+
+    end if
+
+  end subroutine axeqb_solve
+
 ! This routine solves an alternate version of the Ornstein-Zernicke
 ! equation to determine c and e from h.  In practice as always we
-! actually calculate c' = c + Ulong and e' = e - Ulong. 
-! Note h = e + c = e' + c'.
+! actually calculate c' = c + Ulong and e' = e - Ulong.  Note h = e +
+! c = e' + c'.
 
   subroutine oz_solve2
-    implicit none 
+    implicit none
     integer :: i1, i, j, ij, ik
     double precision :: &
          & h(ng-1, nfnc), m1(ncomp, ncomp), &
@@ -784,12 +873,12 @@ contains
        hk(1:ng-1, i) =  (twopi * deltar) * fftwy(1:ng-1) / k(1:ng-1)
     end do
 
-    if (ncomp .eq. 1) then 
+    if (ncomp .eq. 1) then
 
        ck(:, 1) = hk(:, 1) / (1.0d0 + rho(1) * hk(:, 1)) &
             & + ulongk(:, 1)
 
-    else if (ncomp .eq. 2) then 
+    else if (ncomp .eq. 2) then
 
        do ik = 1, ng-1
 
@@ -802,7 +891,7 @@ contains
 
           det = m1(1,1)*m1(2,2) - m1(1,2)*m1(2,1)
 
-          if( abs(det) .lt. 1.0D-10 ) then 
+          if( abs(det) .lt. 1.0D-10 ) then
              print *, 'oz_solve(oz_mod): zero det'
              stop
           end if
@@ -843,7 +932,7 @@ contains
           det = det + m1(1,3) * m1(2,1) * m1(3,2)
           det = det - m1(1,3) * m1(2,2) * m1(3,1)
 
-          if( abs(det) .lt. 1.0D-10 ) then 
+          if( abs(det) .lt. 1.0D-10 ) then
              print *, 'oz_solve(oz_mod): zero det'
              stop
           end if
@@ -899,7 +988,7 @@ contains
 ! potential only.
 
   subroutine picard_method
-    implicit none 
+    implicit none
     integer :: i1, i0, i
 
     istep = istep + 1
@@ -907,7 +996,7 @@ contains
     i0 = i1 - 1; if (i0.eq.0) i0 = nps
 
     do i = 1, nfnc
-!!       c(:,i,i1) = alpha * ( exp(- ushort(:,i) + e(:,i,i0)) &
+       !!       c(:,i,i1) = alpha * ( exp(- ushort(:,i) + e(:,i,i0)) &
        c(:,i,i1) = alpha * ( expnegus(:,i) * exp(e(:,i,i0)) &
             & - e(:,i,i0) - 1.0d0 ) &
             & + (1.0d0 - alpha) * c(:,i,i0)
@@ -920,7 +1009,7 @@ contains
 ! above HNC condition.
 
   subroutine ng_method
-    implicit none 
+    implicit none
     integer :: i, i1, i0, j, j1, j2, p, nd, icp
     double precision :: dc(ng-1,nfnc,nps-1), de(ng-1,nfnc,nps-1), &
          & a(nps-1,nps-1), x(nps-1), y(nps-1), yy, aux
@@ -931,9 +1020,9 @@ contains
     i1 = mod(istep-1, nps) + 1
     i0 = i1 - 1; if (i0 .eq. 0) i0 = nps
 
-    if (istep .le. nps) then 
+    if (istep .le. nps) then
        nd = istep - 2
-    else 
+    else
        nd = nps - 1
     end if
 
@@ -950,7 +1039,7 @@ contains
 
     do icp = 1, nfnc
        do j = 1, ng-1
-!!          aux = exp( - ushort(j,icp) + e(j,icp,i0)) - 1.0d0
+          !!          aux = exp( - ushort(j,icp) + e(j,icp,i0)) - 1.0d0
           aux = expnegus(j,icp) * exp(e(j,icp,i0)) - 1.0d0
 
           do j1 = 1, nd
@@ -972,7 +1061,7 @@ contains
     call DSYSV( 'U', nd, 1, a, nps-1, ipiv, x, nps-1, work, &
          & 100, info)
 
-    if (info .gt. 0) then 
+    if (info .gt. 0) then
        print *, 'det=0', (x(i),i=1,nd)
     endif
 
@@ -982,7 +1071,7 @@ contains
           do j1 = 1, nd
              aux = aux - de(j,icp,j1) * x(j1)
           end do
-!!          c(j,icp,i1) = exp( - ushort(j,icp) + aux) - aux - 1.0d0
+          !!          c(j,icp,i1) = exp( - ushort(j,icp) + aux) - aux - 1.0d0
           c(j,icp,i1) = expnegus(j,icp) * exp(aux) - aux - 1.0d0
        end do
     end do
@@ -994,7 +1083,7 @@ contains
 ! return answer in variable 'error'.
 
   subroutine conv_test
-    implicit none 
+    implicit none
     integer i1, i0
     i1 = mod(istep - 1, nps) + 1
     i0 = i1 - 1; if (i0 .eq. 0) i0 = nps
@@ -1026,16 +1115,16 @@ contains
           if (start_type.eq.2) print *, "cold start c' = -v'"
           if (start_type.eq.3) print *, "cold start c' = e^(-v')-1"
        end if
-    else 
+    else
        if (verbose.eq.1) then
           print *, "warm start c' = previous c'"
        end if
     end if
     call oz_solve
     do i = 1, maxsteps
-       if (i .le. npic) then 
+       if (i .le. npic) then
           call picard_method
-       else 
+       else
           call ng_method
        end if
        call oz_solve
@@ -1063,7 +1152,7 @@ contains
 ! Given the HNC machinery, the implementation of the RPA is almost
 ! completely trivial and corresponds to one iteration through the
 ! Ornstein-Zernike solver given the choice c = - Ushort (HNC
-! start_type = 2).  
+! start_type = 2).
 
   subroutine rpa_solve
     implicit none
@@ -1128,7 +1217,7 @@ contains
 ! with c' = c + Ulong and e' = e - Ulong where Ulong is the long-range
 ! part of the potential, but h = g - 1 = e + c = e' + c'.  The pair
 ! correlation functions are g = 1 + h - the addition of '1' is left
-! for the user to implement. 
+! for the user to implement.
 
   subroutine make_pair_functions
     implicit none
@@ -1151,20 +1240,21 @@ contains
 ! above routines actually work with c' = c + Ulong and e' = e - Ulong
 ! where Ulong is the long-range part of the potential, so we have h =
 ! g - 1 = e + c = e' + c'.  See also Vrbka et al, J. Chem. Phys. 131,
-  ! 154109 (2009).
-
+! 154109 (2009).
+!
 ! The mean-field thermodynamic expressions can often be obtained
 ! analytically from potential. In this routine they are calculated
 ! from species pair contributions, which are themselves calculated in
-! the potential routines (which does not have access to the densities).
+! the potential routines (which does not have access to the
+! densities).
 
   subroutine make_thermodynamics
-    implicit none 
+    implicit none
     integer :: i, j, ij, i1, irc
     double precision :: rhotot, r1, r2, g1, g2, gc
     double precision :: rhoxx(nfnc), t(nfnc)
     double precision :: du12(ng-1), g12(ng-1)
-    
+
     i1 = mod(istep-1, nps) + 1
 
     ! rhoxx is rho x_i x_j, doubled up for the off-diagonal components
@@ -1197,7 +1287,7 @@ contains
        t(i) =  - twopi * deltar * sum((dushort(:,i) + dulong(:,i)) &
             & * (c(:,i,i1) + e(:,i,i1)) * r(:)**3) / 3.0
     end do
- 
+
     ! The correlation contribution is sum_ij rho x_i x_j t_ij.
 
     cf_xc = sum(rhoxx(:) * t(:))
@@ -1221,7 +1311,7 @@ contains
     end do
 
     cf_gc = sum(rhoxx(:) * t(:))
-   
+
     ! This is the final pressure.
 
     press = rhotot * (1.0 + cf_gc + cf_mf + cf_xc)
@@ -1295,7 +1385,7 @@ contains
              ij = j + i*(i-1)/2
           end if
           muex(i) = muex(i) + rho(j) * (t(ij) + tl(ij))
-!          print *, 'muex(',i,') += rho(',j,') * t(',ij,')'
+          !          print *, 'muex(',i,') += rho(',j,') * t(',ij,')'
        end do
     end do
 
@@ -1330,6 +1420,7 @@ contains
 
   end subroutine make_thermodynamics
 
+
   subroutine write_thermodynamics
     integer :: i
 
@@ -1349,7 +1440,7 @@ contains
        print *, 'Internal energy per particle, correlation contribution = ', un_xc
        print *, 'Internal energy per particle, total = ', un
        print *, 'Internal energy per particle, un / 3 = ', un / 3.0
-       print *, 'Internal energy density = ', uv 
+       print *, 'Internal energy density = ', uv
        do i = 1, ncomp
           print *, 'Chemical potential, species ', i, ' = ', muex(i)
        end do
@@ -1360,7 +1451,9 @@ contains
           print *, 'first order perturbation correction DU/V = ', duv
        end if
     end if
-    
+
   end subroutine write_thermodynamics
 
 end module wizard
+
+! End of oz_mod.f90

@@ -1047,9 +1047,8 @@ This is not used in the code though.  The proof is left as an exercise.
 The matrix operations in \Eqsref{eq:oznd} and \eqref{eq:ozndb} are
 implemented using the standard \verb+MATMUL+ function in \FORTRAN\ 90.
 The matrix inversions are not implemented \perse, but are rather done
-by $LU$ decomposition, followed by back-substitution.  The
-$LU$ decomposition is done using Crout's algorithm, pivoting on the
-diagonal elements.  For more details see \Refcite{NR92}.
+by solving the matrix equation $A\cdot X=B$ using Gauss-Jordan
+elimination with pivoting \cite{NR92}.
 
 The Ng acceleration scheme is implemented by keeping track of a number
 of previous iterations (typically 6), recycling the storage.  Thus the
