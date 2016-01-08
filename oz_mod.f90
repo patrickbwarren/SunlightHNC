@@ -440,7 +440,7 @@ contains
 
     if (ncomp.ne.2) then
        print *, 'oz_mod.f90: soft_urpm_potential: ncomp = ', ncomp, &
-            '(should be ncomp = 2)'
+            & '(should be ncomp = 2)'
        stop
     end if
 
@@ -523,7 +523,7 @@ contains
 
     if (ncomp.ne.2) then
        print *, 'oz_mod.f90: soft_urpm_potential: ncomp = ', ncomp, &
-            '(should be ncomp = 2)'
+            & '(should be ncomp = 2)'
        stop
     end if
 
@@ -756,10 +756,22 @@ contains
           return
        end if
 
-       x(1,1) = ( a(2,2)*b(1,1) - a(1,2)*b(2,1) ) / det
-       x(1,2) = ( a(2,2)*b(1,2) - a(1,2)*b(2,2) ) / det
-       x(2,1) = ( a(2,1)*b(1,1) - a(1,1)*b(2,1) ) / det
-       x(2,2) = ( a(1,1)*b(2,2) - a(2,1)*b(1,2) ) / det
+       ! THIS NEEDS FIXING - it works but probably because only the
+       ! upper triangle of X is used
+       
+!       x(1,1) = ( a(2,2)*b(1,1) - a(1,2)*b(2,1) ) / det
+!       x(1,2) = ( a(2,2)*b(1,2) - a(1,2)*b(2,2) ) / det
+       
+!       x(2,1) = ( a(2,1)*b(1,1) - a(1,1)*b(2,1) ) / det
+!       x(2,2) = ( a(1,1)*b(2,2) - a(2,1)*b(1,2) ) / det
+       
+!       do j = 1, m
+!          x(1,j) = ( a(2,2)*b(1,j) - a(1,2)*b(2,j) ) / det
+!          x(2,j) = ( a(1,1)*b(2,j) - a(2,1)*b(1,j) ) / det
+!       end do
+
+       x(1, :) = ( a(2, 2)*b(1, :) - a(1, 2)*b(2, :) ) / det
+       x(2, :) = ( a(1, 1)*b(2, :) - a(2, 1)*b(1, :) ) / det
 
     else ! Gauss-Jordan for the n > 2 case.
 
