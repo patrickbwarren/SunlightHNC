@@ -605,22 +605,17 @@ contains
 
   subroutine oz_solve
     implicit none 
-    integer :: i1, i, ik
+    integer :: i1, i, j, ij, ik
     double precision :: &
-         & m1(ncomp, ncomp), m0(ncomp, ncomp), &
-         & m1i(ncomp, ncomp), m2(ncomp, ncomp), &
+         & m0(ncomp, ncomp), ainv(ncomp, ncomp), &
+         & a(ncomp, ncomp), b(ncomp, ncomp), x(ncomp, ncomp), &
          & cmat(ncomp, ncomp), umat(ncomp, ncomp), rhomat(ncomp, ncomp), &
          & aux(ncomp,ncomp), unita(ncomp, ncomp), det
 
     i1 = mod(istep-1, nps) + 1
 
-    rhomat = 0.0d0
-    unita = 0.0d0
-
-    do i = 1, ncomp
-       rhomat(i,i) = rho(i)
-       unita(i,i) = 1.0d0
-    end do
+    ! Forward transform the real space functions c, to the reciprocal
+    ! space functions ck.
 
     do i=1, nfnc
        fftwx(1:ng-1) = r(1:ng-1) * c(1:ng-1, i, i1)
@@ -630,113 +625,120 @@ contains
 
     if (ncomp .eq. 1) then 
 
+       ! In the one component case the OZ inversion is
+       ! straightforward.  Note the implicit indexing on wavevector k
+       ! in this expression.
+
        ek(:, 1) = ( ck(:, 1) - ulongk(:, 1) ) &
             & / ( 1.0d0 - rho(1) * (ck(:, 1) - ulongk(:, 1)) ) &
             & - ck(:, 1)
 
-    else if (ncomp .eq. 2) then 
+    else
+
+       ! Multicomponent OZ inversion -- see documentation for math.
+       ! First set up a unit matrix, and the diagonal R matrix
+
+       rhomat = 0.0d0
+       unita = 0.0d0
+
+       do i = 1, ncomp
+          rhomat(i,i) = rho(i)
+          unita(i,i) = 1.0d0
+       end do
+
+       ! Do the matrix calculations for each wavevector k.
 
        do ik = 1, ng-1
 
-          cmat(1,1) = ck(ik, 1)
-          cmat(1,2) = ck(ik, 2)
-          cmat(2,1) = ck(ik, 2)
-          cmat(2,2) = ck(ik, 3)
+          ! Unpack the reciprocal space functions into matrices.
 
-          umat(1,1) = ulongk(ik, 1)
-          umat(1,2) = ulongk(ik, 2)
-          umat(2,1) = ulongk(ik, 2)
-          umat(2,2) = ulongk(ik, 3)
+          do j = 1, ncomp
+             do i = 1, j
+                ij = i + j*(j-1)/2
+                cmat(i, j) = ck(ik, ij)
+                umat(i, j) = ulongk(ik, ij)
+                if (i.lt.j) then
+                   cmat(j, i) = cmat(i, j)
+                   umat(j, i) = umat(i, j)
+                end if
+             end do
+          end do
 
+          ! The following matrices are constructed:
+          !   M0 = (C - beta UL) . R
+          !   A = I - (C - beta UL) . R
+          !   B = (C - beta UL) . R . C - beta UL
+          ! (note that beta = 1/kT = 1 is not written explicitly)
+          
           m0 = matmul(cmat - umat, rhomat)
+          a = unita - m0
+          b = matmul(m0, cmat) - umat
 
-          m1 = unita - m0
+          ! Now solve the equation A.X = B so that
+          ! X = [I - (C - beta U) . R]^(-1) . [(C - beta U) . R . C - beta U]
+          ! This is eqn (19) in the documentation.
 
-          det = m1(1,1)*m1(2,2) - m1(1,2)*m1(2,1)
+          if (ncomp .eq. 2) then 
 
-          if( abs(det) .lt. 1.0D-10 ) then 
-             print *, 'oz_solve(oz_mod): zero det'
-             stop
-          end if
+             ! The ncomp = 2 case is done by hand
 
-          m1i(1,1) =   m1(2,2) / det
-          m1i(1,2) = - m1(1,2) / det
-          m1i(2,1) = - m1(2,1) / det
-          m1i(2,2) =   m1(1,1) / det
+             det = a(1,1)*a(2,2) - a(1,2)*a(2,1)
 
-          m2 = matmul(m1i, (matmul(m0, cmat) - umat))
+             if( abs(det) .lt. 1.0D-10 ) then 
+                print *, 'oz_solve(oz_mod): zero det'
+                stop
+             end if
 
-          ek(ik, 1) = m2(1,1)
-          ek(ik, 2) = m2(1,2)
-          ek(ik, 3) = m2(2,2)
+             x(1,1) = ( a(2,2)*b(1,1) - a(1,2)*b(2,1) ) / det
+             x(1,2) = ( a(2,2)*b(1,2) - a(1,2)*b(2,2) ) / det
+             x(2,1) = ( a(2,1)*b(1,1) - a(1,1)*b(2,1) ) / det
+             x(2,2) = ( a(1,1)*b(2,2) - a(2,1)*b(1,2) ) / det
 
-       end do
+          else
 
-    else if (ncomp .eq. 3) then
+             det =       a(1,1) * a(2,2) * a(3,3)
+             det = det - a(1,1) * a(2,3) * a(3,2)
+             det = det - a(1,2) * a(2,1) * a(3,3)
+             det = det + a(1,2) * a(2,3) * a(3,1)
+             det = det + a(1,3) * a(2,1) * a(3,2)
+             det = det - a(1,3) * a(2,2) * a(3,1)
 
-       do ik = 1, ng-1
+             if( abs(det) .lt. 1.0D-10 ) then 
+                print *, 'oz_solve(oz_mod): zero det'
+                stop
+             end if
 
-          cmat(1,1) = ck(ik, 1)
-          cmat(1,2) = ck(ik, 2)
-          cmat(1,3) = ck(ik, 4)
-          cmat(2,1) = ck(ik, 2)
-          cmat(2,2) = ck(ik, 3)
-          cmat(2,3) = ck(ik, 5)
-          cmat(3,1) = ck(ik, 4)
-          cmat(3,2) = ck(ik, 5)
-          cmat(3,3) = ck(ik, 6)
+             aux(1,1) =   ( a(2,2) * a(3,3) - a(2,3) * a(3,2) )
+             aux(2,1) = - ( a(2,1) * a(3,3) - a(3,1) * a(2,3) )
+             aux(3,1) =   ( a(2,1) * a(3,2) - a(2,2) * a(3,1) )
+             aux(1,2) = - ( a(1,2) * a(3,3) - a(1,3) * a(3,2) )
+             aux(2,2) =   ( a(1,1) * a(3,3) - a(1,3) * a(3,1) )
+             aux(3,2) = - ( a(1,1) * a(3,2) - a(1,2) * a(3,1) )
+             aux(1,3) =   ( a(1,2) * a(2,3) - a(1,3) * a(2,2) )
+             aux(2,3) = - ( a(1,1) * a(2,3) - a(1,3) * a(2,1) )
+             aux(3,3) =   ( a(1,1) * a(2,2) - a(1,2) * a(2,1) )
 
-          umat(1,1) = ulongk(ik, 1)
-          umat(1,2) = ulongk(ik, 2)
-          umat(1,3) = ulongk(ik, 4)
-          umat(2,1) = ulongk(ik, 2)
-          umat(2,2) = ulongk(ik, 3)
-          umat(2,3) = ulongk(ik, 5)
-          umat(3,1) = ulongk(ik, 4)
-          umat(3,2) = ulongk(ik, 5)
-          umat(3,3) = ulongk(ik, 6)
+             ainv = aux / det
 
-          m0 = matmul(cmat - umat, rhomat)
+             x = matmul(ainv, b)
 
-          m1 = unita - m0
+          end if ! select ncomp = 2 or ncomp > 2
 
-          det =       m1(1,1) * m1(2,2) * m1(3,3)
-          det = det - m1(1,1) * m1(2,3) * m1(3,2)
-          det = det - m1(1,2) * m1(2,1) * m1(3,3)
-          det = det + m1(1,2) * m1(2,3) * m1(3,1)
-          det = det + m1(1,3) * m1(2,1) * m1(3,2)
-          det = det - m1(1,3) * m1(2,2) * m1(3,1)
+          ! Now X is the new estimate for the reciprocal space
+          ! functions ek.  They are built from the upper triangle of
+          ! the matrix.
 
-          if( abs(det) .lt. 1.0D-10 ) then 
-             print *, 'oz_solve(oz_mod): zero det'
-             stop
-          end if
+          do j = 1, ncomp
+             do i = 1, j
+                ij = i + j*(j-1)/2
+                ek(ik, ij) = x(i, j)
+             end do
+          end do
 
-          aux(1,1) =   ( m1(2,2) * m1(3,3) - m1(2,3) * m1(3,2) )
-          aux(2,1) = - ( m1(2,1) * m1(3,3) - m1(3,1) * m1(2,3) )
-          aux(3,1) =   ( m1(2,1) * m1(3,2) - m1(2,2) * m1(3,1) )
-          aux(1,2) = - ( m1(1,2) * m1(3,3) - m1(1,3) * m1(3,2) )
-          aux(2,2) =   ( m1(1,1) * m1(3,3) - m1(1,3) * m1(3,1) )
-          aux(3,2) = - ( m1(1,1) * m1(3,2) - m1(1,2) * m1(3,1) )
-          aux(1,3) =   ( m1(1,2) * m1(2,3) - m1(1,3) * m1(2,2) )
-          aux(2,3) = - ( m1(1,1) * m1(2,3) - m1(1,3) * m1(2,1) )
-          aux(3,3) =   ( m1(1,1) * m1(2,2) - m1(1,2) * m1(2,1) )
+       end do ! loop over k vectors
 
-          m1i = aux / det
-
-          m2 = matmul(m1i, (matmul(m0, cmat) - umat))
-
-          ek(ik, 1) = m2(1,1)
-          ek(ik, 2) = m2(1,2)
-          ek(ik, 3) = m2(2,2)
-          ek(ik, 4) = m2(1,3)
-          ek(ik, 5) = m2(2,3)
-          ek(ik, 6) = m2(3,3) 
-
-       end do
-
-    end if
-
+    end if ! select single component or multicomponent case
+    
     do i = 1, nfnc
        fftwx(1:ng-1) = k(1:ng-1) * ek(1:ng-1, i)
        call dfftw_execute(plan)
