@@ -35,7 +35,7 @@ program driver2
 
   call initialise
 
-  lb = 200.0
+  lb = 120.0
   arep = 25.0
   arep(1, 2) = 30.0
   z(1) = 1
@@ -61,20 +61,20 @@ program driver2
   ddsf = sum(sum(sk, dim=3), dim=2) / sum(rho)
   ccsf = sk(:,1,1) - sk(:,1,2) - sk(:,2,1) + sk(:,2,2)
 
-  open (unit=10, file='test_sf.dat')
+  open (unit=10, file='driver2_sf.dat')
   do j = 1, ng-1
      write (10, '(3(f15.8,2x))') k(j), ddsf(j), ccsf(j)
   end do
   close (10)
-  print *, 'structure factors written to test_sf.dat'
+  print *, 'structure factors written to driver2_sf.dat'
 
-  open (unit=11, file='test_hij.dat')
+  open (unit=11, file='driver2_hij.dat')
   do j = 1, ng-1
      write (11, '(4(f15.8,2x))') r(j), hr(j,1,1), hr(j,1,2), &
           & hr(j,2,2)
   end do
   close (11)
-  print *, 'pair correlation functions written to test_gij.dat'
+  print *, 'pair correlation functions written to driver2_gij.dat'
 
   call write_thermodynamics
 

@@ -36,30 +36,26 @@ program driver4
   lb = 200.0
   arep = 25.0
 
-  arep(1, 2) = 30.0
-  arep(1, 3) = 35.0
-  arep(1, 4) = 32.0
-  arep(2, 3) = 20.0
-  arep(2, 4) = 22.0
-  arep(3, 4) = 15.0
+  arep(1, 2) = 32.0
+  arep(1, 3) = 22.0
+  arep(1, 4) = 15.0
+  arep(2, 3) = 30.0
+  arep(2, 4) = 35.0
+  arep(3, 4) = 20.0
   
-  arep(2, 1) = -5
-  arep(3, 1) = -10
-  arep(3, 2) = -15
-
-  z(1) = 1
-  z(2) = -1
+  z(2) = 1
   z(3) = -1
+  z(4) = -1
 
   call dpd_potential(1)
 
   rhotot = 3.0d0
   mfcharge = 0.2d0
 
-  rho(1) = 0.5d0 * rhotot * mfcharge
-  rho(2) = rho(1) * 0.2
-  rho(3) = rho(1) - rho(2)
-  rho(4) = rhotot * (1.0d0 - mfcharge)
+  rho(1) = rhotot * (1.0d0 - mfcharge)
+  rho(2) = 0.5d0 * rhotot * mfcharge
+  rho(3) = rho(2) * 0.2
+  rho(4) = rho(2) - rho(3)
 
   call write_params
 

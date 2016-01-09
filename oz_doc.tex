@@ -100,23 +100,23 @@
 \section{Introduction}
 %
 The \FORTRAN\ 90 module \verb+oz_mod.f90+ implements an
-Ornstein-Zernike solver for up to three species of possibly charged
-particles, returning both structural and thermodynamic information.
-The closures currently implemented are the RPA (equivalent to MSA for
-soft potentials), EXP, and the HNC.  Though we say it ourselves, the
-code is \emph{fast} since it is written in native \FORTRAN\ and
-implements the Ng acceleration schemes \cite{Ng74}.  The interaction
-potentials are specified in their own routines and the code could be
-used for other potentials with minor modifications.  Further technical
-background to liquid state integral equation methods can be found in
-Hansen and McDonald \cite{HM06}, Kelley and Montgomery Pettitt
-\cite{KMP04}, and Vrbka \etal\ \cite{Vrbka09}.  We note that Vrbka
-provides an independent package called `pyOZ', implemented entirely in
-\python~\cite{Vrbka09}.  There are some differences with the present
-approach: the Ornstein-Zernike relation is normalised slightly
-differently, a conjugate gradient method is used to accelerate
-convergence, and pyOZ provides other closures in addition to the ones
-provided here.
+Ornstein-Zernike solver for multicomponent mixtures of possibly
+charged particles, returning both structural and thermodynamic
+information.  The closures currently implemented are the RPA
+(equivalent to MSA for soft potentials), EXP, and the HNC.  Though we
+say it ourselves, the code is \emph{fast} since it is written in
+native \FORTRAN\ and implements the Ng acceleration schemes
+\cite{Ng74}.  The interaction potentials are specified in their own
+routines and the code could be used for other potentials with minor
+modifications.  Further technical background to liquid state integral
+equation methods can be found in Hansen and McDonald \cite{HM06},
+Kelley and Montgomery Pettitt \cite{KMP04}, and Vrbka
+\etal\ \cite{Vrbka09}.  We note that Vrbka provides an independent
+package called `pyOZ', implemented entirely in \python~\cite{Vrbka09}.
+There are some differences with the present approach: the
+Ornstein-Zernike relation is normalised slightly differently, a
+conjugate gradient method is used to accelerate convergence, and pyOZ
+provides other closures in addition to the ones provided here.
 
 The present code is based on an HNC code developed by Lucian Anton,
 modified for dissipative particle dynamics (DPD) by Andrey Vlasov with
@@ -1651,9 +1651,8 @@ Sections \ref{sec:vrp}--\ref{sec:feng} have been coded up as
   (solved by HNC) for the low density phase boundary.  For more
   details and sample results see comments in the scripts.
 %
-\item\verb+driver.py+ and \verb+driver.f90+ are older test routines,
-  which are retained to check agreement between \python\ and pure
-  \FORTRAN\ 90 code.
+\item\verb+driver.py+ and \verb+driver*.f90+ are routines
+  retained for regression testing.
 %
 \end{itemize}
 
