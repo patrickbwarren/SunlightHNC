@@ -705,6 +705,8 @@ contains
 
     end if ! select single component or multicomponent case
 
+    ! Do the Fourier back transforms
+
     do i = 1, nfnc
        fftwx(1:ng-1) = k(1:ng-1) * ek(1:ng-1, i)
        call dfftw_execute(plan)
@@ -713,107 +715,6 @@ contains
 
   end subroutine oz_solve
 
-! Routine to solve A.X = B using Gauss-Jordan elimination, with
-! pivoting (see Numerical Recipes for a discussion of this).
-!
-! The input arrays are A(N, N) and B(N, M).  The output is in B(N, M),
-! where X(I, :) = B(PIVOT(I), :).  An integer return code IRC is
-! zero if successful.
-!
-! Note: this routine was developed independently of the gaussj routine
-! in Numerical Recipes.  Differences are that we are somewhat
-! profligate with bookkeeping, we don't attempt to overwrite the A
-! matrix with anything useful, we provide the user with the pivot
-! permutation rather than permuting B, and we make judicious use of
-! FORTRAN 90 language features.
-!
-! To do the pivoting, we use logical arrays to keep track of which
-! rows and columns are valid in the pivot search stage, and an integer
-! array PIVOT(:) to keep track of which column contains the pivot of
-! each row.  This integer array then ends up encoding the permutation
-! of the rows of B.
-
-  subroutine axeqb_solve(a, n, b, m, row, col, pivot, irc)
-    implicit none
-    integer :: i, j, ii, jj, p
-    integer, intent(in) :: n, m
-    integer, intent(out) :: pivot(n)
-    integer, intent(out) :: irc
-    double precision :: alpha, amax
-    double precision, parameter :: eps = 1D-10
-    double precision, intent(inout) :: a(n, n), b(n, m)
-    logical, intent(out) :: row(n), col(n)
-
-    irc = 0
-
-    ! Initially, all rows and all columns are allowed.
-
-    row = .true.
-    col = .true.
-
-    do p = 1, n
-
-       ! Search for a suitable pivot in the allowed rows and
-       ! columns.  After we have done this p = 1...n times, we
-       ! will have run out of pivots and reduced A to a permutation
-       ! matrix.
-
-       amax = 0.0
-       
-       do i = 1, n
-          do j = 1, n
-             if (row(i) .and. col(j) .and. (amax .lt. abs(a(i, j)))) then
-                amax = abs(a(i, j))
-                ii = i
-                jj = j
-             end if
-          end do
-       end do
-
-       if (amax.lt.eps) then
-          irc = 1
-          return
-       end if
-
-       ! Having found our next pivot, mark the corresponding row and
-       ! column as no longer valid in the pivot search, and save the
-       ! column that the pivot is in.
-
-       row(ii) = .false.
-       col(jj) = .false.
-       pivot(ii) = jj
-
-       ! Now do the elimination -- first scale the pivot row, then
-       ! eliminate the entries that correspond to the pivot column
-       ! in all the non-pivot rows.  After each operation the
-       ! solution X remains unchanged, but the matrix A is
-       ! progressively simplified.
-
-       alpha = 1.0 / a(ii, jj)
-       a(ii, :) = alpha * a(ii, :)
-       b(ii, :) = alpha * b(ii, :)
-
-       do i = 1, n
-          if (i.ne.ii) then
-             alpha = a(i, jj)
-             a(i, :) = a(i, :) - alpha * a(ii, :)
-             b(i, :) = b(i, :) - alpha * b(ii, :)
-          end if
-       end do
-
-    end do
-
-    ! At this point A_ij = 1 if the ij-th element was chosen as a
-    ! pivot, and A_ij = 0 otherwise.  Each row, and each column, of A
-    ! therefore contains exactly one unit entry, thus A is a
-    ! permutation matrix.  This permutation is also encoded in
-    ! PIVOT(:).  The reduction preserved the solution X in A.X = B, so
-    ! that B now contains a permutation of the solution X.  However,
-    ! this permutation is precisely the information recorded in
-    ! pivot(:), thus X(I, :) = B(PIVOT(I), :).
-
-  end subroutine axeqb_solve
-
 ! This routine solves an alternate version of the Ornstein-Zernicke
 ! equation to determine c and e from h.  In practice as always we
 ! actually calculate c' = c + Ulong and e' = e - Ulong.  Note h = e +
@@ -821,22 +722,19 @@ contains
 
   subroutine oz_solve2
     implicit none
-    integer :: i1, i, j, ij, ik
+    integer :: i1, i, j, ij, ik, irc
+    integer :: pivot(ncomp)
+    logical :: row(ncomp), col(ncomp)
     double precision :: &
-         & h(ng-1, nfnc), m1(ncomp, ncomp), &
-         & m1i(ncomp, ncomp), m2(ncomp, ncomp), &
-         & hmat(ncomp, ncomp), rhomat(ncomp, ncomp), &
-         & aux(ncomp,ncomp), unita(ncomp, ncomp), det
+         & a(ncomp, ncomp), b(ncomp, ncomp), &
+         & h(ng-1, nfnc), hmat(ncomp, ncomp), &
+         & rhomat(ncomp, ncomp), unita(ncomp, ncomp)
 
     i1 = mod(istep-1, nps) + 1
 
-    rhomat = 0.0d0
-    unita = 0.0d0
-
-    do i = 1, ncomp
-       rhomat(i,i) = rho(i)
-       unita(i,i) = 1.0d0
-    end do
+    ! This is called after the correlation function h_ij have been
+    ! calculated (using RPA).  We therefore repack these into
+    ! functions and Fourier transform to reciprocal space
 
     do j = 1, ncomp
        do i = 1, j
@@ -853,92 +751,81 @@ contains
 
     if (ncomp .eq. 1) then
 
+       ! In the one component case the OZ solution is trivial.  Note
+       ! the implicit indexing on wavevector k in this expression.
+
        ck(:, 1) = hk(:, 1) / (1.0d0 + rho(1) * hk(:, 1)) &
             & + ulongk(:, 1)
 
-    else if (ncomp .eq. 2) then
+    else ! Multicomponent OZ solution
 
-       do ik = 1, ng-1
+       ! As above set up a unit matrix, and the diagonal R matrix
 
-          hmat(1,1) = hk(ik, 1)
-          hmat(1,2) = hk(ik, 2)
-          hmat(2,1) = hk(ik, 2)
-          hmat(2,2) = hk(ik, 3)
+       rhomat = 0.0d0
+       unita = 0.0d0
 
-          m1 = unita + matmul(hmat, rhomat)
-
-          det = m1(1,1)*m1(2,2) - m1(1,2)*m1(2,1)
-
-          if( abs(det) .lt. 1.0D-10 ) then
-             print *, 'oz_solve(oz_mod): zero det'
-             stop
-          end if
-
-          m1i(1,1) =   m1(2,2) / det
-          m1i(1,2) = - m1(1,2) / det
-          m1i(2,1) = - m1(2,1) / det
-          m1i(2,2) =   m1(1,1) / det
-
-          m2 = matmul(m1i, hmat)
-
-          ck(ik, 1) = m2(1,1) + ulongk(ik, 1)
-          ck(ik, 2) = m2(1,2) + ulongk(ik, 2)
-          ck(ik, 3) = m2(2,2) + ulongk(ik, 3)
-
+       do i = 1, ncomp
+          rhomat(i,i) = rho(i)
+          unita(i,i) = 1.0d0
        end do
 
-    else if (ncomp .eq. 3) then
+       ! Do the matrix calculations for each wavevector k.
 
        do ik = 1, ng-1
 
-          hmat(1,1) = hk(ik, 1)
-          hmat(1,2) = hk(ik, 2)
-          hmat(1,3) = hk(ik, 4)
-          hmat(2,1) = hk(ik, 2)
-          hmat(2,2) = hk(ik, 3)
-          hmat(2,3) = hk(ik, 5)
-          hmat(3,1) = hk(ik, 4)
-          hmat(3,2) = hk(ik, 5)
-          hmat(3,3) = hk(ik, 6)
+          ! Unpack the reciprocal space functions into matrices.
 
-          m1 = unita + matmul(hmat, rhomat)
+          do j = 1, ncomp
+             do i = 1, j
+                ij = i + j*(j-1)/2
+                hmat(i, j) = hk(ik, ij)
+                if (i.lt.j) then
+                   hmat(j, i) = hmat(i, j)
+                end if
+             end do
+          end do
 
-          det =       m1(1,1) * m1(2,2) * m1(3,3)
-          det = det - m1(1,1) * m1(2,3) * m1(3,2)
-          det = det - m1(1,2) * m1(2,1) * m1(3,3)
-          det = det + m1(1,2) * m1(2,3) * m1(3,1)
-          det = det + m1(1,3) * m1(2,1) * m1(3,2)
-          det = det - m1(1,3) * m1(2,2) * m1(3,1)
+!!$          hmat(1,1) = hk(ik, 1)
+!!$          hmat(1,2) = hk(ik, 2)
+!!$          hmat(2,1) = hk(ik, 2)
+!!$          hmat(2,2) = hk(ik, 3)
+          
+          ! Construct:
+          !   A = I + H . R
+          !   B = H
 
-          if( abs(det) .lt. 1.0D-10 ) then
-             print *, 'oz_solve(oz_mod): zero det'
-             stop
-          end if
+          a = unita + matmul(hmat, rhomat)
+          b = hmat
 
-          aux(1,1) =   ( m1(2,2) * m1(3,3) - m1(2,3) * m1(3,2) )
-          aux(2,1) = - ( m1(2,1) * m1(3,3) - m1(3,1) * m1(2,3) )
-          aux(3,1) =   ( m1(2,1) * m1(3,2) - m1(2,2) * m1(3,1) )
-          aux(1,2) = - ( m1(1,2) * m1(3,3) - m1(1,3) * m1(3,2) )
-          aux(2,2) =   ( m1(1,1) * m1(3,3) - m1(1,3) * m1(3,1) )
-          aux(3,2) = - ( m1(1,1) * m1(3,2) - m1(1,2) * m1(3,1) )
-          aux(1,3) =   ( m1(1,2) * m1(2,3) - m1(1,3) * m1(2,2) )
-          aux(2,3) = - ( m1(1,1) * m1(2,3) - m1(1,3) * m1(2,1) )
-          aux(3,3) =   ( m1(1,1) * m1(2,2) - m1(1,2) * m1(2,1) )
+!!$          m1i  :=  m1 ^ (-1) 
+!!$          m2 = matmul(m1i, hmat)
 
-          m1i = aux / det
+          ! Solve for X = (I + H.R)^(-1) . H (this solution resides in B)
 
-          m2 = matmul(m1i, hmat)
+          call axeqb_solve(a, ncomp, b, ncomp, row, col, pivot, irc)
 
-          ck(ik, 1) = m2(1,1) + ulongk(ik, 1)
-          ck(ik, 2) = m2(1,2) + ulongk(ik, 2)
-          ck(ik, 3) = m2(2,2) + ulongk(ik, 3)
-          ck(ik, 4) = m2(1,3) + ulongk(ik, 4)
-          ck(ik, 5) = m2(2,3) + ulongk(ik, 5)
-          ck(ik, 6) = m2(3,3) + ulongk(ik, 6)
+          ! Now compute C = (I + H.R)^(-1) . H + beta UL
+          ! (map back to functions, and unravel the pivoting)
+
+          do j = 1, ncomp
+             do i = 1, j
+                ij = i + j*(j-1)/2
+                ck(ik, ij) = b(pivot(i), j) + ulong(ik, ij)
+             end do
+          end do
+
+!!$          ck(ik, 1) = m2(1,1) + ulongk(ik, 1)
+!!$          ck(ik, 2) = m2(1,2) + ulongk(ik, 2)
+!!$          ck(ik, 3) = m2(2,2) + ulongk(ik, 3)
 
        end do
 
     end if
+
+    ! Do the Fourier back transforms in such a way so that it is e
+    ! that is generated.  This means the results can be used in the
+    ! structure and thermodynamics routines as though they had come
+    ! from the HNC solution.
 
     do i = 1, nfnc
 
@@ -1430,6 +1317,107 @@ contains
     end if
 
   end subroutine write_thermodynamics
+
+! Routine to solve A.X = B using Gauss-Jordan elimination, with
+! pivoting (see Numerical Recipes for a discussion of this).
+!
+! The input arrays are A(N, N) and B(N, M).  The output is in B(N, M),
+! where X(I, :) = B(PIVOT(I), :).  An integer return code IRC is
+! zero if successful.
+!
+! Note: this routine was developed independently of the gaussj routine
+! in Numerical Recipes.  Differences are that we are somewhat
+! profligate with bookkeeping, we don't attempt to overwrite the A
+! matrix with anything useful, we provide the user with the pivot
+! permutation rather than permuting B, and we make judicious use of
+! FORTRAN 90 language features.
+!
+! To do the pivoting, we use logical arrays to keep track of which
+! rows and columns are valid in the pivot search stage, and an integer
+! array PIVOT(:) to keep track of which column contains the pivot of
+! each row.  This integer array then ends up encoding the permutation
+! of the rows of B.
+
+  subroutine axeqb_solve(a, n, b, m, row, col, pivot, irc)
+    implicit none
+    integer :: i, j, ii, jj, p
+    integer, intent(in) :: n, m
+    integer, intent(out) :: pivot(n)
+    integer, intent(out) :: irc
+    double precision :: alpha, amax
+    double precision, parameter :: eps = 1D-10
+    double precision, intent(inout) :: a(n, n), b(n, m)
+    logical, intent(out) :: row(n), col(n)
+
+    irc = 0
+
+    ! Initially, all rows and all columns are allowed.
+
+    row = .true.
+    col = .true.
+
+    do p = 1, n
+
+       ! Search for a suitable pivot in the allowed rows and
+       ! columns.  After we have done this p = 1...n times, we
+       ! will have run out of pivots and reduced A to a permutation
+       ! matrix.
+
+       amax = 0.0
+       
+       do i = 1, n
+          do j = 1, n
+             if (row(i) .and. col(j) .and. (amax .lt. abs(a(i, j)))) then
+                amax = abs(a(i, j))
+                ii = i
+                jj = j
+             end if
+          end do
+       end do
+
+       if (amax.lt.eps) then
+          irc = 1
+          return
+       end if
+
+       ! Having found our next pivot, mark the corresponding row and
+       ! column as no longer valid in the pivot search, and save the
+       ! column that the pivot is in.
+
+       row(ii) = .false.
+       col(jj) = .false.
+       pivot(ii) = jj
+
+       ! Now do the elimination -- first scale the pivot row, then
+       ! eliminate the entries that correspond to the pivot column
+       ! in all the non-pivot rows.  After each operation the
+       ! solution X remains unchanged, but the matrix A is
+       ! progressively simplified.
+
+       alpha = 1.0 / a(ii, jj)
+       a(ii, :) = alpha * a(ii, :)
+       b(ii, :) = alpha * b(ii, :)
+
+       do i = 1, n
+          if (i.ne.ii) then
+             alpha = a(i, jj)
+             a(i, :) = a(i, :) - alpha * a(ii, :)
+             b(i, :) = b(i, :) - alpha * b(ii, :)
+          end if
+       end do
+
+    end do
+
+    ! At this point A_ij = 1 if the ij-th element was chosen as a
+    ! pivot, and A_ij = 0 otherwise.  Each row, and each column, of A
+    ! therefore contains exactly one unit entry, thus A is a
+    ! permutation matrix.  This permutation is also encoded in
+    ! PIVOT(:).  The reduction preserved the solution X in A.X = B, so
+    ! that B now contains a permutation of the solution X.  However,
+    ! this permutation is precisely the information recorded in
+    ! pivot(:), thus X(I, :) = B(PIVOT(I), :).
+
+  end subroutine axeqb_solve
 
 end module wizard
 
