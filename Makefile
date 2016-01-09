@@ -30,7 +30,7 @@ DRIVERS = driver2 driver3 driver4
 
 default: oz.so
 
-all : $(DRIVERS) urpm fftw_test
+all : $(DRIVERS) urpm fftw_test oz.so
 
 drivers : $(DRIVERS)
 

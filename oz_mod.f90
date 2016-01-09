@@ -122,7 +122,7 @@ module wizard
        & nps = 6,         & ! number of previous states used in Ng method
        & npic = 6,        & ! number of Picard steps
        & maxsteps = 100     ! max number of steps to take for convergence
-
+  
   integer*8 :: plan  ! FFTW plan for fast discrete sine transforms
 
   double precision :: &
@@ -133,7 +133,7 @@ module wizard
        & tol = 1.0d-12,   & ! Error tolerance for claiming convergence
        & rc = 1.0,        & ! short-range DPD repulsion range
        & lb = 0.0,        & ! long-range Coulomb coupling length
-       & sigma = 1.0,     & ! long-range Coulomb smearing length / hard core diameter (RPM)
+       & sigma = 1.0,     & ! see below (*)
        & sigmap = 1.0,    & ! +- long-range Coulomb smearing length (URPM)
        & kappa = -1.0,    & ! +- long-range Coulomb smoothing parameter (RPM)
        & rgroot = 1.0,    & ! linear charge smearing range (Groot)
@@ -146,6 +146,9 @@ module wizard
        & d12, duv           ! the Wertheim integral for the softened URPM case
                             ! and the first order perturbation theory term
 
+  ! (*) sigma is used both for the long-range Coulomb smearing length
+  ! for the soft potentials, and for hard core diameter for RPM models
+  
   double precision, allocatable :: &
        & rho(:),            & ! density array
        & z(:),              & ! valence array
@@ -168,7 +171,7 @@ module wizard
        & ulong(:, :),       & ! long range potential in real space
        & dulong(:, :),      & ! derivative of the same
        & ulongk(:, :),      & ! long range potential in reciprocal space
-       & r(:), k(:) ,       & ! r and k grids
+       & r(:), k(:),        & ! r and k grids
        & fftwx(:), fftwy(:)   ! arrays for fast discrete sine transform
 
 contains
@@ -607,8 +610,10 @@ contains
   subroutine oz_solve
     implicit none
     integer :: i1, i, j, ij, ik, irc
+    integer :: pivot(ncomp)
+    logical :: row(ncomp), col(ncomp)
     double precision :: &
-         & a(ncomp, ncomp), b(ncomp, ncomp), x(ncomp, ncomp), &
+         & a(ncomp, ncomp), b(ncomp, ncomp), &
          & cmat(ncomp, ncomp), umat(ncomp, ncomp), rhomat(ncomp, ncomp), &
          & m0(ncomp, ncomp), unita(ncomp, ncomp)
 
@@ -678,21 +683,21 @@ contains
           ! X = [I - (C - beta U) . R]^(-1) . [(C - beta U) . R . C - beta U]
           ! This is eqn (19) in the documentation.
 
-          call axeqb_solve(a, x, ncomp, b, ncomp, irc)
+          call axeqb_solve(a, ncomp, b, ncomp, row, col, pivot, irc)
 
           if (irc.gt.0) then
              print *, 'oz_solve(oz_mod): axeqb_solve returned irc = ', irc
              stop
           end if
 
-          ! Now X is the new estimate for the reciprocal space
-          ! functions ek.  They are built from the upper triangle of
-          ! the matrix.
+          ! Now X(I, :) = B(PIVOT(I), :) is the new estimate for the
+          ! reciprocal space functions ek.  They are built from the
+          ! upper triangle of the matrix.
 
           do j = 1, ncomp
              do i = 1, j
                 ij = i + j*(j-1)/2
-                ek(ik, ij) = x(i, j)
+                ek(ik, ij) = b(pivot(i), j)
              end do
           end do
 
@@ -711,140 +716,101 @@ contains
 ! Routine to solve A.X = B using Gauss-Jordan elimination, with
 ! pivoting (see Numerical Recipes for a discussion of this).
 !
-! The input arrays are A(N, N) and B(N, M).  The output is in X(N, M),
-! and an integer return code IRC is zero if successful.
+! The input arrays are A(N, N) and B(N, M).  The output is in B(N, M),
+! where X(I, :) = B(PIVOT(I), :).  An integer return code IRC is
+! zero if successful.
 !
 ! Note: this routine was developed independently of the gaussj routine
 ! in Numerical Recipes.  Differences are that we are somewhat
-! profligate with bookkeeping, we don't attempt to overwrite the A and
-! B matrices with anything useful, and we make judicious use of
+! profligate with bookkeeping, we don't attempt to overwrite the A
+! matrix with anything useful, we provide the user with the pivot
+! permutation rather than permuting B, and we make judicious use of
 ! FORTRAN 90 language features.
 !
 ! To do the pivoting, we use logical arrays to keep track of which
 ! rows and columns are valid in the pivot search stage, and an integer
-! array to keep track of which row contains the pivot of each column.
-! The cases n = 1 and n = 2 are treated separately.
+! array PIVOT(:) to keep track of which column contains the pivot of
+! each row.  This integer array then ends up encoding the permutation
+! of the rows of B.
 
-  subroutine axeqb_solve(a, x, n, b, m, irc)
+  subroutine axeqb_solve(a, n, b, m, row, col, pivot, irc)
     implicit none
+    integer :: i, j, ii, jj, p
     integer, intent(in) :: n, m
+    integer, intent(out) :: pivot(n)
     integer, intent(out) :: irc
-    double precision, intent(inout) :: a(n, n), b(n, m)
-    double precision, intent(out) :: x(n, m)
-    integer :: i, j, ii, jj, p, irow(n)
-    logical :: row(n), col(n)
-    double precision :: alpha, amax, det
+    double precision :: alpha, amax
     double precision, parameter :: eps = 1D-10
+    double precision, intent(inout) :: a(n, n), b(n, m)
+    logical, intent(out) :: row(n), col(n)
 
     irc = 0
 
-    if (n.eq.1) then
+    ! Initially, all rows and all columns are allowed.
 
-       if (abs(a(1, 1)).lt.eps) then
+    row = .true.
+    col = .true.
+
+    do p = 1, n
+
+       ! Search for a suitable pivot in the allowed rows and
+       ! columns.  After we have done this p = 1...n times, we
+       ! will have run out of pivots and reduced A to a permutation
+       ! matrix.
+
+       amax = 0.0
+       
+       do i = 1, n
+          do j = 1, n
+             if (row(i) .and. col(j) .and. (amax .lt. abs(a(i, j)))) then
+                amax = abs(a(i, j))
+                ii = i
+                jj = j
+             end if
+          end do
+       end do
+
+       if (amax.lt.eps) then
           irc = 1
           return
        end if
 
-       x(1, :) = b(1, :) / a(1, 1)
+       ! Having found our next pivot, mark the corresponding row and
+       ! column as no longer valid in the pivot search, and save the
+       ! column that the pivot is in.
 
-    else if (n.eq.2) then
+       row(ii) = .false.
+       col(jj) = .false.
+       pivot(ii) = jj
 
-       det = a(1,1)*a(2,2) - a(1,2)*a(2,1)
+       ! Now do the elimination -- first scale the pivot row, then
+       ! eliminate the entries that correspond to the pivot column
+       ! in all the non-pivot rows.  After each operation the
+       ! solution X remains unchanged, but the matrix A is
+       ! progressively simplified.
 
-       if (abs(det).lt.eps) then
-          irc = 2
-          return
-       end if
+       alpha = 1.0 / a(ii, jj)
+       a(ii, :) = alpha * a(ii, :)
+       b(ii, :) = alpha * b(ii, :)
 
-       ! THIS NEEDS FIXING - it works but probably because only the
-       ! upper triangle of X is used
-       
-!       x(1,1) = ( a(2,2)*b(1,1) - a(1,2)*b(2,1) ) / det
-!       x(1,2) = ( a(2,2)*b(1,2) - a(1,2)*b(2,2) ) / det
-       
-!       x(2,1) = ( a(2,1)*b(1,1) - a(1,1)*b(2,1) ) / det
-!       x(2,2) = ( a(1,1)*b(2,2) - a(2,1)*b(1,2) ) / det
-       
-!       do j = 1, m
-!          x(1,j) = ( a(2,2)*b(1,j) - a(1,2)*b(2,j) ) / det
-!          x(2,j) = ( a(1,1)*b(2,j) - a(2,1)*b(1,j) ) / det
-!       end do
-
-       x(1, :) = ( a(2, 2)*b(1, :) - a(1, 2)*b(2, :) ) / det
-       x(2, :) = ( a(1, 1)*b(2, :) - a(2, 1)*b(1, :) ) / det
-
-    else ! Gauss-Jordan for the n > 2 case.
-
-       ! Initially, all rows and all columns are allowed in the pivot
-       ! search.
-
-       row = .true.
-       col = .true.
-
-       do p = 1, n
-
-          ! Search for a suitable pivot in the allowed rows and
-          ! columns.  After we have done this p = 1...n times, we
-          ! will have run out of pivots and reduced A to a permutation
-          ! matrix.
-
-          amax = 0.0
-          do i = 1, n
-             do j = 1, n
-                if (row(i) .and. col(j) .and. (amax .lt. abs(a(i, j)))) then
-                   amax = abs(a(i, j))
-                   ii = i
-                   jj = j
-                end if
-             end do
-          end do
-
-          if (amax.lt.eps) then
-             irc = 3
-             return
+       do i = 1, n
+          if (i.ne.ii) then
+             alpha = a(i, jj)
+             a(i, :) = a(i, :) - alpha * a(ii, :)
+             b(i, :) = b(i, :) - alpha * b(ii, :)
           end if
-
-          ! Mark the row and column as no longer valid in the pivot
-          ! search, and save the row that the pivot is in.
-
-          row(ii) = .false.
-          col(jj) = .false.
-          irow(jj) = ii
-
-          ! Now do the elimination -- first scale the pivot row, then
-          ! eliminate the entries that correspond to the pivot column
-          ! in all the non-pivot rows.  After each operation the
-          ! solution X remains unchanged, but the matrix A is
-          ! progressively simplified.
-
-          alpha = 1.0 / a(ii, jj)
-          a(ii, :) = alpha * a(ii, :)
-          b(ii, :) = alpha * b(ii, :)
-
-          do i = 1, n
-             if (i.ne.ii) then
-                alpha = a(i, jj)
-                a(i, :) = a(i, :) - alpha * a(ii, :)
-                b(i, :) = b(i, :) - alpha * b(ii, :)
-             end if
-          end do
-
        end do
 
-       ! At this point A_ij = 1 if the ij-th element was chosen as a
-       ! pivot, and A_ij = 0 otherwise (each row, and each column,
-       ! contains exactly one unit entry, thus A is a permutation
-       ! matrix).  To find the value of X corresponding to a given
-       ! column, we only need to know which row corresponded to pivot
-       ! used for that column.  However, this is precisely the
-       ! information recorded in irow(n).  This makes it easy to
-       ! transfer the solution from the final B array to the X array.
+    end do
 
-       do j = 1, n
-          x(irow(j), :) = b(j, :)
-       end do
-
-    end if
+    ! At this point A_ij = 1 if the ij-th element was chosen as a
+    ! pivot, and A_ij = 0 otherwise.  Each row, and each column, of A
+    ! therefore contains exactly one unit entry, thus A is a
+    ! permutation matrix.  This permutation is also encoded in
+    ! PIVOT(:).  The reduction preserved the solution X in A.X = B, so
+    ! that B now contains a permutation of the solution X.  However,
+    ! this permutation is precisely the information recorded in
+    ! pivot(:), thus X(I, :) = B(PIVOT(I), :).
 
   end subroutine axeqb_solve
 
