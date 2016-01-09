@@ -336,21 +336,21 @@ contains
     ! Leave out the amplitude, then the function can be re-used
     ! (see below)
 
-    ushort(:,1) = 0.0d0
-    ushort(1:irc,1) = 0.5d0 * (1.0d0 - r(1:irc)/rc)**2
+    ushort(:,nfnc) = 0.0d0
+    ushort(1:irc,nfnc) = 0.5d0 * (1.0d0 - r(1:irc)/rc)**2
 
-    dushort(:,1) = 0.0d0
-    dushort(1:irc,1) = - (1.0d0 - r(1:irc)/rc) / rc
+    dushort(:,nfnc) = 0.0d0
+    dushort(1:irc,nfnc) = - (1.0d0 - r(1:irc)/rc) / rc
 
     ! Gaussian charges
 
     if (charge_type .eq. 1) then
 
-       ulong(:,1) = lb * erf(0.5d0*r/sigma) / r
+       ulong(:,nfnc) = lb * erf(0.5d0*r/sigma) / r
 
-       ulongk(:,1) = fourpi * lb * exp(-k**2*sigma**2) / k**2
+       ulongk(:,nfnc) = fourpi * lb * exp(-k**2*sigma**2) / k**2
 
-       dulong(:,1) = lb * exp(-0.25d0*r**2/sigma**2) / (rootpi * r * sigma) &
+       dulong(:,nfnc) = lb * exp(-0.25d0*r**2/sigma**2) / (rootpi * r * sigma) &
             & - lb * erf(0.5d0*r/sigma) / r**2
 
     end if
@@ -359,11 +359,11 @@ contains
 
     if (charge_type .eq. 2) then
 
-       ulong(:,1) = lb * (1.0d0 - exp(-r/sigma)) / r
+       ulong(:,nfnc) = lb * (1.0d0 - exp(-r/sigma)) / r
 
-       ulongk(:,1) = fourpi * lb / (k**2 * (1.0d0 + k**2*sigma**2))
+       ulongk(:,nfnc) = fourpi * lb / (k**2 * (1.0d0 + k**2*sigma**2))
 
-       dulong(:,1) = lb * exp(-r/sigma) / (r * sigma) &
+       dulong(:,nfnc) = lb * exp(-r/sigma) / (r * sigma) &
             & - lb * (1.0d0 - exp(-r/sigma)) / r**2
 
     end if
@@ -374,9 +374,9 @@ contains
 
     if (charge_type .eq. 3) then
 
-       ulong(:,1) = 0.0d0; dulong(:,1) = 0.0d0
+       ulong(:,nfnc) = 0.0d0; dulong(:,nfnc) = 0.0d0
 
-       ulongk(:,1) = (fourpi * lb / k**2) * 144.0d0 * &
+       ulongk(:,nfnc) = (fourpi * lb / k**2) * 144.0d0 * &
             & (2.0d0 - 2.0d0*cos(k*rgroot) &
             &    - k*rgroot*sin(k*rgroot))**2 &
             &                  / (k**8 * rgroot**8)
@@ -392,23 +392,21 @@ contains
 
     if (charge_type .eq. 4) then
 
-       ulong(:,1) = 0.0d0; dulong(:,1) = 0.0d0
+       ulong(:,nfnc) = 0.0d0; dulong(:,nfnc) = 0.0d0
 
-       ulongk(:,1) = fourpi * lb / (k**2 * (1.0d0 + k**2*sigma**2/4.0d0)**4)
+       ulongk(:,nfnc) = fourpi * lb / (k**2 * (1.0d0 + k**2*sigma**2/4.0d0)**4)
 
     end if
 
-    ! Generate the pair potentials by walking down the index from high
-    ! to low, so that in the final step we correctly normalise the
-    ! first function.  The cycle statements ensure we don't try to
-    ! generate functions where we shouldn't.
+    ! Generate the pair potentials by walking through the functions.
+    ! In the final step we correctly normalise the final function.
 
-    do i = nfnc, 1, -1
-       ushort(:,i)  = aa(i) * ushort(:,1)
-       dushort(:,i) = aa(i) * dushort(:,1)
-       ulong(:,i)   = zz(i) * ulong(:,1)
-       ulongk(:,i)  = zz(i) * ulongk(:,1)
-       dulong(:,i)  = zz(i) * dulong(:,1)
+    do i = 1, nfnc
+       ushort(:,i)  = aa(i) * ushort(:,nfnc)
+       dushort(:,i) = aa(i) * dushort(:,nfnc)
+       ulong(:,i)   = zz(i) * ulong(:,nfnc)
+       ulongk(:,i)  = zz(i) * ulongk(:,nfnc)
+       dulong(:,i)  = zz(i) * dulong(:,nfnc)
     end do
 
     ! These individual species-pair contributions to the mean field
