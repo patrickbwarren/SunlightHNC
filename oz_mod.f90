@@ -783,20 +783,12 @@ contains
              end do
           end do
 
-!!$          hmat(1,1) = hk(ik, 1)
-!!$          hmat(1,2) = hk(ik, 2)
-!!$          hmat(2,1) = hk(ik, 2)
-!!$          hmat(2,2) = hk(ik, 3)
-          
           ! Construct:
           !   A = I + H . R
           !   B = H
 
           a = unita + matmul(hmat, rhomat)
           b = hmat
-
-!!$          m1i  :=  m1 ^ (-1) 
-!!$          m2 = matmul(m1i, hmat)
 
           ! Solve for X = (I + H.R)^(-1) . H (this solution resides in B)
 
@@ -811,10 +803,6 @@ contains
                 ck(ik, ij) = b(pivot(i), j) + ulong(ik, ij)
              end do
           end do
-
-!!$          ck(ik, 1) = m2(1,1) + ulongk(ik, 1)
-!!$          ck(ik, 2) = m2(1,2) + ulongk(ik, 2)
-!!$          ck(ik, 3) = m2(2,2) + ulongk(ik, 3)
 
        end do
 
