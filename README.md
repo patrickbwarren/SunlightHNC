@@ -1,20 +1,20 @@
 ## General purpose HNC code
 
-Currently at version 1.6.  Previous versions can be found at
-http://sunlightdpd.sourceforge.net/.
-
-The code is in the process of being upgraded to version 1.7 which will
-be able to handle an arbitrary number of components.  Whilst
-this is going on the latest development snapshot may not work properly and
-may be at odds with the documentation.  For stability please stick with
-version 1.6 until the new version is released.  Version 1.6 can be found by 
+The current stable release is version 1.6.  Previous versions can be found at
+http://sunlightdpd.sourceforge.net/.  Version 1.6 can be found by
 clicking on the 'release' tab at the top of the file listing.
+
+The new version 1.7 will be able to handle an arbitrary number of
+components (rather than a maximum of three, as for previous versions).
+In the present development snapshot, the documentation is up to date
+and the code is fully functioning but should be regarded as being in
+'beta testing'.
 
 #### Features
 
 * FORTRAN 90 based, with example python driver scripts ;
 * fast Ng solver, and Ng decomposition for electrostatics ;
-* multicomponent (up to three components) ;
+* multicomponent (arbitrary number of components) ;
 * hard and soft core (DPD) potentials ;
 * full structural thermodynamics ;
 * fully open source.
@@ -53,19 +53,22 @@ Here is a BibTeX entry for the same :
 
 #### Installation Notes
 
-The main code is written as a FORTRAN 90 module, and can be compiled using
-`gfortran` from the [GNU compiler collection](https://gcc.gnu.org/
-"GNU website").  It is designed to work with `f2py` from
-[SciPy](http://www.scipy.org/ "SciPy website").  The default target in
-the `Makefile` builds the required files for this.
+The main code is written as a FORTRAN 90 module, and can be compiled
+using `gfortran` from the [GNU compiler
+collection](https://gcc.gnu.org/ "GNU website") - a basic Makefile is
+provided.  It is designed to be run from python using the `f2py`
+interface from [SciPy](http://www.scipy.org/ "SciPy website"), though
+some examples of 'vanilla' FORTRAN 90 driver codes are included.  The
+default target in the `Makefile` builds the required files for the
+`f2py` interface.
 
 The [LAPACK](http://www.netlib.org/lapack/ "LAPACK webpage")
 linear algebra library and [FFTW](http://www.fftw.org/ "FFTW website")
 fast Fourier transform library are both required.
 
-The compiler tools including `f2py`, and pre-built versions of 
-the `lapack` and `fftw`
-libraries, are available for most modern GNU/Linux distributions.
+The compiler tools including `f2py`, and pre-built versions of the
+`lapack` and `fftw` libraries, are available for most modern GNU/Linux
+distributions.
 
 #### Copying
 
@@ -87,7 +90,7 @@ along with this program.  If not, see
 
 SunlightDPD is based on an original code copyright &copy; 2007 Lucian
 Anton, with modifications copyright &copy; 2008, 2009 Andrey Vlasov, and
-additional modifications copyright &copy; 2009-2015 Unilever UK Central
+additional modifications copyright &copy; 2009-2016 Unilever UK Central
 Resources Ltd (Registered in England & Wales, Company No 29140;
 Registered Office: Unilever House, Blackfriars, London, EC4P 4BQ, UK).
 

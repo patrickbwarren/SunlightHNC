@@ -2,7 +2,7 @@
 % related to the dissipative particle dynamics (DPD) simulation
 % method.
 
-% Copyright (c) 2009-2015 Unilever UK Central Resources Ltd
+% Copyright (c) 2009-2016 Unilever UK Central Resources Ltd
 % (Registered in England & Wales, Company No 29140; Registered
 % Office: Unilever House, Blackfriars, London, EC4P 4BQ, UK).
 
@@ -1204,7 +1204,8 @@ called in any order.
 %
 \begin{itemize}
 %
-\item\verb+ncomp+ -- The number of component species, ${}\ge 1$ (default 1).
+\item\verb+ncomp+ -- The number of component species, $\text{arbitrary}\ge
+  1$ (default 1).
 %
 \item\verb+ng+ -- The real space grid size, $n$, usually a power of 2
   (default 4096).
@@ -1254,9 +1255,9 @@ convergence (usually safe to leave at default 100).
   the DPD and softened URPM potentials; hard core diameter $\sigma$ in
   the case of the softened RPM potential.
 %
-\item\verb+kappa+ -- parameter $\kappa$ (default $-$1.0) in the softened
-  RPM potential.  A negative value will be interpreted as
-  $\kappa\to\infty$ in the potential (\ie\ pure RPM case).
+\item\verb+kappa+ -- parameter $\kappa$ (default $-$1.0) in the
+  softened RPM potential.  A negative value is interpreted as
+  $\kappa\to\infty$ and generates the pure RPM.
 %
 \item\verb+sigmap+ -- charge size $\sigma'$ (default 1.0), used for
   the softened URPM potential.
@@ -1598,8 +1599,8 @@ Sections \ref{sec:vrp}--\ref{sec:feng} have been coded up as
   agreement is very good.
 %
 \item\verb+wsg_fig5_compare.py+ -- calculate the free energy
-  difference $\Delta F$ between a system of $N-1$ 0-particles and one
-  1-particle, and a pure system of $N$ 0-particles, as a function of
+  difference $\Delta F$ between a system of $N-1$ A particles and a B
+  particle, and a pure system of $N$ A particles, as a function of
   $\Delta a$, where $A_{00}=A_{11}=25$, $A_{01}=25+\Delta a$,
   $\rho_0=3$ and $\rho_1=0$.  This free energy difference was
   introduced in \Refcite{WSG01} and is representative of an
@@ -1623,6 +1624,10 @@ Sections \ref{sec:vrp}--\ref{sec:feng} have been coded up as
   is the basic reason why DPD is so good at representing fluid
   mixtures which fit Flory-Huggins (regular solution) theory.
 %
+\item\verb+hm_fig10-2_compare.py+ solves the HNC for the RPM and
+  generates data that can be compared with Fig 10.2 of \Refcite{HM06}.
+  See comments in file for more details.
+%
 \item\verb+urpm_oneoff.py+ and \verb+urpm_scan.py+ are a pair of
   driver routines for solving the ultrasoft restricted primitive model
   (URPM) \cite{WVA+13}, including the possibility of a neutral solvent
@@ -1636,6 +1641,9 @@ Sections \ref{sec:vrp}--\ref{sec:feng} have been coded up as
   options use \verb+--help+.  The option \verb+--ncomp+ selects
   between the pure URPM case (\verb+--ncomp=2+, default) and the
   solvated URPM case (\verb+--ncomp=3+).
+%
+\item\verb+rpm_oneoff.py+ is a similar driver routine for exploring
+  the RPM.
 %
 \item\verb+urpm_press.py+ and \verb+urpm_targp.py+ are auxiliary
   scripts targetted at the high density URPM phase boundary where HNC
@@ -1651,8 +1659,11 @@ Sections \ref{sec:vrp}--\ref{sec:feng} have been coded up as
   (solved by HNC) for the low density phase boundary.  For more
   details and sample results see comments in the scripts.
 %
-\item\verb+driver.py+ and \verb+driver*.f90+ are routines
-  retained for regression testing.
+\item Sundry items: \verb+driver2.f90+, \verb+driver3.f90+,
+  \verb+driver4.f90+ and \verb+urpm.f90+ are sample FORTRAN 90 driver
+  routines, retained for regression testing (\cf\ also
+  \verb+driver3.py+), and \verb+fftw_test.f90+ is test code to
+  comprehend how FFTW works.
 %
 \end{itemize}
 

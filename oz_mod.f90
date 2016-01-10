@@ -4,7 +4,7 @@
 
 ! Based on an original code copyright (c) 2007 Lucian Anton.
 ! Modifications copyright (c) 2008, 2009 Andrey Vlasov.  Additional
-! modifications copyright (c) 2009-2015 Unilever UK Central Resources
+! modifications copyright (c) 2009-2016 Unilever UK Central Resources
 ! Ltd (Registered in England & Wales, Company No 29140; Registered
 ! Office: Unilever House, Blackfriars, London, EC4P 4BQ, UK).
 
@@ -23,9 +23,9 @@
 
 ! ===================================================================
 
-! The main purpose of this module is to provide integral equation closures
-! for the Ornstein-Zernike equations for up to three components.  The
-! closures provided are RPA and HNC.
+! The main purpose of this module is to provide integral equation
+! closures for the multicomponent Ornstein-Zernike equations.  The
+! closures currently provided are RPA, EXP and HNC.
 
 ! Better documentation (which reproduces the below) is found in the
 ! accompanying LaTeX document.
@@ -229,6 +229,7 @@ contains
 
   end subroutine initialise
 
+! Write out parameters for system and potentials.
 
   subroutine write_params
     implicit none
@@ -309,25 +310,19 @@ contains
 
     rootpi = sqrt(pi)
 
-    ! Force the amplitude matrix to be symmetric, set by upper
-    ! triangular entries.  This enforces the rule in the
-    ! documentation and also simplifies the printing.
-
-    if (ncomp.gt.1) then
-       do j = 2, ncomp
-          do i = 1, j-1
-             arep(j, i) = arep(i, j)
-          end do
-       end do
-    end if
-
-    ! Sort out some recoded potential parameters
+    ! Sort out some recoded potential parameters.  Also force the
+    ! amplitude matrix to be symmetric, set by upper triangular
+    ! entries.  This enforces the rule in the documentation and also
+    ! simplifies the printing.
 
     do j = 1, ncomp
        do i = 1, j
           ij = i + j*(j-1)/2
           aa(ij) = arep(i, j)
           zz(ij) = z(i) * z(j)
+          if (i.lt.j) then
+             arep(j, i) = arep(i, j)
+          end if
        end do
     end do
 
@@ -385,10 +380,9 @@ contains
 
     end if
 
-    ! Exponential charge smearing as in Gonzales-Melchor et al,
-    ! [JCP v125, 224107 (2006).]
-    ! Note we do not give the real space part here hence the
-    ! thermodynamic calculations will be wrong.
+    ! Exponential charge smearing as in Gonzales-Melchor et al, [JCP
+    ! v125, 224107 (2006)].  Note we do not give the real space part
+    ! here hence the thermodynamic calculations will be wrong.
 
     if (charge_type .eq. 4) then
 
@@ -427,10 +421,10 @@ contains
 
   end subroutine dpd_potential
 
-! Build the potential arrays for the softened URPM (Gaussian
-! charges), with parameters lb, sigma and sigmap.  This expects ncomp
-! = 2, and will set z(1) = 1, z(2) = -1.  The parameter (0 or 1)
-! controls whether ushort is used or not.
+! Build the potential arrays for the softened URPM (Gaussian charges),
+! with parameters lb, sigma and sigmap.  This expects ncomp = 2, and
+! will set z(1) = 1, z(2) = -1.  The parameter (0 or 1) controls
+! whether ushort is used or not.
 
   subroutine soft_urpm_potential(use_ushort)
     implicit none
@@ -512,7 +506,7 @@ contains
 ! spheres) with parameters lb, sigma and kappa.  This expects ncomp =
 ! 2, and will set z(1) = 1, z(2) = -1, and hard core diameters to
 ! sigma.  The parameter (0 or 1) controls whether ushort is used or
-! not.  A value kappa < 0 implies kappa -> infinity should be used.
+! not.  Using kappa < 0 implies the pure RPM case (kappa -> infinity).
 
   subroutine soft_rpm_potential(use_ushort)
     implicit none
@@ -609,7 +603,6 @@ contains
     implicit none
     integer :: i1, i, j, ij, ik, irc
     integer :: pivot(ncomp)
-    logical :: row(ncomp), col(ncomp)
     double precision :: &
          & a(ncomp, ncomp), b(ncomp, ncomp), &
          & cmat(ncomp, ncomp), umat(ncomp, ncomp), rhomat(ncomp, ncomp), &
@@ -628,9 +621,8 @@ contains
 
     if (ncomp .eq. 1) then
 
-       ! In the one component case the OZ inversion is
-       ! straightforward.  Note the implicit indexing on wavevector k
-       ! in this expression.
+       ! In the one component case OZ inversion is straightforward.
+       ! Note the implicit indexing on wavevector k.
 
        ek(:, 1) = ( ck(:, 1) - ulongk(:, 1) ) &
             & / ( 1.0d0 - rho(1) * (ck(:, 1) - ulongk(:, 1)) ) &
@@ -679,12 +671,11 @@ contains
 
           ! Solve the equation A.X = B so that
           ! X = [I - (C - beta U) . R]^(-1) . [(C - beta U) . R . C - beta U]
-          ! This is eqn (19) in the documentation.
 
-          call axeqb_solve(a, ncomp, b, ncomp, row, col, pivot, irc)
+          call axeqb_reduce(a, ncomp, b, ncomp, pivot, irc)
 
           if (irc.gt.0) then
-             print *, 'oz_solve(oz_mod): axeqb_solve returned irc = ', irc
+             print *, 'oz_solve(oz_mod): axeqb_reduce returned irc = ', irc
              stop
           end if
 
@@ -722,7 +713,6 @@ contains
     implicit none
     integer :: i1, i, j, ij, ik, irc
     integer :: pivot(ncomp)
-    logical :: row(ncomp), col(ncomp)
     double precision :: &
          & a(ncomp, ncomp), b(ncomp, ncomp), &
          & h(ng-1, nfnc), hmat(ncomp, ncomp), &
@@ -731,7 +721,7 @@ contains
     i1 = mod(istep-1, nps) + 1
 
     ! This is called after the correlation function h_ij have been
-    ! calculated (using RPA).  We therefore repack these into
+    ! calculated (using RPA).  We therefore unpack the matrix
     ! functions and Fourier transform to reciprocal space
 
     do j = 1, ncomp
@@ -749,8 +739,7 @@ contains
 
     if (ncomp .eq. 1) then
 
-       ! In the one component case the OZ solution is trivial.  Note
-       ! the implicit indexing on wavevector k in this expression.
+       ! In the one component case the OZ solution is trivial.
 
        ck(:, 1) = hk(:, 1) / (1.0d0 + rho(1) * hk(:, 1)) &
             & + ulongk(:, 1)
@@ -771,7 +760,7 @@ contains
 
        do ik = 1, ng-1
 
-          ! Unpack the reciprocal space functions into matrices.
+          ! Convert the reciprocal space functions into matrices.
 
           do j = 1, ncomp
              do i = 1, j
@@ -783,16 +772,14 @@ contains
              end do
           end do
 
-          ! Construct:
-          !   A = I + H . R
-          !   B = H
+          ! Construct A = I + H . R, and B = H
 
           a = unita + matmul(hmat, rhomat)
           b = hmat
 
-          ! Solve for X = (I + H.R)^(-1) . H (this solution resides in B)
+          ! Solve A.X = B so that X = (I + H.R)^(-1) . H.
 
-          call axeqb_solve(a, ncomp, b, ncomp, row, col, pivot, irc)
+          call axeqb_reduce(a, ncomp, b, ncomp, pivot, irc)
 
           ! Now compute C = (I + H.R)^(-1) . H + beta UL
           ! (map back to functions, and unravel the pivoting)
@@ -808,10 +795,10 @@ contains
 
     end if
 
-    ! Do the Fourier back transforms in such a way so that it is e
-    ! that is generated.  This means the results can be used in the
-    ! structure and thermodynamics routines as though they had come
-    ! from the HNC solution.
+    ! Do the Fourier back transforms and work in such a way so that it
+    ! is e that is generated.  This means the results can be used in
+    ! the structure and thermodynamics routines as though they had
+    ! come from the HNC solution.
 
     do i = 1, nfnc
 
@@ -827,9 +814,9 @@ contains
 
   end subroutine oz_solve2
 
-! This routine implements the HNC condition expressed as c = exp(-beta
-! v + e) - e - 1 where e = h - c is the indirect correlation function,
-! c is the direct correlation function from the Ornstein-Zernicke
+! This routine implements the HNC closure expressed as c = exp(-beta v
+! + e) - e - 1 where e = h - c is the indirect correlation function, c
+! is the direct correlation function from the Ornstein-Zernicke
 ! relation, h = g - 1, and g is the pair distribution function.  One
 ! can show this is equivalent to g = exp(-v + h - c) in Hansen +
 ! McDonald.  As above, the routine actually works with c' = c + Ulong
@@ -847,7 +834,7 @@ contains
     i0 = i1 - 1; if (i0.eq.0) i0 = nps
 
     do i = 1, nfnc
-       !!       c(:,i,i1) = alpha * ( exp(- ushort(:,i) + e(:,i,i0)) &
+       !!  c(:,i,i1) = alpha * ( exp(- ushort(:,i) + e(:,i,i0)) &
        c(:,i,i1) = alpha * ( expnegus(:,i) * exp(e(:,i,i0)) &
             & - e(:,i,i0) - 1.0d0 ) &
             & + (1.0d0 - alpha) * c(:,i,i0)
@@ -855,15 +842,15 @@ contains
 
   end subroutine picard_method
 
-! The next routine implements the Ng method [K-C Ng,
-! J. Chem. Phys. v61, 2680 (1974)] as an accelerated solver for the
-! above HNC condition.
+! The next routine implements the Ng method [K-C Ng, J. Chem. Phys.
+! v61, 2680 (1974)] as an accelerated solver for the HNC closure.
 
   subroutine ng_method
     implicit none
     integer :: i, i1, i0, j, j1, j2, p, nd, icp
     double precision :: dc(ng-1,nfnc,nps-1), de(ng-1,nfnc,nps-1), &
          & a(nps-1,nps-1), x(nps-1), y(nps-1), yy, aux
+
     integer :: ipiv(nps-1), info  ! DSYSV stuff
     double precision :: work(100) ! DSYSV stuff
 
@@ -890,7 +877,7 @@ contains
 
     do icp = 1, nfnc
        do j = 1, ng-1
-          !!          aux = exp( - ushort(j,icp) + e(j,icp,i0)) - 1.0d0
+          !!  aux = exp( - ushort(j,icp) + e(j,icp,i0)) - 1.0d0
           aux = expnegus(j,icp) * exp(e(j,icp,i0)) - 1.0d0
 
           do j1 = 1, nd
@@ -922,7 +909,7 @@ contains
           do j1 = 1, nd
              aux = aux - de(j,icp,j1) * x(j1)
           end do
-          !!          c(j,icp,i1) = exp( - ushort(j,icp) + aux) - aux - 1.0d0
+          !!  c(j,icp,i1) = exp( - ushort(j,icp) + aux) - aux - 1.0d0
           c(j,icp,i1) = expnegus(j,icp) * exp(aux) - aux - 1.0d0
        end do
     end do
@@ -1094,7 +1081,7 @@ contains
 ! 154109 (2009).
 !
 ! The mean-field thermodynamic expressions can often be obtained
-! analytically from potential. In this routine they are calculated
+! analytically from the potential. In this routine they are calculated
 ! from species pair contributions, which are themselves calculated in
 ! the potential routines (which does not have access to the
 ! densities).
@@ -1286,8 +1273,10 @@ contains
        print *, 'Excess pressure (virial route) = ', sum(rho) * (cf_mf + cf_xc)
        print *, 'Compressibility, correlation contribution = ', comp_xc
        print *, 'Compressibility = ', comp
-       print *, 'Internal energy per particle, mean field contribution = ', un_mf
-       print *, 'Internal energy per particle, correlation contribution = ', un_xc
+       print *, 'Internal energy per particle, mean field contribution = ', &
+            & un_mf
+       print *, 'Internal energy per particle, correlation contribution = ', &
+            & un_xc
        print *, 'Internal energy per particle, total = ', un
        print *, 'Internal energy per particle, un / 3 = ', un / 3.0
        print *, 'Internal energy density = ', uv
@@ -1324,16 +1313,16 @@ contains
 ! each row.  This integer array then ends up encoding the permutation
 ! of the rows of B.
 
-  subroutine axeqb_solve(a, n, b, m, row, col, pivot, irc)
+  subroutine axeqb_reduce(a, n, b, m, pivot, irc)
     implicit none
     integer :: i, j, ii, jj, p
     integer, intent(in) :: n, m
     integer, intent(out) :: pivot(n)
     integer, intent(out) :: irc
-    double precision :: alpha, amax
+    double precision :: alpha, amax, aa
     double precision, parameter :: eps = 1D-10
     double precision, intent(inout) :: a(n, n), b(n, m)
-    logical, intent(out) :: row(n), col(n)
+    logical :: row(n), col(n)
 
     irc = 0
 
@@ -1353,8 +1342,9 @@ contains
        
        do i = 1, n
           do j = 1, n
-             if (row(i) .and. col(j) .and. (amax .lt. abs(a(i, j)))) then
-                amax = abs(a(i, j))
+             aa = abs(a(i, j))
+             if (row(i) .and. col(j) .and. (amax .lt. aa)) then
+                amax = aa
                 ii = i
                 jj = j
              end if
@@ -1403,7 +1393,7 @@ contains
     ! this permutation is precisely the information recorded in
     ! pivot(:), thus X(I, :) = B(PIVOT(I), :).
 
-  end subroutine axeqb_solve
+  end subroutine axeqb_reduce
 
 end module wizard
 
