@@ -4,7 +4,7 @@ The current stable release is version 1.6.  Previous versions can be found at
 http://sunlightdpd.sourceforge.net/.  Version 1.6 can be found by
 clicking on the 'release' tab at the top of the file listing.
 
-The new version 1.7 will be able to handle an arbitrary number of
+Version 1.7 handles an arbitrary number of
 components (rather than a maximum of three, as for previous versions).
 In the present development snapshot, the documentation is up to date
 and the code is fully functioning but should be regarded as being in
@@ -55,8 +55,8 @@ Here is a BibTeX entry for the same :
 
 The main code is written as a FORTRAN 90 module, and can be compiled
 using `gfortran` from the [GNU compiler
-collection](https://gcc.gnu.org/ "GNU website") - a basic Makefile is
-provided.  It is designed to be run from python using the `f2py`
+collection](https://gcc.gnu.org/ "GNU website").  A basic Makefile is
+provided.  The code is designed to be run from python using the `f2py`
 interface from [SciPy](http://www.scipy.org/ "SciPy website"), though
 some examples of 'vanilla' FORTRAN 90 driver codes are included.  The
 default target in the `Makefile` builds the required files for the
