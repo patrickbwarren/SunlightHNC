@@ -1,14 +1,13 @@
 ## General purpose HNC code
 
-The current stable release is version 1.6.  Previous versions can be found at
-http://sunlightdpd.sourceforge.net/.  Version 1.6 can be found by
-clicking on the 'release' tab at the top of the file listing.
+The current stable release is version 1.6.  Previous versions can be
+found at http://sunlightdpd.sourceforge.net/.  Version 1.6 can be
+found by clicking on the 'release' tab at the top of the file listing.
 
-Version 1.7 handles an arbitrary number of
-components (rather than a maximum of three, as for previous versions).
-In the present development snapshot, the documentation is up to date
-and the code is fully functioning but should be regarded as being in
-'beta testing'.
+Version 1.7 handles an arbitrary number of components (rather than a
+maximum of three, as for previous versions).  In the present
+development snapshot, the documentation is up to date and the code is
+fully functioning but should be regarded as being in 'beta testing'.
 
 #### Features
 
