@@ -795,19 +795,18 @@ contains
 
     end if
 
-    ! Do the Fourier back transforms and work in such a way so that it
-    ! is e that is generated.  This means the results can be used in
-    ! the structure and thermodynamics routines as though they had
-    ! come from the HNC solution.
+    ! Do the Fourier back transforms and calculate e = h - c.  This
+    ! means the results can be used in the structure and
+    ! thermodynamics routines as though they had come from the HNC
+    ! solution.
 
     do i = 1, nfnc
-
-       ek(:, i) = hk(:, i) - ck(:, i)
 
        fftwx(1:ng-1) = k(1:ng-1) * ck(1:ng-1, i)
        call dfftw_execute(plan)
        c(1:ng-1, i, i1) =  (deltak / twopi**2) * fftwy(1:ng-1) / r(1:ng-1)
 
+       ek(:, i) = hk(:, i) - ck(:, i)
        e(:, i, i1) = h(:, i) - c(:, i, i1)
 
     end do
@@ -1293,7 +1292,7 @@ contains
 
   end subroutine write_thermodynamics
 
-! Routine to solve A.X = B using Gauss-Jordan elimination, with
+! Routine to reduce A.X = B using Gauss-Jordan elimination, with
 ! pivoting (see Numerical Recipes for a discussion of this).
 !
 ! The input arrays are A(N, N) and B(N, M).  The output is in B(N, M),
@@ -1304,7 +1303,7 @@ contains
 ! in Numerical Recipes.  Differences are that we are somewhat
 ! profligate with bookkeeping, we don't attempt to overwrite the A
 ! matrix with anything useful, we provide the user with the pivot
-! permutation rather than permuting B, and we make judicious use of
+! permutation rather than rearranging B, and we make judicious use of
 ! FORTRAN 90 language features.
 !
 ! To do the pivoting, we use logical arrays to keep track of which
@@ -1317,8 +1316,7 @@ contains
     implicit none
     integer :: i, j, ii, jj, p
     integer, intent(in) :: n, m
-    integer, intent(out) :: pivot(n)
-    integer, intent(out) :: irc
+    integer, intent(out) :: pivot(n), irc
     double precision :: alpha, amax, aa
     double precision, parameter :: eps = 1D-10
     double precision, intent(inout) :: a(n, n), b(n, m)
@@ -1389,9 +1387,7 @@ contains
     ! therefore contains exactly one unit entry, thus A is a
     ! permutation matrix.  This permutation is also encoded in
     ! PIVOT(:).  The reduction preserved the solution X in A.X = B, so
-    ! that B now contains a permutation of the solution X.  However,
-    ! this permutation is precisely the information recorded in
-    ! pivot(:), thus X(I, :) = B(PIVOT(I), :).
+    ! that X(I, :) = B(PIVOT(I), :).
 
   end subroutine axeqb_reduce
 
