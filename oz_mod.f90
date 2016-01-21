@@ -142,9 +142,7 @@ module wizard
        & comp, comp_xc,   & ! compressibility, and excess
        & fvex, fnex,      & ! excess free energy, density and per particle
        & un_mf, un_xc,    & ! energy per particle contributions
-       & un, uv,          & ! energy per particle and density
-       & d12, duv           ! the Wertheim integral for the softened URPM case
-                            ! and the first order perturbation theory term
+       & un, uv             ! energy per particle and density
 
   ! (*) sigma is used both for the long-range Coulomb smearing length
   ! for the soft potentials, and for hard core diameter for RPM models
@@ -1090,7 +1088,6 @@ contains
     integer :: i, j, ij, i1, irc
     double precision :: rhotot, r1, r2, g1, g2, gc
     double precision :: rhoxx(nfnc), t(nfnc)
-    double precision :: du12(ng-1), g12(ng-1)
 
     i1 = mod(istep-1, nps) + 1
 
@@ -1231,28 +1228,27 @@ contains
     fvex = sum(rho(:) * muex(:)) - rhotot * (cf_mf + cf_xc)
     fnex = sum(rho(:) * muex(:)) / rhotot - (cf_mf + cf_xc)
 
-    ! The Wertheim integral and second order perturbation theory for
-    ! the softened URPM potential.
-
-    d12 = 0.0; duv = 0.0
-
-    if (model_type.ge.10) then
-
-       g12 = 1.0d0 + c(:,2,i1) + e(:,2,i1)
-
-       if (model_type.lt.20) then
-          du12 = lb * (erfc(0.5d0*r/sigma) - erfc(0.5d0*r/sigmap)) / r
-       else
-          irc = nint(diam(2) / deltar)
-          du12(1:irc) = 0.0d0
-          du12(irc+1:) = - lb * erfc(kappa*r(irc+1:)) / r(irc+1:)
-          g12(1:irc) = 0.0d0
-       end if
-
-       d12 = fourpi * deltar * sum( (exp(-du12) - 1.0d0) * g12 * r(:)**2)
-       duv = twopi * rho(1) * rho(2) * deltar * sum( du12 * g12 * r(:)**2)
-
-    end if
+!!$  As of version 1.7 these integrals are calculated in the python scripts
+!!$
+!!$    d12 = 0.0; duv = 0.0
+!!$
+!!$    if (model_type.ge.10) then
+!!$
+!!$       g12 = 1.0d0 + c(:,2,i1) + e(:,2,i1)
+!!$
+!!$       if (model_type.lt.20) then
+!!$          du12 = lb * (erfc(0.5d0*r/sigma) - erfc(0.5d0*r/sigmap)) / r
+!!$       else
+!!$          irc = nint(diam(2) / deltar)
+!!$          du12(1:irc) = 0.0d0
+!!$          du12(irc+1:) = - lb * erfc(kappa*r(irc+1:)) / r(irc+1:)
+!!$          g12(1:irc) = 0.0d0
+!!$       end if
+!!$
+!!$       d12 = fourpi * deltar * sum( (exp(-du12) - 1.0d0) * g12 * r(:)**2)
+!!$       duv = twopi * rho(1) * rho(2) * deltar * sum( du12 * g12 * r(:)**2)
+!!$
+!!$    end if
 
   end subroutine make_thermodynamics
 
@@ -1284,10 +1280,6 @@ contains
        end do
        print *, 'Excess free energy density = ', fvex
        print *, 'Excess free energy per particle = ', fnex
-       if (model_type.ge.10) then
-          print *, 'Wertheim integral D12 = ', d12
-          print *, 'first order perturbation correction DU/V = ', duv
-       end if
     end if
 
   end subroutine write_thermodynamics
@@ -1389,8 +1381,7 @@ contains
     ! At this point A_ij = 1 if the ij-th element was chosen as a
     ! pivot, and A_ij = 0 otherwise.  Each row, and each column, of A
     ! therefore contains exactly one unit entry, thus A is a
-    ! permutation matrix, also encoded in PERM(:).  The reduction
-    ! preserves the solution X in A.X = B, so that
+    ! permutation matrix, also encoded in PERM(:) so that
     ! X(I, :) = B(PERM(I), :).
 
   end subroutine axeqb_reduce

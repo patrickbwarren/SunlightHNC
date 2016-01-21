@@ -115,19 +115,30 @@ else:
     w.hnc_solve()
     print('*** HNC solved, error = ', w.error)
 
-# w.write_thermodynamics()
+w.write_thermodynamics()
 
 if (args.test == 1):
     print('fnex (direct)       =', w.fnex)
     print('fnex (energy route) =', fnex1(100))
     print('fnex (mu route)     =', fnex2(100))
 
-rhotot = args.rhoz
-x = (m.sqrt(1.0 + 2.0*w.d12*rhotot) - 1.0) / (w.d12*rhotot)
-rhomon = x * rhotot
-rhodim = w.d12 * rhomon**2 / 4.0
+# Calculate the Wertheim integral (this is no longer done in oz mod)
 
-print('Wertheim D+- = ', w.d12)
+sum = 0.0
+
+for i in range(w.ng-1):
+    g12 = 1.0 + w.hr[i, 0, 1]
+    du12 = w.lb * (m.erfc(0.5*w.r[i]/w.sigma) - m.erfc(0.5*w.r[i]/w.sigmap)) / w.r[i]
+    sum = sum + (m.exp(-du12) - 1.0) * g12 * w.r[i]**2
+
+d12 = w.fourpi * w.deltar * sum
+
+rhotot = args.rhoz
+x = (m.sqrt(1.0 + 2.0*d12*rhotot) - 1.0) / (d12*rhotot)
+rhomon = x * rhotot
+rhodim = d12 * rhomon**2 / 4.0
+
+print('Wertheim D+- = ', d12)
 print('Wertheim x = ', x)
 print('Total density = ', rhotot)
 print('Monomer density = ', rhomon)

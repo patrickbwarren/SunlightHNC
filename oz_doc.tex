@@ -893,6 +893,8 @@ $F=F_0+\myav{\Delta U}_0$ where
 \label{eq:fopt}
 \end{equation}
 %
+As of version 1.7 these integrals have been moved out of the
+\FORTRAN\ module and into the \python\ scripts.
 
 \subsection{Softened RPM potential}
 \label{sec:softRPM}
@@ -1202,8 +1204,7 @@ $c'_{\mu\nu}$ given $e'_{\mu\nu}$, but using the Ng acceleration scheme.
 \item\verb+make_structure_factors+ -- from \Eqref{eq:skdef}.
 %
 \item\verb+make_thermodynamics+ -- everything in section
-  \ref{sec:thermo}, and includes the Wertheim integral in
-  \Eqref{eq:wert} if a softened potential was used.
+  \ref{sec:thermo}.
 %
 \item\verb+write_params+ -- Write out basic information.
 %
@@ -1386,12 +1387,6 @@ virial route compressibility factor $\beta p/\rho$.
 \item\verb+fvex+ -- Excess free energy density $\beta \Fex/V$ (HNC only).
 %
 \item\verb+fnex+ -- Excess free energy per particle $\beta \Fex/N$ (HNC only).
-%
-\item\verb+d12+ -- The value of the Wertheim integral in
-  \Eqref{eq:wert} (only computed if relevant).
-%
-\item\verb+duv+ -- The value of the first order perturbation integral
-  in \Eqref{eq:fopt} (only computed if relevant).
 %
 \end{itemize}
 

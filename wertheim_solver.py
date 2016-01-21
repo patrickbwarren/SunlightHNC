@@ -67,16 +67,28 @@ def solve_wertheim(lb, rhoz, sigma, sigmap):
         rhodim = 0.0
         fvass = 0.0
     else:
-        x = (m.sqrt(1.0 + 2.0*w.d12*rhoz) - 1.0) / (w.d12*rhoz)
+
+        # Calculate the Wertheim integral (this is no longer done in oz mod)
+
+        sum = 0.0
+
+        for i in range(w.ng-1):
+            g12 = 1.0 + w.hr[i, 0, 1]
+            du12 = w.lb * (m.erfc(0.5*w.r[i]/w.sigma) - m.erfc(0.5*w.r[i]/w.sigmap)) / w.r[i]
+            sum = sum + (m.exp(-du12) - 1.0) * g12 * w.r[i]**2
+
+        d12 = w.fourpi * w.deltar * sum
+
+        x = (m.sqrt(1.0 + 2.0*d12*rhoz) - 1.0) / (d12*rhoz)
         rhomon = x * rhoz
-        rhodim = w.d12 * rhomon**2 / 4.0
+        rhodim = d12 * rhomon**2 / 4.0
         fvass = rhoz * m.log(x) + rhodim
 
     fvtot = rhoz * (m.log(rhoz) - 1.0) + w.fvex + fvass
 
     if (args.verbose > 1):
         print('wertheim solution at lb = ', w.lb, 'rhoz = ', 2*w.rho[0], 'sigmap = ', w.sigmap)
-        print('wertheim: D+- = ', w.d12)
+        print('wertheim: D+- = ', d12)
         print('wertheim: x = ', x)
         print('wertheim: rhoz = ', rhoz)
         print('wertheim: rhomon = ', rhomon)
