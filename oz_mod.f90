@@ -602,7 +602,7 @@ contains
   subroutine oz_solve
     implicit none
     integer :: i1, i, j, ij, ik, irc
-    integer :: pivot(ncomp)
+    integer :: perm(ncomp)
     double precision :: &
          & a(ncomp, ncomp), b(ncomp, ncomp), &
          & cmat(ncomp, ncomp), umat(ncomp, ncomp), rhomat(ncomp, ncomp), &
@@ -672,21 +672,21 @@ contains
           ! Solve the equation A.X = B so that
           ! X = [I - (C - beta U) . R]^(-1) . [(C - beta U) . R . C - beta U]
 
-          call axeqb_reduce(a, ncomp, b, ncomp, pivot, irc)
+          call axeqb_reduce(a, ncomp, b, ncomp, perm, irc)
 
           if (irc.gt.0) then
              print *, 'oz_solve(oz_mod): axeqb_reduce returned irc = ', irc
              stop
           end if
 
-          ! Now X(I, :) = B(PIVOT(I), :) is the new estimate for the
+          ! Now X(I, :) = B(PERM(I), :) is the new estimate for the
           ! reciprocal space functions ek.  They are built from the
           ! upper triangle of the matrix.
 
           do j = 1, ncomp
              do i = 1, j
                 ij = i + j*(j-1)/2
-                ek(ik, ij) = b(pivot(i), j)
+                ek(ik, ij) = b(perm(i), j)
              end do
           end do
 
@@ -712,7 +712,7 @@ contains
   subroutine oz_solve2
     implicit none
     integer :: i1, i, j, ij, ik, irc
-    integer :: pivot(ncomp)
+    integer :: perm(ncomp)
     double precision :: &
          & a(ncomp, ncomp), b(ncomp, ncomp), &
          & h(ng-1, nfnc), hmat(ncomp, ncomp), &
@@ -779,7 +779,7 @@ contains
 
           ! Solve A.X = B so that X = (I + H.R)^(-1) . H.
 
-          call axeqb_reduce(a, ncomp, b, ncomp, pivot, irc)
+          call axeqb_reduce(a, ncomp, b, ncomp, perm, irc)
 
           ! Now compute C = (I + H.R)^(-1) . H + beta UL
           ! (map back to functions, and unravel the pivoting)
@@ -787,7 +787,7 @@ contains
           do j = 1, ncomp
              do i = 1, j
                 ij = i + j*(j-1)/2
-                ck(ik, ij) = b(pivot(i), j) + ulong(ik, ij)
+                ck(ik, ij) = b(perm(i), j) + ulong(ik, ij)
              end do
           end do
 
@@ -1296,7 +1296,7 @@ contains
 ! pivoting (see Numerical Recipes for a discussion of this).
 !
 ! The input arrays are A(N, N) and B(N, M).  The output is in B(N, M),
-! where X(I, :) = B(PIVOT(I), :).  An integer return code IRC is
+! where X(I, :) = B(PERM(I), :).  An integer return code IRC is
 ! zero if successful.
 !
 ! Note: this routine was developed independently of the gaussj routine
@@ -1308,15 +1308,19 @@ contains
 !
 ! To do the pivoting, we use logical arrays to keep track of which
 ! rows and columns are valid in the pivot search stage, and an integer
-! array PIVOT(:) to keep track of which column contains the pivot of
+! array PERM(:) to keep track of which column contains the pivot of
 ! each row.  This integer array then ends up encoding the permutation
 ! of the rows of B.
+!
+! One could move the A, B, PERM and auxiliary arrays out into global
+! scope but timing tests indicate this is slower than the present
+! implementation.
 
-  subroutine axeqb_reduce(a, n, b, m, pivot, irc)
+  subroutine axeqb_reduce(a, n, b, m, perm, irc)
     implicit none
     integer :: i, j, ii, jj, p
     integer, intent(in) :: n, m
-    integer, intent(out) :: pivot(n), irc
+    integer, intent(out) :: perm(n), irc
     double precision :: alpha, amax, aa
     double precision, parameter :: eps = 1D-10
     double precision, intent(inout) :: a(n, n), b(n, m)
@@ -1360,7 +1364,7 @@ contains
 
        row(ii) = .false.
        col(jj) = .false.
-       pivot(ii) = jj
+       perm(ii) = jj
 
        ! Now do the elimination -- first scale the pivot row, then
        ! eliminate the entries that correspond to the pivot column
@@ -1385,9 +1389,9 @@ contains
     ! At this point A_ij = 1 if the ij-th element was chosen as a
     ! pivot, and A_ij = 0 otherwise.  Each row, and each column, of A
     ! therefore contains exactly one unit entry, thus A is a
-    ! permutation matrix.  This permutation is also encoded in
-    ! PIVOT(:).  The reduction preserved the solution X in A.X = B, so
-    ! that X(I, :) = B(PIVOT(I), :).
+    ! permutation matrix, also encoded in PERM(:).  The reduction
+    ! preserves the solution X in A.X = B, so that
+    ! X(I, :) = B(PERM(I), :).
 
   end subroutine axeqb_reduce
 
