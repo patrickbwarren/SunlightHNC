@@ -124,14 +124,12 @@ if (args.test == 1):
 
 # Calculate the Wertheim integral (this is no longer done in oz mod)
 
-sum = 0.0
+d12 = 0.0
 
 for i in range(w.ng-1):
     g12 = 1.0 + w.hr[i, 0, 1]
     du12 = w.lb * (m.erfc(0.5*w.r[i]/w.sigma) - m.erfc(0.5*w.r[i]/w.sigmap)) / w.r[i]
-    sum = sum + (m.exp(-du12) - 1.0) * g12 * w.r[i]**2
-
-d12 = w.fourpi * w.deltar * sum
+    d12 = d12 + w.fourpi * w.deltar * (m.exp(-du12) - 1.0) * g12 * w.r[i]**2
 
 rhotot = args.rhoz
 x = (m.sqrt(1.0 + 2.0*d12*rhotot) - 1.0) / (d12*rhotot)

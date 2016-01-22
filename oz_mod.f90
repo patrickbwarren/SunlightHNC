@@ -1260,26 +1260,24 @@ contains
        print *, 'No thermodynamics for this potential type'
     else
        print *, 'Total density = ', sum(rho)
-       print *, 'Compressibility factor, mean field contribution = ', cf_mf
-       print *, 'Compressibility factor, contact contribution = ', cf_gc
-       print *, 'Compressibility factor, correlation contribution = ', cf_xc
-       print *, 'Compressibility factor, total = ', 1.0 + cf_mf + cf_gc + cf_xc
+       print *, 'Compressibility factor: mean field contribution = ', cf_mf
+       print *, 'Compressibility factor: contact contribution = ', cf_gc
+       print *, 'Compressibility factor: correlation contribution = ', cf_xc
+       print *, 'Compressibility factor: total = ', 1.0 + cf_mf + cf_gc + cf_xc
        print *, 'Pressure (virial route) = ', press
        print *, 'Excess pressure (virial route) = ', sum(rho) * (cf_mf + cf_xc)
-       print *, 'Compressibility, correlation contribution = ', comp_xc
-       print *, 'Compressibility = ', comp
-       print *, 'Internal energy per particle, mean field contribution = ', &
-            & un_mf
-       print *, 'Internal energy per particle, correlation contribution = ', &
-            & un_xc
-       print *, 'Internal energy per particle, total = ', un
-       print *, 'Internal energy per particle, un / 3 = ', un / 3.0
-       print *, 'Internal energy density = ', uv
+       print *, 'Compressibility: correlation contribution = ', comp_xc
+       print *, 'Compressibility: total = ', comp
+       print *, 'Internal energy: mean field contribution = ', un_mf
+       print *, 'Internal energy: correlation contribution = ', un_xc
+       print *, 'Internal energy: un (per particle) = ', un
+       print *, 'Internal energy: un / 3 = ', un / 3.0
+       print *, 'Internal energy: uv (per unit volume) = ', uv
        do i = 1, ncomp
-          print *, 'Chemical potential, species ', i, ' = ', muex(i)
+          print *, 'Chemical potential: species ', i, ' = ', muex(i)
        end do
-       print *, 'Excess free energy density = ', fvex
-       print *, 'Excess free energy per particle = ', fnex
+       print *, 'Excess free energy: fvex (per unit volume) = ', fvex
+       print *, 'Excess free energy: fnex (per particle) = ', fnex
     end if
 
   end subroutine write_thermodynamics
