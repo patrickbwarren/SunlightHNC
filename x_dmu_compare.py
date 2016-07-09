@@ -31,26 +31,29 @@
 # reason why DPD is so good at representing fluid mixtures which fit
 # Flory-Huggins (regular solution) theory.
 
-# The following table contains Monte-Carlo calculations of the
-# chemical potential difference, using trial particle identity swaps.
-# Extract the data by:
+# The following table contains unpublished Monte-Carlo calculations of
+# the chemical potential difference, using trial particle identity
+# swaps.
 
-#  gawk '/##/ && NF==4 { print $2, $3, $4 }' x_dmu_compare.py > temp.dat
+#        x     d(mu)  std-error
 
-#    x     d(mu)     std-error
+data = [[0.0,  1.702,  0.004],
+        [0.1,  1.281,  0.003],
+        [0.2,  0.915,  0.003],
+        [0.3,  0.597,  0.004],
+        [0.4,  0.282,  0.004],
+        [0.5, -0.002,  0.003],
+        [0.6, -0.290,  0.003],
+        [0.7, -0.596,  0.003],
+        [0.8, -0.920,  0.004],
+        [0.9, -1.284,  0.003],
+        [1.0, -1.702,  0.004]]
 
-##  0.0   1.70174    0.00407275
-##  0.1   1.28057    0.00260028
-##  0.2   0.914987   0.00333303
-##  0.3   0.597154   0.00386779
-##  0.4   0.281795   0.00428741
-##  0.5  -0.00181835 0.00325142
-##  0.6  -0.290226   0.00341724
-##  0.7  -0.595639   0.00328827
-##  0.8  -0.919721   0.00357011
-##  0.9  -1.28446    0.00297603
-##  1.0  -1.70174    0.00407275
+xdata = list(data[i][0] for i in range(len(data)))
+ydata = list(data[i][1] for i in range(len(data)))
+edata = list(data[i][2] for i in range(len(data)))
 
+import matplotlib.pyplot as plt
 from oz import wizard as w
 
 w.ncomp = 2
@@ -66,13 +69,25 @@ w.dpd_potential(1)
 
 n = 41
 
+xarr = []
+yarr = []
+
 for i in range(n):
-
     x = i / (n - 1.0)
-
     w.rho[0] = (1.0 - x) * rho
     w.rho[1] = x * rho
     w.hnc_solve()
-
+    xarr.append(x)
+    yarr.append(w.muex[1]-w.muex[0])
     print("%f\t%f\t%g" % (x, w.muex[1]-w.muex[0], w.error))
 
+# plt.errorbar(xdata, ydata, yerr=edata, fmt='ro', label='Monte-Carlo')
+# error bars are smaller than symbols so just plot data
+
+plt.plot(xdata, ydata, 'ro', label='Monte-Carlo')
+plt.plot(xarr, yarr, label='HNC')
+plt.xlabel('$x$')
+plt.ylabel('$\\Delta\\mu$')
+plt.legend(loc='upper right')
+
+plt.show()

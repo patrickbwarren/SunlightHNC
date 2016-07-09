@@ -25,24 +25,26 @@
 # along with SunlightDPD.  If not, see <http://www.gnu.org/licenses/>.
 
 # The results of this calculation can be directly compared with Fig 4
-# of the Groot and Warren [J. Chem. Phys. v107, 4423 (1997)].  Here is
-# the data from that figure.  Extract this by:
+# of the Groot and Warren [J. Chem. Phys. v107, 4423 (1997)].  The
+# data from that figure is coded below.
 
-#  gawk '/##/ && NF==3 { print $2, $3 }' gw_p_compare.py > temp.dat
+#       rho   (p-rho)/(A*rho^2)
 
-#     rho (p-rho)/(A*rho^2)
+data = [[0.0, 0.0379935086163],
+        [1.5, 0.0751786298043],
+        [2.5, 0.0886823425022],
+        [3.0, 0.0924251622846],
+        [3.5, 0.0946639891655],
+        [4.0, 0.0965259421847],
+        [5.0, 0.0987451548125],
+        [6.0, 0.0998358473824],
+        [7.0, 0.1005510671090],
+        [8.0,  0.102017933031]]
 
-##    0.0  0.0379935086163
-##    1.5  0.0751786298043
-##    2.5  0.0886823425022
-##    3.0  0.0924251622846
-##    3.5  0.0946639891655
-##    4.0  0.0965259421847
-##    5.0  0.0987451548125
-##    6.0  0.0998358473824
-##    7.0  0.100551067109
-##    8.0  0.102017933031
+xdata = list(data[i][0] for i in range(len(data)))
+ydata = list(data[i][1] for i in range(len(data)))
 
+import matplotlib.pyplot as plt
 from oz import wizard as w
 
 w.initialise()
@@ -52,8 +54,20 @@ w.dpd_potential(1)
 npt = 41
 rhomax = 10.0
 
+x = []
+y = []
+
 for i in range(npt):
     w.rho[0] = rho = rhomax * (i + 1.0) / npt
     w.hnc_solve()
+    x.append(rho)
+    y.append((w.press-rho)/(A*rho*rho))
     print("%f\t%g\t%g" % (rho, (w.press-rho)/(A*rho*rho), w.error))
 
+plt.plot(xdata, ydata, 'ro', label='Groot & Warren (1997)')
+plt.plot(x, y, label='HNC')
+plt.xlabel('$\\rho$')
+plt.ylabel('$(p-\\rho)/A\\rho^2$')
+plt.legend(loc='lower right')
+
+plt.show()
