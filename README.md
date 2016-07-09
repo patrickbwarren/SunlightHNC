@@ -3,9 +3,10 @@
 The current stable release is version 1.7
 
 Version 1.7 handles an arbitrary number of components (rather than a
-maximum of three, as for previous versions).  The present development
-snapshot incorporates the exact and approximate pair interactions for
-Slater charge smearing.  These
+maximum of three, as for previous versions).
+
+The present development snapshot incorporates the exact and
+approximate pair potentials for Slater charge smearing.
 
 #### Features
 
