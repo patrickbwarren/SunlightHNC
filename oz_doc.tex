@@ -86,17 +86,22 @@
 
 \begin{document}
 
-\noindent{\bf\large FORTRAN 90 Ornztein-Zernike code - version 1.7}\\[6pt]
-\noindent{\it Patrick B Warren, Unilever R\&D Port Sunlight (January
-  2016)}\\[6pt]
+\noindent{\bf\large FORTRAN 90 Ornztein-Zernike solver --- version 1.7.1}\\[6pt]
+\noindent{\it Patrick B Warren, Unilever R\&D Port Sunlight (July
+  2016)}\\[18pt]
 
-\vspace{0.5in}
 \noindent The code and this accompanying documentation is released
 under the GPL.  You are welcome to use and modify it for your own
-projects. If you end up publishing results based on this, please cite
-\Refcite{WVA+13}.
+projects. If you end up publishing results based on this, please cite\\
+%
+\begin{center}
+  \fbox{\parbox{0.9\textwidth}{P.~B.~Warren, A.~Vlasov, L.~Anton and
+    A.~J.~Masters ``Screening properties of Gaussian electrolyte
+    models, with application to dissipative particle dynamics'',
+    J. Chem. Phys. {\bf138}, 204907 (2013).}}
+\end{center}
 
-\vspace{0.5in}
+\vspace{0.25in}
 \noindent Features of version 1.7:
 \begin{itemize}
 \item FORTRAN 90 based, with example python driver scripts ;
@@ -105,6 +110,12 @@ projects. If you end up publishing results based on this, please cite
 \item hard and soft core (DPD) potentials ;
 \item full structural thermodynamics ;
 \item fully open source.
+\end{itemize}
+
+
+\noindent Added in version 1.7.1:
+\begin{itemize}
+\item exact and approximate pair potentials for Slater smearing. 
 \end{itemize}
 
 \newpage
@@ -1558,7 +1569,7 @@ $e^{-\beta F} = \int\!d\Omega\,e^{-\beta V}$ with respect to a
 parameter in the potential $V$.  For instance for standard
 single-component DPD, ${\partial F}/{\partial A}={\langle
   V\rangle}/{A}$ where $\langle V\rangle\equiv U$ is the internal
-energy.  This integrates to
+energy.  Thus
 %
 \begin{equation}
 F=\int_0^A\frac{dA'}{A'}\,\langle V\rangle_{A'}
