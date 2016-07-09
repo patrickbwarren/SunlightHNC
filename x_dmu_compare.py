@@ -31,6 +31,26 @@
 # reason why DPD is so good at representing fluid mixtures which fit
 # Flory-Huggins (regular solution) theory.
 
+# The following table contains Monte-Carlo calculations of the
+# chemical potential difference, using trial particle identity swaps.
+# Extract the data by:
+
+#  gawk '/##/ && NF==4 { print $2, $3, $4 }' x_dmu_compare.py > temp.dat
+
+#    x     d(mu)     std-error
+
+##  0.0   1.70174    0.00407275
+##  0.1   1.28057    0.00260028
+##  0.2   0.914987   0.00333303
+##  0.3   0.597154   0.00386779
+##  0.4   0.281795   0.00428741
+##  0.5  -0.00181835 0.00325142
+##  0.6  -0.290226   0.00341724
+##  0.7  -0.595639   0.00328827
+##  0.8  -0.919721   0.00357011
+##  0.9  -1.28446    0.00297603
+##  1.0  -1.70174    0.00407275
+
 from oz import wizard as w
 
 w.ncomp = 2

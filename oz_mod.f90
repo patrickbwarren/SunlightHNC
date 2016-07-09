@@ -144,9 +144,7 @@ module wizard
        & comp, comp_xc,   & ! compressibility, and excess
        & fvex, fnex,      & ! excess free energy, density and per particle
        & un_mf, un_xc,    & ! energy per particle contributions
-       & un, uv,          & ! energy per particle and density
-       & d12, duv           ! the Wertheim integral for the softened URPM case
-                            ! and the first order perturbation theory term
+       & un, uv             ! energy per particle and density
 
   ! (*) sigma is used both for the long-range Coulomb smearing length
   ! for the soft potentials, and for hard core diameter for RPM models
@@ -627,7 +625,7 @@ contains
   subroutine oz_solve
     implicit none
     integer :: i1, i, j, ij, ik, irc
-    integer :: pivot(ncomp)
+    integer :: perm(ncomp)
     double precision :: &
          & a(ncomp, ncomp), b(ncomp, ncomp), &
          & cmat(ncomp, ncomp), umat(ncomp, ncomp), rhomat(ncomp, ncomp), &
@@ -697,21 +695,21 @@ contains
           ! Solve the equation A.X = B so that
           ! X = [I - (C - beta U) . R]^(-1) . [(C - beta U) . R . C - beta U]
 
-          call axeqb_reduce(a, ncomp, b, ncomp, pivot, irc)
+          call axeqb_reduce(a, ncomp, b, ncomp, perm, irc)
 
           if (irc.gt.0) then
              print *, 'oz_solve(oz_mod): axeqb_reduce returned irc = ', irc
              stop
           end if
 
-          ! Now X(I, :) = B(PIVOT(I), :) is the new estimate for the
+          ! Now X(I, :) = B(PERM(I), :) is the new estimate for the
           ! reciprocal space functions ek.  They are built from the
           ! upper triangle of the matrix.
 
           do j = 1, ncomp
              do i = 1, j
                 ij = i + j*(j-1)/2
-                ek(ik, ij) = b(pivot(i), j)
+                ek(ik, ij) = b(perm(i), j)
              end do
           end do
 
@@ -737,7 +735,7 @@ contains
   subroutine oz_solve2
     implicit none
     integer :: i1, i, j, ij, ik, irc
-    integer :: pivot(ncomp)
+    integer :: perm(ncomp)
     double precision :: &
          & a(ncomp, ncomp), b(ncomp, ncomp), &
          & h(ng-1, nfnc), hmat(ncomp, ncomp), &
@@ -804,7 +802,7 @@ contains
 
           ! Solve A.X = B so that X = (I + H.R)^(-1) . H.
 
-          call axeqb_reduce(a, ncomp, b, ncomp, pivot, irc)
+          call axeqb_reduce(a, ncomp, b, ncomp, perm, irc)
 
           ! Now compute C = (I + H.R)^(-1) . H + beta UL
           ! (map back to functions, and unravel the pivoting)
@@ -812,7 +810,7 @@ contains
           do j = 1, ncomp
              do i = 1, j
                 ij = i + j*(j-1)/2
-                ck(ik, ij) = b(pivot(i), j) + ulong(ik, ij)
+                ck(ik, ij) = b(perm(i), j) + ulong(ik, ij)
              end do
           end do
 
@@ -820,19 +818,18 @@ contains
 
     end if
 
-    ! Do the Fourier back transforms and work in such a way so that it
-    ! is e that is generated.  This means the results can be used in
-    ! the structure and thermodynamics routines as though they had
-    ! come from the HNC solution.
+    ! Do the Fourier back transforms and calculate e = h - c.  This
+    ! means the results can be used in the structure and
+    ! thermodynamics routines as though they had come from the HNC
+    ! solution.
 
     do i = 1, nfnc
-
-       ek(:, i) = hk(:, i) - ck(:, i)
 
        fftwx(1:ng-1) = k(1:ng-1) * ck(1:ng-1, i)
        call dfftw_execute(plan)
        c(1:ng-1, i, i1) =  (deltak / twopi**2) * fftwy(1:ng-1) / r(1:ng-1)
 
+       ek(:, i) = hk(:, i) - ck(:, i)
        e(:, i, i1) = h(:, i) - c(:, i, i1)
 
     end do
@@ -1116,7 +1113,6 @@ contains
     integer :: i, j, ij, i1, irc
     double precision :: rhotot, r1, r2, g1, g2, gc
     double precision :: rhoxx(nfnc), t(nfnc)
-    double precision :: du12(ng-1), g12(ng-1)
 
     i1 = mod(istep-1, nps) + 1
 
@@ -1257,28 +1253,27 @@ contains
     fvex = sum(rho(:) * muex(:)) - rhotot * (cf_mf + cf_xc)
     fnex = sum(rho(:) * muex(:)) / rhotot - (cf_mf + cf_xc)
 
-    ! The Wertheim integral and second order perturbation theory for
-    ! the softened URPM potential.
-
-    d12 = 0.0; duv = 0.0
-
-    if (model_type.ge.10) then
-
-       g12 = 1.0d0 + c(:,2,i1) + e(:,2,i1)
-
-       if (model_type.lt.20) then
-          du12 = lb * (erfc(0.5d0*r/sigma) - erfc(0.5d0*r/sigmap)) / r
-       else
-          irc = nint(diam(2) / deltar)
-          du12(1:irc) = 0.0d0
-          du12(irc+1:) = - lb * erfc(kappa*r(irc+1:)) / r(irc+1:)
-          g12(1:irc) = 0.0d0
-       end if
-
-       d12 = fourpi * deltar * sum( (exp(-du12) - 1.0d0) * g12 * r(:)**2)
-       duv = twopi * rho(1) * rho(2) * deltar * sum( du12 * g12 * r(:)**2)
-
-    end if
+!!$  As of version 1.7 these integrals are calculated in the python scripts
+!!$
+!!$    d12 = 0.0; duv = 0.0
+!!$
+!!$    if (model_type.ge.10) then
+!!$
+!!$       g12 = 1.0d0 + c(:,2,i1) + e(:,2,i1)
+!!$
+!!$       if (model_type.lt.20) then
+!!$          du12 = lb * (erfc(0.5d0*r/sigma) - erfc(0.5d0*r/sigmap)) / r
+!!$       else
+!!$          irc = nint(diam(2) / deltar)
+!!$          du12(1:irc) = 0.0d0
+!!$          du12(irc+1:) = - lb * erfc(kappa*r(irc+1:)) / r(irc+1:)
+!!$          g12(1:irc) = 0.0d0
+!!$       end if
+!!$
+!!$       d12 = fourpi * deltar * sum( (exp(-du12) - 1.0d0) * g12 * r(:)**2)
+!!$       duv = twopi * rho(1) * rho(2) * deltar * sum( du12 * g12 * r(:)**2)
+!!$
+!!$    end if
 
   end subroutine make_thermodynamics
 
@@ -1290,60 +1285,57 @@ contains
        print *, 'No thermodynamics for this potential type'
     else
        print *, 'Total density = ', sum(rho)
-       print *, 'Compressibility factor, mean field contribution = ', cf_mf
-       print *, 'Compressibility factor, contact contribution = ', cf_gc
-       print *, 'Compressibility factor, correlation contribution = ', cf_xc
-       print *, 'Compressibility factor, total = ', 1.0 + cf_mf + cf_gc + cf_xc
+       print *, 'Compressibility factor: mean field contribution = ', cf_mf
+       print *, 'Compressibility factor: contact contribution = ', cf_gc
+       print *, 'Compressibility factor: correlation contribution = ', cf_xc
+       print *, 'Compressibility factor: total = ', 1.0 + cf_mf + cf_gc + cf_xc
        print *, 'Pressure (virial route) = ', press
        print *, 'Excess pressure (virial route) = ', sum(rho) * (cf_mf + cf_xc)
-       print *, 'Compressibility, correlation contribution = ', comp_xc
-       print *, 'Compressibility = ', comp
-       print *, 'Internal energy per particle, mean field contribution = ', &
-            & un_mf
-       print *, 'Internal energy per particle, correlation contribution = ', &
-            & un_xc
-       print *, 'Internal energy per particle, total = ', un
-       print *, 'Internal energy per particle, un / 3 = ', un / 3.0
-       print *, 'Internal energy density = ', uv
+       print *, 'Compressibility: correlation contribution = ', comp_xc
+       print *, 'Compressibility: total = ', comp
+       print *, 'Internal energy: mean field contribution = ', un_mf
+       print *, 'Internal energy: correlation contribution = ', un_xc
+       print *, 'Internal energy: un (per particle) = ', un
+       print *, 'Internal energy: un / 3 = ', un / 3.0
+       print *, 'Internal energy: uv (per unit volume) = ', uv
        do i = 1, ncomp
-          print *, 'Chemical potential, species ', i, ' = ', muex(i)
+          print *, 'Chemical potential: species ', i, ' = ', muex(i)
        end do
-       print *, 'Excess free energy density = ', fvex
-       print *, 'Excess free energy per particle = ', fnex
-       if (model_type.ge.10) then
-          print *, 'Wertheim integral D12 = ', d12
-          print *, 'first order perturbation correction DU/V = ', duv
-       end if
+       print *, 'Excess free energy: fvex (per unit volume) = ', fvex
+       print *, 'Excess free energy: fnex (per particle) = ', fnex
     end if
 
   end subroutine write_thermodynamics
 
-! Routine to solve A.X = B using Gauss-Jordan elimination, with
+! Routine to reduce A.X = B using Gauss-Jordan elimination, with
 ! pivoting (see Numerical Recipes for a discussion of this).
 !
 ! The input arrays are A(N, N) and B(N, M).  The output is in B(N, M),
-! where X(I, :) = B(PIVOT(I), :).  An integer return code IRC is
+! where X(I, :) = B(PERM(I), :).  An integer return code IRC is
 ! zero if successful.
 !
 ! Note: this routine was developed independently of the gaussj routine
 ! in Numerical Recipes.  Differences are that we are somewhat
 ! profligate with bookkeeping, we don't attempt to overwrite the A
 ! matrix with anything useful, we provide the user with the pivot
-! permutation rather than permuting B, and we make judicious use of
+! permutation rather than rearranging B, and we make judicious use of
 ! FORTRAN 90 language features.
 !
 ! To do the pivoting, we use logical arrays to keep track of which
 ! rows and columns are valid in the pivot search stage, and an integer
-! array PIVOT(:) to keep track of which column contains the pivot of
+! array PERM(:) to keep track of which column contains the pivot of
 ! each row.  This integer array then ends up encoding the permutation
 ! of the rows of B.
+!
+! One could move the A, B, PERM and auxiliary arrays out into global
+! scope but timing tests indicate this is slower than the present
+! implementation.
 
-  subroutine axeqb_reduce(a, n, b, m, pivot, irc)
+  subroutine axeqb_reduce(a, n, b, m, perm, irc)
     implicit none
     integer :: i, j, ii, jj, p
     integer, intent(in) :: n, m
-    integer, intent(out) :: pivot(n)
-    integer, intent(out) :: irc
+    integer, intent(out) :: perm(n), irc
     double precision :: alpha, amax, aa
     double precision, parameter :: eps = 1D-10
     double precision, intent(inout) :: a(n, n), b(n, m)
@@ -1387,7 +1379,7 @@ contains
 
        row(ii) = .false.
        col(jj) = .false.
-       pivot(ii) = jj
+       perm(ii) = jj
 
        ! Now do the elimination -- first scale the pivot row, then
        ! eliminate the entries that correspond to the pivot column
@@ -1412,11 +1404,8 @@ contains
     ! At this point A_ij = 1 if the ij-th element was chosen as a
     ! pivot, and A_ij = 0 otherwise.  Each row, and each column, of A
     ! therefore contains exactly one unit entry, thus A is a
-    ! permutation matrix.  This permutation is also encoded in
-    ! PIVOT(:).  The reduction preserved the solution X in A.X = B, so
-    ! that B now contains a permutation of the solution X.  However,
-    ! this permutation is precisely the information recorded in
-    ! pivot(:), thus X(I, :) = B(PIVOT(I), :).
+    ! permutation matrix, also encoded in PERM(:) so that
+    ! X(I, :) = B(PERM(I), :).
 
   end subroutine axeqb_reduce
 

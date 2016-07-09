@@ -88,8 +88,8 @@ along with this program.  If not, see
 SunlightDPD is based on an original code copyright &copy; 2007 Lucian
 Anton, with modifications copyright &copy; 2008, 2009 Andrey Vlasov, and
 additional modifications copyright &copy; 2009-2016 Unilever UK Central
-Resources Ltd (Registered in England & Wales, Company No 29140;
-Registered Office: Unilever House, Blackfriars, London, EC4P 4BQ, UK).
+Resources Ltd (Registered in London number 29140;
+Registered Office: Unilever House, 100 Victoria Embankment, London EC4Y 0DY, UK).
 
 #### Contact
 
