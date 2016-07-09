@@ -137,6 +137,8 @@ module wizard
        & sigmap = 1.0,    & ! +- long-range Coulomb smearing length (URPM)
        & kappa = -1.0,    & ! +- long-range Coulomb smoothing parameter (RPM)
        & rgroot = 1.0,    & ! linear charge smearing range (Groot)
+       & lambda = 1.0,    & ! Slater charge smearing range (exact)
+       & beta = 1.0,      & ! Slater charge smearing range (approx)
        & cf_mf, cf_xc,    & ! the virial route pressure contributions ..
        & cf_gc, press,    & ! .. and the virial route pressure
        & comp, comp_xc,   & ! compressibility, and excess
@@ -249,20 +251,27 @@ contains
           print *, ' ', arep(i, :)
        end do
        print *, ' valencies, z = ', z
-       print *, ' rc = ', rc, ' lb = ', lb, ' sigma = ', sigma
+       print *, ' rc = ', rc, ' lb = ', lb
        if (model_type.eq.1) then
-          print *, ' Gaussian smearing'
+          print *, ' Gaussian smearing, sigma = ', sigma
        end if
        if (model_type.eq.2) then
-          print *, ' Bessel smearing'
+          print *, ' Bessel smearing, sigma = ', sigma
        end if
        if (model_type.eq.3) then
-          print *, ' linear smearing (Groot)'
-          print *, ' rgroot = ', rgroot
+          print *, ' linear (Groot) smearing, R = ', rgroot
+          print *, ' equivalent Gaussian sigma = ', &
+               & sqrt(2.0d0/15.0d0) * rgroot
        end if
        if (model_type.eq.4) then
-          print *, ' exponential smearing (Mexican)'
-          print *, ' lambda = sigma'
+          print *, ' Slater smearing (exact), lambda = ', lambda
+          print *, ' equivalent Gaussian sigma = ', lambda
+       end if
+       if (model_type.eq.5) then
+          print *, ' Slater smearing (approx), beta = ', beta
+          print *, ' equivalent lambda = ', 0.625d0 / beta, &
+               & ' ( 1 / beta = ', 1.0d0 / beta, ' )'
+          print *, ' equivalent Gaussian sigma = ', sqrt(0.5d0) / beta
        end if
     else if (model_type.lt.20) then
        if (model_type.eq.10) then
@@ -299,7 +308,7 @@ contains
 ! short-range DPD repulsion, and lb, sigma and z(:) for the long-range
 ! Gaussian-smeared Coulomb part.  A factor beta = 1/kT is implicit in
 ! these definitions.  The parameter charge_type is Gaussian (1),
-! Bessel (2), Groot (3), Mexican (4).
+! Bessel (2), Groot (3), Slater (exact) (4), Slater (approximate) (5).
 
   subroutine dpd_potential(charge_type)
     implicit none
@@ -376,19 +385,35 @@ contains
             &    - k*rgroot*sin(k*rgroot))**2 &
             &                  / (k**8 * rgroot**8)
 
-       sigma = sqrt(2.0d0/15.0d0) * rgroot
-
     end if
 
-    ! Exponential charge smearing as in Gonzales-Melchor et al, [JCP
-    ! v125, 224107 (2006)].  Note we do not give the real space part
-    ! here hence the thermodynamic calculations will be wrong.
+    ! Slater charge smearing as in Gonzales-Melchor et al, [JCP v125,
+    ! 224107 (2006)] with exact expression for interaction (here
+    ! translated into reciprocal space).  Note we do not give the real
+    ! space part here hence the thermodynamic calculations will be
+    ! wrong.
 
     if (charge_type .eq. 4) then
 
        ulong(:,nfnc) = 0.0d0; dulong(:,nfnc) = 0.0d0
 
-       ulongk(:,nfnc) = fourpi * lb / (k**2 * (1.0d0 + k**2*sigma**2/4.0d0)**4)
+       ulongk(:,nfnc) = (fourpi * lb / k**2) * &
+            & 1.0d0 / (1.0d0 + k**2*lambda**2/4.0d0)**4
+
+    end if
+
+    ! Slater charge smearing as in Gonzales-Melchor et al, [JCP v125,
+    ! 224107 (2006)] with original approximate expression (here
+    ! translated into reciprocal space).  Note we do not give the real
+    ! space part here hence the thermodynamic calculations will be
+    ! wrong.
+
+    if (charge_type .eq. 5) then
+
+       ulong(:,nfnc) = 0.0d0; dulong(:,nfnc) = 0.0d0
+
+       ulongk(:,nfnc) = (fourpi * lb / k**2) * &
+            & 1.0d0 / (1.0d0 + k**2/(4.0d0*beta**2))**2
 
     end if
 

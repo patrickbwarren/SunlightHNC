@@ -672,8 +672,8 @@ Unlike the short range part there is no consensus on the best choice
 for the long range interaction although the differences can always be
 adsorbed into a redefinition of the short range potential.  The first
 choice of Gaussian charges can be supported for a range of practical
-reasons \cite{WVA+13}.  The Gaussian charges have size $\sim\sigma$
-and a density distribution $(2\pi\sigma^2)^{-3/2}
+reasons \cite{WVA+13, WV14}.  The Gaussian charges have size
+$\sim\sigma$ and a density distribution $(2\pi\sigma^2)^{-3/2}
 \exp({-r^2/2\sigma^2})$.  The corresponding interaction satisfies the
 SYM condition and is given by
 %
@@ -732,14 +732,14 @@ compressibility and chemical potentials.
 
 This DPD model depends on the dimensionless repulsion amplitude matrix
 $A_{\mu\nu}$, the ratios $\lB/\sigma$ and $\sigma/\rc$, and the
-dimensionless density $\rho r_c^3$.  In these terms $\rc=1$ is often
-used as the fundamental length scale.  The ratio $\lB/\sigma$ plays
-the role of an inverse effective temperature for the Coloumbic part of
-the potential.  
+dimensionless density $\rho r_c^3$ \cite{WVA+13}.  In these terms
+$\rc=1$ is often used as the fundamental length scale.  The ratio
+$\lB/\sigma$ plays the role of an inverse effective temperature for
+the Coloumbic part of the potential.
 
 The above is the Gaussian charge case and is the default.  If Bessel
-charges are selected the charge distribution becomes
-$K_1(r/\sigma)/2\pi^2\sigma^2 r$ and the expressions change to
+charges are selected the charge distribution becomes $K_1(r/\sigma) /
+2\pi^2\sigma^2 r$ and the expressions change to \cite{WV14}
 %
 \begin{equation}
 \beta v\lr(r)=\frac{\lB}{r}(1-e^{-r/\sigma})\,,
@@ -762,7 +762,7 @@ charge distribution for the Gaussian case.
 Another alternative is linear charge smearing proposed by Groot
 \cite{Groot03}.  In this case the charge distribution is $(3/\pi
 R^3)(1-r/R)$ for $r<R$, vanishing for $r>R$. This gives rise to an
-interaction potential in reciprocal space
+interaction potential in reciprocal space \cite{WV14}
 %
 \begin{equation}
 \beta {\tilde v}\lr(k)=\frac{4\pi\lB}{k^2}
@@ -774,24 +774,55 @@ implemented in the code.  This means that the thermodynamics is
 \emph{not available} in this case, though the HNC solution goes
 through since this only requires the reciprocal space potential.  The
 term in large brackets is the charge density in reciprocal space.
-Matching the second moment of the charge distribution shows that
-$\sigma=R\sqrt{2/15}$. This is implemented in the code (\ie\ $\sigma$
-is calculated from $R$) if this charge type is selected.
+Matching the second moment of the charge distribution \cite{WV14}
+shows that the equivalent Gaussian smearing length is
+$\sigma=R\sqrt{2/15}$.
 
-A fourth alternative is an exponential smearing proposed by 
+Another popular alternative is Slater smearing proposed by
 Gonz\'alez-Melchor \etal\ \cite{GM+06}.  In this case the charge
-density is $(1/\pi\lambda^3)e^{-2r/\lambda}$.  The reciprocal space
-interaction is 
+density is $(1/\pi\lambda^3)e^{-2r/\lambda}$.  There is 
+an exact expression for the interation potential \cite{WV14}
+%
+\begin{equation}
+  \beta v\lr(r)=\frac{\lB}{r}\Bigl[1-e^{-2r/\lambda}\Bigl(
+    1+\frac{11r}{8\lambda}+\frac{3r^2}{4\lambda^2}
+    +\frac{r^3}{6\lambda^3}\Bigr)\Bigr]\,.\label{eq:slaterexact}
+\end{equation}
+%
+The reciprocal space interaction is \cite{WV14}
 %
 \begin{equation}
 \beta {\tilde v}\lr(k)=\frac{4\pi\lB}{k^2(1+k^2\lambda^2/4)^4}\,.
 \end{equation}
 %
-The matching condition here is conveniently $\lambda=\sigma$, hence
-the code uses $\sigma$ rather than a separately defined $\lambda$.
-Although a closed form expression for the real space potential is
-available, it is not implemented in the code, and as in the preceding
-case, the thermodynamics is \emph{not available}.
+The equivalent Gaussian smearing length is here $\sigma=\lambda$.  The
+real space potential is not currently implemented in the code, and
+as in the preceding case, the thermodynamics is \emph{not available}.
+
+In the original Gonz\'alez-Melchor \etal\ paper \cite{GM+06}, an
+approximate expression was proposed for the interaction potential
+%
+\begin{equation}
+  \beta v\lr(r)=\frac{\lB}{r}\Bigl[1-e^{-2\beta r}(1+\beta r)\Bigr]\,.
+  \label{eq:slaterapprox}
+\end{equation}
+%
+This actually corresponds to a charge density $\beta^2 e^{-2\beta
+  r}/\pi r$.  Originally, Gon\-z\'a\-lez-Melchor \etal\  \cite{GM+06} had
+$\beta=1/\lambda$ but choosing $\beta=5/(8\lambda)$ makes
+\Eqsref{eq:slaterexact} and \eqref{eq:slaterapprox} have the same
+limiting value as $r\to0$ and brings the approximate interaction much
+closer to the exact result.  The reciprocal space
+interaction corresponding to \Eqref{eq:slaterapprox} is
+%
+\begin{equation}
+\beta {\tilde v}\lr(k)=\frac{4\pi\lB}{k^2(1+k^2/4\beta^2)^2}\,.
+\end{equation}
+%
+The equivalent Gaussian smearing length is here
+$\sigma=1/\beta\sqrt{2}$.  The real space potential it is not
+currently implemented in the code, and as in the preceding case, the
+thermodynamics is \emph{not available}.
 
 \subsection{Softened URPM potential}
 \label{sec:softURPM}
@@ -1098,9 +1129,10 @@ equation problem as fast and robust as possible.
   described in section \ref{sec:dpd}.  This routine can be called
   multiple times.  The parameter indicates Gaussian charges
   (\verb+charge_type = 1+), Bessel charges (\verb+charge_type = 2+),
-  linear charges (\verb+charge_type = 3+), or exponential charges
-  (\verb+charge_type = 4+).  The last two cases are incomplete in the
-  sense that the thermodynamics is not calculated correctly.
+  linear charges (\verb+charge_type = 3+), or Slater charges
+  (\verb+charge_type = 4+ for exact interaction, or \verb+5+ for
+  approximate interaction).  The last three cases are incomplete in
+  the sense that the thermodynamics is not calculated correctly.
 %
 \item\verb+soft_urpm_potential(use_ushort)+ -- Sets up the
   softened URPM potential described in section \ref{sec:softURPM}.
@@ -1670,8 +1702,8 @@ Sections \ref{sec:vrp}--\ref{sec:feng} have been coded up as
 \thebibliography{}
 
 \bibitem{WVA+13} P.~B.~Warren, A.~Vlasov, L.~Anton and A.~J.~Masters
-  `Screening properties of Gaussian electrolyte models, with
-  application to dissipative particle dynamics',
+  ``Screening properties of Gaussian electrolyte models, with
+  application to dissipative particle dynamics'',
   J. Chem. Phys. {\bf138}, 204907 (2013).
 
 \bibitem{Ng74} K.-C. Ng, ``Hypernetted chain solutions for the
@@ -1694,6 +1726,11 @@ Sections \ref{sec:vrp}--\ref{sec:feng} have been coded up as
   R.~R.~Netz, and W.~Kunz, ``Ion-specific thermodynamics of
   multicomponent electrolytes: A hybrid HNC/MD approach'',
   J. Chem. Phys. {\bf131}, 154109 (2009).
+  
+\bibitem{WV14} P.~B.~Warren and A.~Vlasov ``Screening properties of
+  four mesoscale smoothed charge models, with application to
+  dissipative particle dynamics'', J. Chem. Phys. {\bf140}, 084904
+  (2014).
 
 \bibitem{Groot03}R.~D.~Groot, ``Electrostatic interactions in
   dissipative particle dynamics---simulation of polyelectrolytes and
