@@ -822,7 +822,7 @@ The reciprocal space interaction is \cite{WV14}
 \beta {\tilde v}\lr(k)=\frac{4\pi\lB}{k^2(1+k^2\lambda^2/4)^4}\,.
 \end{equation}
 %
-The equivalent Gaussian smearing length is here $\sigma=\lambda$.  The
+The equivalent Gaussian smearing length is $\sigma=\lambda$.  The
 real space potential is not currently implemented in the code, and
 as in the preceding case, the thermodynamics is \emph{not available}.
 
@@ -835,12 +835,13 @@ approximate expression was proposed for the interaction potential
 \end{equation}
 %
 This actually corresponds to a charge density $\beta^2 e^{-2\beta
-  r}/\pi r$.  Originally, Gon\-z\'a\-lez-Melchor \etal\  \cite{GM+06} had
+  r}/\pi r$ ($\beta$ is a parameter here, not to be confused with
+$1/\kT$).  Originally, Gon\-z\'a\-lez-Melchor \etal\ \cite{GM+06} had
 $\beta=1/\lambda$ but choosing $\beta=5/(8\lambda)$ makes
 \Eqsref{eq:slaterexact} and \eqref{eq:slaterapprox} have the same
 limiting value as $r\to0$ and brings the approximate interaction much
-closer to the exact result.  The reciprocal space
-interaction corresponding to \Eqref{eq:slaterapprox} is
+closer to the exact result.  The reciprocal space interaction
+corresponding to \Eqref{eq:slaterapprox} is
 %
 \begin{equation}
 \beta {\tilde v}\lr(k)=\frac{4\pi\lB}{k^2(1+k^2/4\beta^2)^2}\,.
@@ -1158,10 +1159,11 @@ equation problem as fast and robust as possible.
   described in section \ref{sec:dpd}.  This routine can be called
   multiple times.  The parameter indicates Gaussian charges
   (\verb+charge_type = 1+), Bessel charges (\verb+charge_type = 2+),
-  linear charges (\verb+charge_type = 3+), or Slater charges
-  (\verb+charge_type = 4+ for exact interaction, or \verb+5+ for
-  approximate interaction).  The last three cases are incomplete in
-  the sense that the thermodynamics is not calculated correctly.
+  linear (Groot) charges (\verb+charge_type = 3+), Slater charges with
+  exact interaction (\verb+charge_type = 4+), or Slater charges with
+  approximate interaction (\verb+charge_type = 4+).  The last three
+  cases (\verb+charge_type = 3-5+) are incomplete in the sense
+  that the thermodynamics is not calculated correctly.
 %
 \item\verb+soft_urpm_potential(use_ushort)+ -- Sets up the
   softened URPM potential described in section \ref{sec:softURPM}.
@@ -1311,9 +1313,10 @@ convergence (usually safe to leave at default 100).
 %
 \item\verb+lb+ -- Coulomb coupling strength $\lB$ (default 0.0)
 %
-\item\verb+sigma+ -- charge size $\sigma$ (default 1.0) in the case of
-  the DPD and softened URPM potentials; hard core diameter $\sigma$ in
-  the case of the softened RPM potential.
+\item\verb+sigma+ -- smearing length $\sigma$ (default 1.0) in the
+  case of Gaussian or Bessel charges in the DPD potential
+  (\verb+charge_type = 1-2+), and URPM potentials; hard core diameter
+  $\sigma$ in the case of the RPM.
 %
 \item\verb+kappa+ -- parameter $\kappa$ (default $-$1.0) in the
   softened RPM potential.  A negative value is interpreted as
@@ -1322,9 +1325,17 @@ convergence (usually safe to leave at default 100).
 \item\verb+sigmap+ -- charge size $\sigma'$ (default 1.0), used for
   the softened URPM potential.
 %
-\item\verb+rgroot+ -- linear smearing range $R$ (default 1.0).  Note
-  that the code sets \verb+sigma+ equal to $R\sqrt{2/15}$ if this
-  charge type is selected.
+\item\verb+rgroot+ -- linear (Groot) charge smearing range $R$
+  (default 1.0) in the DPD potential (\verb+charge_type = 3+).
+%
+\item\verb+lambda+ -- Slater charge smearing length $\lambda$ (default
+  1.0) in the DPD potential with exact interaction
+  (\verb+charge_type = 4+).
+%
+\item\verb+beta+ -- Slater charge smearing parameter $\beta$
+  (default 1.0) in the DPD potential with approximate interaction
+  (\verb+charge_type = 5+).  One would usually calculate this from
+  $\beta=1/\lambda$, or (better) $\beta=5/(8\lambda)$.
 %
 \item\verb+rho(:)+ -- An array of size \verb+ncomp+ where
   \verb+rho(mu)+ is the density $\rho_\mu$.  All entries default to
@@ -1651,39 +1662,38 @@ Sections \ref{sec:vrp}--\ref{sec:feng} have been coded up as
 
 \begin{itemize}
 %
-\item\verb+gw_p_compare.py+ -- calculate the virial route pressure as
-  a function of density and present the results as $(p-\rho)/A\rho^2$,
-  which can be compared directly with Fig.~4 of \Refcite{GW97}.  The
-  agreement is very good.
+\item\verb+gw_p_compare.py+ -- Uses \verb+matplotlib+ to plot
+  $(p-\rho) /A\rho^2$ versus $\rho$ (using virial route pressure), and
+  compare with data from Fig.~4 of \Refcite{GW97}.  The agreement is
+  very good.
 %
-\item\verb+wsg_fig5_compare.py+ -- calculate the free energy
-  difference $\Delta F$ between a system of $N-1$ A particles and a B
-  particle, and a pure system of $N$ A particles, as a function of
-  $\Delta a$, where $A_{00}=A_{11}=25$, $A_{01}=25+\Delta a$,
-  $\rho_0=3$ and $\rho_1=0$.  This free energy difference was
-  introduced in \Refcite{WSG01} and is representative of an
-  effective $\chi$ value.  Here, the free energy change is exactly
-  $\Delta F=\muex_1-\muex_0$.  The calculation is performed as a two
-  component problem with the mole fraction of the second species set
-  to zero.  The results can be compared directly with Fig.~5 of
-  \Refcite{WSG01}.  The agreement is to within 4\%, up to
-  $\Delta a=25$.
+\item\verb+wsg_fig5_compare.py+ -- The free energy difference $\Delta
+  F$ between a system of $N-1$ A particles and a B particle, and a
+  pure system of $N$ A particles (as a function of $\Delta A$, where
+  $A_{00}=A_{11}=25$, $A_{01}=25+\Delta A$), was introduced in
+  \Refcite{WSG01} and is representative of an effective $\chi$ value.
+  Here, the free energy change is calculated as $\Delta
+  F=\muex_1-\muex_0$ in a two component problem with the mole fraction
+  of the second species set to zero ($\rho_0=3$ and $\rho_1=0$).  The
+  results are compared with data from Fig.~5 of \Refcite{WSG01}, and
+  with separate accurate Monte-Carlo simulations using trial particle
+  identity swap moves. 
 %
-\item\verb+x_dmu_compare.py+ -- an unpublished extension to the above
-  argument, the quantity $\Delta F=\muex_1-\muex_0$ is generated as a
-  function of the mole fraction $x$ in a mixture where
-  $\rho_0=(1-x)\rho$ and $\rho_1=x\rho$, for $A_{00}=A_{11}=25$,
-  $A_{01}=30$ and $\rho=3$ (one cannot have $A_{01}$ too large in this
-  calculation otherwise an underlying demixing transition causes HNC
-  to fail).  A plot of $\Delta F$ against $x$ reveals nearly linear
-  behaviour, which is confirmed in Monte-Carlo simulations
-  (unreported).  This linear dependence can be represented by $\Delta
-  F = \chi (1 - 2x)$ where $\chi$ is the Flory $\chi$-parameter.  This
-  is the basic reason why DPD is so good at representing fluid
-  mixtures which fit Flory-Huggins (regular solution) theory.
+\item\verb+x_dmu_compare.py+ -- In an unpublished extension to
+  \Refcite{WSG01}, $\Delta F=\muex_1-\muex_0$ is plotted as a function
+  of the mole fraction $x$ in a mixture where $\rho_0=(1-x)\rho$ and
+  $\rho_1=x\rho$, for $\Delta A=5$ (one cannot have $\Delta A$ too
+  large otherwise an underlying demixing transition causes HNC to
+  fail).  The results are compared to accurate Monte-Carlo (MC)
+  simulations.  The agreement between HNC and MC is excellent,
+  including the small deviation from linearity.  The near-exact linear
+  dependence can be represented by $\Delta F = \chi (1 - 2x)$ where
+  $\chi$ is the Flory $\chi$-parameter.  This is the basic reason why
+  DPD is so good at representing fluid mixtures which fit
+  Flory-Huggins (regular solution) theory.
 %
 \item\verb+hm_fig10-2_compare.py+ solves the HNC for the RPM and
-  generates data that can be compared with Fig 10.2 of \Refcite{HM06}.
+  compares with Monte-Carlo data, as in Fig 10.2 of \Refcite{HM06}.
   See comments in file for more details.
 %
 \item\verb+urpm_oneoff.py+ and \verb+urpm_scan.py+ are a pair of
@@ -1717,10 +1727,10 @@ Sections \ref{sec:vrp}--\ref{sec:feng} have been coded up as
   (solved by HNC) for the low density phase boundary.  For more
   details and sample results see comments in the scripts.
 %
-\item Sundry items: \verb+driver*.f90+ and \verb+urpm.f90+ are sample
-  FORTRAN 90 driver routines, retained for regression testing
-  (\cf\ also \verb+driver3.py+), and \verb+fftw_test.f90+ is test code
-  to comprehend how FFTW works.
+\item Sundry items: \verb+driver2-4.f90+ and \verb+urpm.f90+ are
+  sample FORTRAN 90 driver routines, retained for regression testing,
+  as is \verb+driver3.py+; and \verb+fftw_test.f90+ is test code to
+  comprehend how FFTW works.
 %
 \end{itemize}
 

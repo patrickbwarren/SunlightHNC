@@ -26,14 +26,15 @@
 
 # The results can be directly compared with Fig 10.2 of Hansen and
 # McDonald.  This figure is based on Rasaiah et al, J. Chem. Phys. 56,
-# 248 (1972).  Here is part of Table II from that paper :
+# 248 (1972).  Here is data from part of Table II from that paper :
 
-#  c_s/M    -U/NkT (MC)    contact (MC)   p/(rho kT)
-# 0.00911  0.1029 0.0013  0.0044 0.0007  0.9701 0.0008
-# 0.10376  0.2739 0.0014  0.0359 0.0011  0.9445 0.0012
-# 0.42502  0.4341 0.0017  0.1217 0.0045  0.9774 0.0046
-# 1.0001   0.5516 0.0016  0.2777 0.0045  1.094  0.005
-# 1.9676   0.6511 0.0020  0.5625 0.0088  1.346  0.009
+#         c_s/M      -U/NkT (MC)      contact (MC)     p/(rho kT)
+
+data = [[0.00911,  0.1029, 0.0013,  0.0044, 0.0007,  0.9701, 0.0008],
+        [0.10376,  0.2739, 0.0014,  0.0359, 0.0011,  0.9445, 0.0012],
+        [0.42502,  0.4341, 0.0017,  0.1217, 0.0045,  0.9774, 0.0046],
+        [1.0001,   0.5516, 0.0016,  0.2777, 0.0045,  1.094,  0.005],
+        [1.9676,   0.6511, 0.0020,  0.5625, 0.0088,  1.346,  0.009]]
 
 # The MC results are reported as a value +/- error
 
@@ -47,6 +48,14 @@
 # above table.
 
 import math as m
+
+xdat = list(m.sqrt(0.425**3 * 1.204 * data[i][0]) for i in range(len(data)))
+nundat = list(data[i][1] for i in range(len(data)))
+nunerr = list(data[i][2] for i in range(len(data)))
+ctcdat = list(data[i][3] for i in range(len(data)))
+ctcerr = list(data[i][4] for i in range(len(data)))
+compdat = list(data[i][5] for i in range(len(data)))
+
 from oz import wizard as w
 
 w.ng = 4096
@@ -55,7 +64,7 @@ w.deltar = 0.01
 
 w.initialise()
 
-w.lb = 1.68
+w.lb = 0.71 / 0.425
 w.sigma = 1.0
 w.kappa = -1.0
 
@@ -70,14 +79,30 @@ rhohi = 0.2
 lrlo = m.log(rholo)
 lrhi = m.log(rhohi)
 
-for i in range(npt):
+x = []
+y1 = []
+y2 = []
 
+for i in range(npt):
     lr = lrlo + (lrhi - lrlo) * i / (npt - 1.0)
     rho = m.exp(lr)
     w.rho[0] = rho / 2.0
     w.rho[1] = rho / 2.0
-
     w.hnc_solve()
+    comp = 1.0 + w.un / 3.0 + w.cf_gc
+    x.append(m.sqrt(rho))
+    y1.append(-w.un)
+    y2.append(comp)
+    print("%f\t%f\t%f\t%g" % (m.sqrt(rho), w.un, comp, w.error))
 
-    print("%f\t%f\t%f\t%g" % (m.sqrt(rho), w.un, 1.0 + w.un / 3.0 + w.cf_gc, w.error))
+import matplotlib.pyplot as plt
 
+plt.plot(xdat, nundat, 'ro', label='Rasaiah et al (1972) - energy (minus)')
+plt.plot(xdat, compdat, 'co', label='Rasaiah et al (1972) - pressure')
+plt.plot(x, y1, 'b-', label='HNC')
+plt.plot(x, y2, 'b-')
+plt.xlabel('$(\\rho\\sigma^3)^{1/2}$')
+plt.ylabel('$-U_n$ and $p/\\rho k_\\mathrm{B}T$')
+plt.legend(loc='upper left')
+
+plt.show()

@@ -44,7 +44,6 @@ data = [[0.0, 0.0379935086163],
 xdata = list(data[i][0] for i in range(len(data)))
 ydata = list(data[i][1] for i in range(len(data)))
 
-import matplotlib.pyplot as plt
 from oz import wizard as w
 
 w.initialise()
@@ -63,6 +62,8 @@ for i in range(npt):
     x.append(rho)
     y.append((w.press-rho)/(A*rho*rho))
     print("%f\t%g\t%g" % (rho, (w.press-rho)/(A*rho*rho), w.error))
+
+import matplotlib.pyplot as plt
 
 plt.plot(xdata, ydata, 'ro', label='Groot & Warren (1997)')
 plt.plot(x, y, label='HNC')

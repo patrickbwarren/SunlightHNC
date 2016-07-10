@@ -53,7 +53,6 @@ xdata = list(data[i][0] for i in range(len(data)))
 ydata = list(data[i][1] for i in range(len(data)))
 edata = list(data[i][2] for i in range(len(data)))
 
-import matplotlib.pyplot as plt
 from oz import wizard as w
 
 w.ncomp = 2
@@ -80,6 +79,8 @@ for i in range(n):
     xarr.append(x)
     yarr.append(w.muex[1]-w.muex[0])
     print("%f\t%f\t%g" % (x, w.muex[1]-w.muex[0], w.error))
+
+import matplotlib.pyplot as plt
 
 # plt.errorbar(xdata, ydata, yerr=edata, fmt='ro', label='Monte-Carlo')
 # error bars are smaller than symbols so just plot data
