@@ -348,11 +348,12 @@ contains
 
     if (charge_type .eq. 1) then
 
-       ulong(:,nfnc) = lb * erf(0.5d0*r/sigma) / r
+       ulong(:,nfnc) = (lb / r) * erf(0.5d0*r/sigma)
 
-       ulongk(:,nfnc) = fourpi * lb * exp(-k**2*sigma**2) / k**2
+       ulongk(:,nfnc) = (fourpi * lb / k**2) * exp(-k**2*sigma**2)
 
-       dulong(:,nfnc) = lb * exp(-0.25d0*r**2/sigma**2) / (rootpi * r * sigma) &
+       dulong(:,nfnc) = lb * exp(-0.25d0*r**2/sigma**2) &
+            & / (rootpi * r * sigma) &
             & - lb * erf(0.5d0*r/sigma) / r**2
 
     end if
@@ -361,12 +362,13 @@ contains
 
     if (charge_type .eq. 2) then
 
-       ulong(:,nfnc) = lb * (1.0d0 - exp(-r/sigma)) / r
+       ulong(:,nfnc) = (lb / r) * (1.0d0 - exp(-r/sigma))
 
-       ulongk(:,nfnc) = fourpi * lb / (k**2 * (1.0d0 + k**2*sigma**2))
+       ulongk(:,nfnc) = (fourpi * lb / k**2) &
+            & * 1.0d0 / (1.0d0 + k**2*sigma**2)
 
-       dulong(:,nfnc) = lb * exp(-r/sigma) / (r * sigma) &
-            & - lb * (1.0d0 - exp(-r/sigma)) / r**2
+       dulong(:,nfnc) = - (lb / r**2) * (1.0d0 - exp(-r/sigma) &
+            & * (1.0d0 + r / sigma))
 
     end if
 
@@ -376,42 +378,50 @@ contains
 
     if (charge_type .eq. 3) then
 
-       ulong(:,nfnc) = 0.0d0; dulong(:,nfnc) = 0.0d0
+       ulong(:,nfnc) = 0.0d0
 
-       ulongk(:,nfnc) = (fourpi * lb / k**2) * 144.0d0 * &
-            & (2.0d0 - 2.0d0*cos(k*rgroot) &
-            &    - k*rgroot*sin(k*rgroot))**2 &
+       ulongk(:,nfnc) = (fourpi * lb / k**2) * 144.0d0 &
+            & * (2.0d0 - 2.0d0*cos(k*rgroot) &
+            &      - k*rgroot*sin(k*rgroot))**2 &
             &                  / (k**8 * rgroot**8)
+
+       dulong(:,nfnc) = 0.0d0
 
     end if
 
     ! Slater charge smearing as in Gonzales-Melchor et al, [JCP v125,
     ! 224107 (2006)] with exact expression for interaction (here
-    ! translated into reciprocal space).  Note we do not give the real
-    ! space part here hence the thermodynamic calculations will be
-    ! wrong.
+    ! translated into reciprocal space).
 
     if (charge_type .eq. 4) then
 
-       ulong(:,nfnc) = 0.0d0; dulong(:,nfnc) = 0.0d0
+       ulong(:,nfnc) = (lb / r) * (1.0d0 - exp(-2.0d0*r/lambda) &
+            & * (1.0d0 + 1.375d0*r/lambda + 0.75d0*r**2/lambda**2 &
+            &   + r**3/(6.0d0*lambda**3)) )
 
        ulongk(:,nfnc) = (fourpi * lb / k**2) * &
             & 1.0d0 / (1.0d0 + k**2*lambda**2/4.0d0)**4
+
+       dulong(:,nfnc) = - (lb / r**2) * (1.0d0 - exp(-2.0d0*r/sigma) &
+            & * (1.0d0 + 2.0d0*r/lambda + 2.0d0*r**2/lambda**2 &
+            &     + 7.0d0*r**3/(6.0d0*lambda**3) + r**4/(3.0d0*lambda**4)) )
 
     end if
 
     ! Slater charge smearing as in Gonzales-Melchor et al, [JCP v125,
     ! 224107 (2006)] with original approximate expression (here
-    ! translated into reciprocal space).  Note we do not give the real
-    ! space part here hence the thermodynamic calculations will be
-    ! wrong.
+    ! translated into reciprocal space).
 
     if (charge_type .eq. 5) then
 
-       ulong(:,nfnc) = 0.0d0; dulong(:,nfnc) = 0.0d0
+       ulong(:,nfnc) = (lb / r) * (1.0d0 - exp(-2*beta*r) * &
+            & (1.0d0 + beta*r) )
 
        ulongk(:,nfnc) = (fourpi * lb / k**2) * &
             & 1.0d0 / (1.0d0 + k**2/(4.0d0*beta**2))**2
+
+       dulong(:,nfnc) = - (lb / r**2) * (1.0d0 - exp(-2.0d0*beta*r) &
+            & * (1.0d0 + 2.0d0*beta*r*(1.0d0 + beta*r)) )
 
     end if
 
@@ -1176,9 +1186,8 @@ contains
     press = rhotot * (1.0 + cf_gc + cf_mf + cf_xc)
 
     ! Now we do the compressibility (not to be confused with the above
-    ! compressibility factor), noting that we can use c' = c + Ulong
-    ! since the long-range part of the potential is proportional to
-    ! z_i z_j f(r) and sum(x_i x_j z_i z_j) = 0 exactly.
+    ! compressibility factor).  The long range part is accounted for
+    ! separately.
 
     ! Evaluate t_ij = 4 pi int_0^inf c_ij r^2 dr.  Again the
     ! contribution from both endpoints vanishes, hence the sum just
@@ -1252,28 +1261,6 @@ contains
 
     fvex = sum(rho(:) * muex(:)) - rhotot * (cf_mf + cf_xc)
     fnex = sum(rho(:) * muex(:)) / rhotot - (cf_mf + cf_xc)
-
-!!$  As of version 1.7 these integrals are calculated in the python scripts
-!!$
-!!$    d12 = 0.0; duv = 0.0
-!!$
-!!$    if (model_type.ge.10) then
-!!$
-!!$       g12 = 1.0d0 + c(:,2,i1) + e(:,2,i1)
-!!$
-!!$       if (model_type.lt.20) then
-!!$          du12 = lb * (erfc(0.5d0*r/sigma) - erfc(0.5d0*r/sigmap)) / r
-!!$       else
-!!$          irc = nint(diam(2) / deltar)
-!!$          du12(1:irc) = 0.0d0
-!!$          du12(irc+1:) = - lb * erfc(kappa*r(irc+1:)) / r(irc+1:)
-!!$          g12(1:irc) = 0.0d0
-!!$       end if
-!!$
-!!$       d12 = fourpi * deltar * sum( (exp(-du12) - 1.0d0) * g12 * r(:)**2)
-!!$       duv = twopi * rho(1) * rho(2) * deltar * sum( du12 * g12 * r(:)**2)
-!!$
-!!$    end if
 
   end subroutine make_thermodynamics
 

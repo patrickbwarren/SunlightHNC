@@ -619,13 +619,13 @@ An integration by parts shows that the mean field term here is related
 to that for the compressibility factor,
 %
 \begin{equation}
-{2\pi}\int_0^\infty\!\!dr\,r^2\,
+{2\pi}\int_{d_{\mu\nu}}^\infty\!\!dr\,r^2\,
 \beta v_{\mu\nu}
 =
--\frac{2\pi}{3}\Bigl(\int_0^\infty\!\!dr\,r^3\,
+-\frac{2\pi\beta v_{\mu\nu}(d_{\mu\nu})\,d_{\mu\nu}^3}{3}
+-\frac{2\pi}{3}\int_{d_{\mu\nu}}^\infty\!\!dr\,r^3\,
 \frac{\partial(\beta
-  v_{\mu\nu})}{\partial r}
-+\beta v_{\mu\nu}(d_{\mu\nu})\,d_{\mu\nu}^3\Bigr)\,.\label{eq:same}
+  v_{\mu\nu})}{\partial r}\,.\label{eq:same}
 \end{equation}
 %
 The excess internal energy density (per unit volume) is
@@ -738,8 +738,7 @@ e^{-r^2/4\sigma^2}\,,
 and
 %
 \begin{equation}
-\beta {\tilde v}\lr(k)=\frac{4\pi\lB}{k^2}\,
-e^{-k^2\sigma^2}\,.
+\beta {\tilde v}\lr(k)=\frac{4\pi\lB}{k^2}\times e^{-k^2\sigma^2}\,.
 \end{equation}
 %
 The mean field contributions to the virial route pressure and energy
@@ -755,7 +754,8 @@ are given by (see also \Eqref{eq:same})
 %
 Because of the SYM condition, the contribution from $v\lr$ vanishes
 from this, and also vanishes from the mean field contributions to the
-compressibility and chemical potentials.
+compressibility and chemical potentials (this is true for all the
+cases in this section).
 
 This DPD model depends on the dimensionless repulsion amplitude matrix
 $A_{\mu\nu}$, the ratios $\lB/\sigma$ and $\sigma/\rc$, and the
@@ -774,13 +774,11 @@ charges are selected the charge distribution becomes $K_1(r/\sigma) /
 %
 \begin{equation}
 \frac{\partial(\beta v\lr)}{\partial r}=
--\frac{\lB}{r^2}(1-e^{-r/\sigma})
-+\frac{\lB}{r\sigma}\,
-e^{-r/\sigma}\,,
+-\frac{\lB}{r^2}\Bigl[1-e^{-r/\sigma}\Bigl(1+\frac{r}{\sigma}\Bigr)\Bigr]\,,
 \end{equation}
 %
 \begin{equation}
-\beta {\tilde v}\lr(k)=\frac{4\pi\lB}{k^2(1+k^2\sigma^2)}\,.
+\beta {\tilde v}\lr(k)=\frac{4\pi\lB}{k^2}\times\frac{1}{1+k^2\sigma^2}\,.
 \end{equation}
 %
 Note that $\sigma$ here is chosen to match the second moment of the
@@ -806,51 +804,58 @@ shows that the equivalent Gaussian smearing length is
 $\sigma=R\sqrt{2/15}$.
 
 Another popular alternative is Slater smearing proposed by
-Gonz\'alez-Melchor \etal\ \cite{GM+06}.  In this case the charge
-density is $(1/\pi\lambda^3)e^{-2r/\lambda}$.  There is 
-an exact expression for the interation potential \cite{WV14}
-%
-\begin{equation}
-  \beta v\lr(r)=\frac{\lB}{r}\Bigl[1-e^{-2r/\lambda}\Bigl(
-    1+\frac{11r}{8\lambda}+\frac{3r^2}{4\lambda^2}
-    +\frac{r^3}{6\lambda^3}\Bigr)\Bigr]\,.\label{eq:slaterexact}
-\end{equation}
-%
-The reciprocal space interaction is \cite{WV14}
-%
-\begin{equation}
-\beta {\tilde v}\lr(k)=\frac{4\pi\lB}{k^2(1+k^2\lambda^2/4)^4}\,.
-\end{equation}
-%
-The equivalent Gaussian smearing length is $\sigma=\lambda$.  The
-real space potential is not currently implemented in the code, and
-as in the preceding case, the thermodynamics is \emph{not available}.
-
-In the original Gonz\'alez-Melchor \etal\ paper \cite{GM+06}, an
-approximate expression was proposed for the interaction potential
+Gonz\'alez-Melchor \etal\ \cite{GM+06}.  They use an approximate
+expression for the interaction potential, for which we have
 %
 \begin{equation}
   \beta v\lr(r)=\frac{\lB}{r}\Bigl[1-e^{-2\beta r}(1+\beta r)\Bigr]\,.
   \label{eq:slaterapprox}
 \end{equation}
 %
-This actually corresponds to a charge density $\beta^2 e^{-2\beta
-  r}/\pi r$ ($\beta$ is a parameter here, not to be confused with
-$1/\kT$).  Originally, Gon\-z\'a\-lez-Melchor \etal\ \cite{GM+06} had
-$\beta=1/\lambda$ but choosing $\beta=5/(8\lambda)$ makes
-\Eqsref{eq:slaterexact} and \eqref{eq:slaterapprox} have the same
-limiting value as $r\to0$ and brings the approximate interaction much
-closer to the exact result.  The reciprocal space interaction
-corresponding to \Eqref{eq:slaterapprox} is
-%
 \begin{equation}
-\beta {\tilde v}\lr(k)=\frac{4\pi\lB}{k^2(1+k^2/4\beta^2)^2}\,.
+  \frac{\partial(\beta v\lr)}{\partial r}=
+  -\frac{\lB}{r^2}\Bigl[1-e^{-2\beta r}(1+2\beta r(1+\beta r))\Bigr]\,,
 \end{equation}
 %
-The equivalent Gaussian smearing length is here
-$\sigma=1/\beta\sqrt{2}$.  The real space potential it is not
-currently implemented in the code, and as in the preceding case, the
-thermodynamics is \emph{not available}.
+\begin{equation}
+\beta {\tilde v}\lr(k)=\frac{4\pi\lB}{k^2}\times\frac{1}{(1+k^2/4\beta^2)^2}\,.
+\end{equation}
+%
+These actually corresponds to a charge density $\beta^2 e^{-2\beta
+  r}/\pi r$ ($\beta$ is a parameter here, not to be confused with
+$1/\kT$). The equivalent Gaussian smearing length is here
+$\sigma=1/\beta\sqrt{2}$.  The intended charge density in the Slater
+smearing proposal is $(1/\pi\lambda^3)e^{-2r/\lambda}$.  It turns out
+that there are exact expressions for the interaction between such
+charges \cite{WV14}, namely
+%
+\begin{equation}
+  \beta v\lr(r)=\frac{\lB}{r}\Bigl[1-e^{-2r/\lambda}\Bigl(
+    1+\frac{11r}{8\lambda}+\frac{3r^2}{4\lambda^2}
+    +\frac{r^3}{6\lambda^3}\Bigr)\Bigr]\,,\label{eq:slaterexact}
+\end{equation}
+%
+\begin{equation}
+  \frac{\partial(\beta v\lr)}{\partial r}=
+  -\frac{\lB}{r^2}\Bigl[1-e^{-2r/\lambda}\Bigl(
+    1+\frac{2r}{\lambda}+\frac{2r^2}{\lambda^2}
+    +\frac{7r^3}{6\lambda^3}+\frac{r^4}{3\lambda^4}\Bigr)\Bigr]\,,
+\end{equation}
+%
+\begin{equation}
+\beta {\tilde v}\lr(k)=\frac{4\pi\lB}{k^2}\times\frac{1}{(1+k^2\lambda^2/4)^4}\,.
+\end{equation}
+%
+The equivalent Gaussian smearing length for these exact expressions is
+$\sigma=\lambda$.  Originally, Gon\-z\'a\-lez-Melchor
+\etal\ \cite{GM+06} had $\beta=1/\lambda$ in \Eqref{eq:slaterapprox},
+but choosing $\beta=5/(8\lambda)$ makes \Eqsref{eq:slaterapprox} and
+\eqref{eq:slaterexact} have the same limiting value as $r\to0$ and
+brings the approximate interaction much closer to the exact result.
+Note that there is a natural hierarchy going from Bessel, to Slater
+(approximate), to Slater (exact), in terms of the powers of
+$1+(\mathrm{const})k^2$ that appear in the denominator of the
+reciprocal space interactions.
 
 \subsection{Softened URPM potential}
 \label{sec:softURPM}
