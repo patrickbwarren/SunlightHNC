@@ -137,7 +137,7 @@ module wizard
        & sigmap = 1.0,    & ! +- long-range Coulomb smearing length (URPM)
        & kappa = -1.0,    & ! +- long-range Coulomb smoothing parameter (RPM)
        & rgroot = 1.0,    & ! linear charge smearing range (Groot)
-       & lambda = 1.0,    & ! Slater charge smearing range (exact)
+       & lbda = 1.0,    & ! Slater charge smearing range (exact)
        & beta = 1.0,      & ! Slater charge smearing range (approx)
        & cf_mf, cf_xc,    & ! the virial route pressure contributions ..
        & cf_gc, press,    & ! .. and the virial route pressure
@@ -262,13 +262,13 @@ contains
                & sqrt(2.0d0/15.0d0) * rgroot
        end if
        if (model_type.eq.4) then
-          print *, ' Slater smearing (exact), lambda = ', lambda
-          print *, ' equivalent Gaussian sigma = ', lambda
+          print *, ' Slater smearing (exact), lambda = ', lbda
+          print *, ' equivalent Gaussian sigma = ', lbda
        end if
        if (model_type.eq.5) then
           print *, ' Slater smearing (approx), beta = ', beta
-          print *, ' equivalent lambda = ', 0.625d0 / beta, &
-               & ' ( 1 / beta = ', 1.0d0 / beta, ' )'
+          print *, ' 1 / beta = ', 1.0d0 / beta, ', &
+               & 5 / (8 beta) = ', 0.625d0 / beta
           print *, ' equivalent Gaussian sigma = ', sqrt(0.5d0) / beta
        end if
     else if (model_type.lt.20) then
@@ -395,16 +395,16 @@ contains
 
     if (charge_type .eq. 4) then
 
-       ulong(:,nfnc) = (lb / r) * (1.0d0 - exp(-2.0d0*r/lambda) &
-            & * (1.0d0 + 1.375d0*r/lambda + 0.75d0*r**2/lambda**2 &
-            &   + r**3/(6.0d0*lambda**3)) )
+       ulong(:,nfnc) = (lb / r) * (1.0d0 - exp(-2.0d0*r/lbda) &
+            & * (1.0d0 + 1.375d0*r/lbda + 0.75d0*r**2/lbda**2 &
+            &   + r**3/(6.0d0*lbda**3)) )
 
        ulongk(:,nfnc) = (fourpi * lb / k**2) * &
-            & 1.0d0 / (1.0d0 + k**2*lambda**2/4.0d0)**4
+            & 1.0d0 / (1.0d0 + k**2*lbda**2/4.0d0)**4
 
        dulong(:,nfnc) = - (lb / r**2) * (1.0d0 - exp(-2.0d0*r/sigma) &
-            & * (1.0d0 + 2.0d0*r/lambda + 2.0d0*r**2/lambda**2 &
-            &     + 7.0d0*r**3/(6.0d0*lambda**3) + r**4/(3.0d0*lambda**4)) )
+            & * (1.0d0 + 2.0d0*r/lbda + 2.0d0*r**2/lbda**2 &
+            &     + 7.0d0*r**3/(6.0d0*lbda**3) + r**4/(3.0d0*lbda**4)) )
 
     end if
 
@@ -1268,7 +1268,7 @@ contains
   subroutine write_thermodynamics
     integer :: i
 
-    if (model_type.eq.3 .or. model_type.eq.4) then
+    if (model_type.eq.3) then
        print *, 'No thermodynamics for this potential type'
     else
        print *, 'Total density = ', sum(rho)

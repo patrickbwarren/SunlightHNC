@@ -1166,8 +1166,8 @@ equation problem as fast and robust as possible.
   (\verb+charge_type = 1+), Bessel charges (\verb+charge_type = 2+),
   linear (Groot) charges (\verb+charge_type = 3+), Slater charges with
   exact interaction (\verb+charge_type = 4+), or Slater charges with
-  approximate interaction (\verb+charge_type = 4+).  The last three
-  cases (\verb+charge_type = 3-5+) are incomplete in the sense
+  approximate interaction (\verb+charge_type = 4+).  The linear
+  (Groot) case (\verb+charge_type = 3+) is incomplete in the sense
   that the thermodynamics is not calculated correctly.
 %
 \item\verb+soft_urpm_potential(use_ushort)+ -- Sets up the
@@ -1333,9 +1333,10 @@ convergence (usually safe to leave at default 100).
 \item\verb+rgroot+ -- linear (Groot) charge smearing range $R$
   (default 1.0) in the DPD potential (\verb+charge_type = 3+).
 %
-\item\verb+lambda+ -- Slater charge smearing length $\lambda$ (default
+\item\verb+lbda+ -- Slater charge smearing length $\lambda$ (default
   1.0) in the DPD potential with exact interaction
-  (\verb+charge_type = 4+).
+  (\verb+charge_type = 4+).  The name is truncated to avoid a clash
+  with python.
 %
 \item\verb+beta+ -- Slater charge smearing parameter $\beta$
   (default 1.0) in the DPD potential with approximate interaction

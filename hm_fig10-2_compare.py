@@ -51,9 +51,7 @@ import math as m
 
 xdat = list(m.sqrt(0.425**3 * 1.204 * data[i][0]) for i in range(len(data)))
 nundat = list(data[i][1] for i in range(len(data)))
-nunerr = list(data[i][2] for i in range(len(data)))
 ctcdat = list(data[i][3] for i in range(len(data)))
-ctcerr = list(data[i][4] for i in range(len(data)))
 compdat = list(data[i][5] for i in range(len(data)))
 
 from oz import wizard as w

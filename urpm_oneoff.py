@@ -24,7 +24,6 @@
 import argparse
 import math as m
 import numpy as np
-import matplotlib.pyplot as plt
 from oz import wizard as w
 
 parser = argparse.ArgumentParser(description='URPM one off calculator')
@@ -37,12 +36,14 @@ parser.add_argument('--npic', action='store', default=6, type=int, help='number 
 
 parser.add_argument('--lb', action='store', default=1.0, type=float, help='Bjerrum length (default 1.0)')
 parser.add_argument('--sigma', action='store', default=1.0, type=float, help='Gaussian/Bessel charge size (default 1.0)')
-parser.add_argument('--R', action='store', default=0.0, type=float, help='Grootian charge size (defaults to sigma*sqrt(15/2))')
+parser.add_argument('--lambda', action='store', default=1.0, dest='lbda', type=float, help='Slater charge size (default 1.0)')
+parser.add_argument('--R', action='store', default=1.0, dest='rgroot', type=float, help='Groot charge size (defaults 1.0)')
 parser.add_argument('--rc', action='store', default=1.0, type=float, help='DPD length scale (default 1.0)')
 parser.add_argument('--A', action='store', default=0.0, type=float, help='DPD repulsion amplitude (default 0.0)')
 parser.add_argument('--z1', action='store', default=1, type=int, help='valency of positive ions (default +1)')
 parser.add_argument('--z2', action='store', default=-1, type=int, help='valency of negative ions (default -1)')
-parser.add_argument('--type', action='store', default=1, type=int, help='charge type (1=Gaussian, 2=Bessel, 3=Groot, 4=Mexican)')
+parser.add_argument('--type', action='store', default=1, type=int, help='charge type (1=Gaussian, 2=Bessel, 3=Groot, 4=Slater)')
+parser.add_argument('--case', action='store', default=1, type=int, help='Slater method (1=exact, 2=good, 3=bad)')
 
 parser.add_argument('--rho', action='store', default=3.0, type=float, help='total density if ncomp = 3 (default 3.0)')
 parser.add_argument('--rhoz', action='store', default=0.1, type=float, help='total charge density (default 0.1)')
@@ -64,16 +65,26 @@ w.initialise()
 
 w.lb = args.lb
 w.sigma = args.sigma
-
-if (args.R > 0): w.rgroot = args.R
-else: w.rgroot = args.sigma * m.sqrt(7.5)
+w.lbda = args.lbda
+w.rgroot = args.rgroot
 
 w.rc = args.rc
 w.arep[:,:] = args.A
 w.z[0] = args.z1
 w.z[1] = args.z2
 
-w.dpd_potential(args.type)
+# potential type = 4 (exact), or potential type = 5 (approximate) with
+# beta = 1/lambda, or beta=5/(8lambda)
+
+if args.type < 4:
+    w.dpd_potential(args.type)
+else:
+    if args.case == 1:
+        w.dpd_potential(4)
+    else:
+        if args.case == 2: w.beta = 5 / (8*w.lbda)
+        else: w.beta = 1 / w.lbda
+        w.dpd_potential(5)
 
 # The calculation here solves rhoz = z1^2*rho1 + z2^2*rho2, z1*rho1 + z2*rho2 = 0
 
@@ -99,6 +110,8 @@ else:
 w.write_thermodynamics()
 
 # code plots log10(r h(r)) versus r
+
+import matplotlib.pyplot as plt
 
 plt.figure(1)
 

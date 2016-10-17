@@ -29,7 +29,7 @@ import matplotlib.pyplot as plt
 from oz import wizard as w
 
 # In these functions the final state is the same as the starting
-# state, at the system is left in the solved condition.
+# state, and the system is left in the solved condition.
 
 # Function calculates the pressure by integrating the compressibility
 # along an isotherm.
