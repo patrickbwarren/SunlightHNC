@@ -857,7 +857,7 @@ contains
 ! that 'v' in the above expression is the short-range part of the
 ! potential only.
 
-  subroutine picard_method
+  subroutine hnc_picard
     implicit none
     integer :: i1, i0, i
 
@@ -872,12 +872,12 @@ contains
             & + (1.0d0 - alpha) * c(:,i,i0)
     end do
 
-  end subroutine picard_method
+  end subroutine hnc_picard
 
 ! The next routine implements the Ng method [K-C Ng, J. Chem. Phys.
 ! v61, 2680 (1974)] as an accelerated solver for the HNC closure.
 
-  subroutine ng_method
+  subroutine hnc_ng
     implicit none
     integer :: i, i1, i0, j, j1, j2, p, nd, icp
     double precision :: dc(ng-1,nfnc,nps-1), de(ng-1,nfnc,nps-1), &
@@ -946,7 +946,7 @@ contains
        end do
     end do
 
-  end subroutine ng_method
+  end subroutine hnc_ng
 
 ! Calculate the difference between the direct correlation functions
 ! for the current and previous iteration, used as a convergence test;
@@ -981,35 +981,35 @@ contains
        if (start_type.eq.3) c(:,:,1) = expnegus(:,:) - 1.0
        cold_start = 0
        if (verbose.eq.1) then
-          if (start_type.eq.1) print *, "cold start c' = 0"
-          if (start_type.eq.2) print *, "cold start c' = -v'"
-          if (start_type.eq.3) print *, "cold start c' = e^(-v')-1"
+          if (start_type.eq.1) print *, "HNC cold start c' = 0"
+          if (start_type.eq.2) print *, "HNC cold start c' = -v'"
+          if (start_type.eq.3) print *, "HNC cold start c' = e^(-v')-1"
        end if
     else
        if (verbose.eq.1) then
-          print *, "warm start c' = previous c'"
+          print *, "HNC warm start c' = previous c'"
        end if
     end if
     call oz_solve
     do i = 1, maxsteps
        if (i .le. npic) then
-          call picard_method
+          call hnc_picard
        else
-          call ng_method
+          call hnc_ng
        end if
        call oz_solve
        call conv_test
        if (verbose.eq.1) then
           if (i .le. npic) then
-             print *, i, "Picard, error = ", error
+             print *, i, "HNC Picard, error = ", error
           else
-             print *, i, "    Ng, error = ", error
+             print *, i, "HNC     Ng, error = ", error
           end if
        end if
        if (error .lt. tol) exit
     end do
     if (error .gt. tol) then
-       print *, "oz_mod.f90: solve_problem: error > tol"
+       print *, "oz_mod.f90: hnc_solve: HNC error > tol"
     else
        if (auto_fns.eq.1) then
           call make_pair_functions
@@ -1018,6 +1018,63 @@ contains
        end if
     end if
   end subroutine hnc_solve
+  
+! Basic driver routine for solving MSA: take a number of Picard
+! iterations to pump-prime the Ng method.  Stop when error is less
+! than tolerance, or when exceed maximum number of iterations.  The
+! flag cold_start indicates whether the direct correlation function
+! should be re-initialised.  The initial guess to the direct
+! correlation function is either zero (start_type = 1), or c =
+! e^(-Ushort)-1 (start_type = 3).  Either of these should do in
+! principle, but the initial convergence may be different.  Note from
+! above that c is actually defined c' = c + Ulong, ie with the
+! long-range part of the potential added.
+
+  subroutine msa_solve
+    implicit none
+    integer :: i
+    if (cold_start.eq.1) then
+       istep = 1
+       if (start_type.eq.1) c(:,:,1) = 0.0
+       if (start_type.eq.3) c(:,:,1) = expnegus(:,:) - 1.0
+       cold_start = 0
+       if (verbose.eq.1) then
+          if (start_type.eq.1) print *, "MSA cold start c' = 0"
+          if (start_type.eq.3) print *, "MSA cold start c' = e^(-v')-1"
+       end if
+    else
+       if (verbose.eq.1) then
+          print *, "MSA warm start c' = previous c'"
+       end if
+    end if
+    call oz_solve
+    do i = 1, maxsteps
+       if (i .le. npic) then
+          call msa_picard
+       else
+          call msa_ng
+       end if
+       call oz_solve
+       call conv_test
+       if (verbose.eq.1) then
+          if (i .le. npic) then
+             print *, i, "MSA Picard, error = ", error
+          else
+             print *, i, "MSA     Ng, error = ", error
+          end if
+       end if
+       if (error .lt. tol) exit
+    end do
+    if (error .gt. tol) then
+       print *, "oz_mod.f90: msa_solve: error > tol"
+    else
+       if (auto_fns.eq.1) then
+          call make_pair_functions
+          call make_structure_factors
+          call make_thermodynamics
+       end if
+    end if
+  end subroutine msa_solve
 
 ! Given the HNC machinery, the implementation of the RPA is almost
 ! completely trivial and corresponds to one iteration through the

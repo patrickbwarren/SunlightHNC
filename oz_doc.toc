@@ -1,0 +1,22 @@
+\contentsline {section}{\numberline {1}Introduction}{3}
+\contentsline {section}{\numberline {2}Theoretical background}{3}
+\contentsline {subsection}{\numberline {2.1}Single component HNC}{3}
+\contentsline {subsection}{\numberline {2.2}Multicomponent HNC}{6}
+\contentsline {subsection}{\numberline {2.3}Multicomponent RPA}{7}
+\contentsline {subsection}{\numberline {2.4}Multicomponent EXP}{7}
+\contentsline {subsection}{\numberline {2.5}Multicomponent MSA}{8}
+\contentsline {subsection}{\numberline {2.6}Thermodynamics}{8}
+\contentsline {section}{\numberline {3}Potentials}{11}
+\contentsline {subsection}{\numberline {3.1}DPD potential}{11}
+\contentsline {subsection}{\numberline {3.2}Softened URPM potential}{14}
+\contentsline {subsection}{\numberline {3.3}Softened RPM potential}{15}
+\contentsline {section}{\numberline {4}Implementation notes}{16}
+\contentsline {section}{\numberline {5}Usage notes}{18}
+\contentsline {subsection}{\numberline {5.1}Routines}{18}
+\contentsline {subsection}{\numberline {5.2}User parameters}{21}
+\contentsline {subsection}{\numberline {5.3}Outputs}{23}
+\contentsline {section}{\numberline {6}Examples}{24}
+\contentsline {subsection}{\numberline {6.1}Virial route pressure}{24}
+\contentsline {subsection}{\numberline {6.2}Compressibility route pressure}{26}
+\contentsline {subsection}{\numberline {6.3}Free energy}{27}
+\contentsline {subsection}{\numberline {6.4}Further examples}{29}

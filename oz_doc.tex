@@ -127,21 +127,21 @@ projects. If you end up publishing results based on this, please cite\\
 The \FORTRAN\ 90 module \verb+oz_mod.f90+ implements an
 Ornstein-Zernike solver for multicomponent mixtures of possibly
 charged particles, returning both structural and thermodynamic
-information.  The closures currently implemented are the RPA
-(equivalent to MSA for soft potentials), EXP, and the HNC.  Though we
-say it ourselves, the code is \emph{fast} since it is written in
-native \FORTRAN\ and implements the Ng acceleration schemes
-\cite{Ng74}.  The interaction potentials are specified in their own
-routines and the code could be used for other potentials with minor
-modifications.  Further technical background to liquid state integral
-equation methods can be found in Hansen and McDonald \cite{HM06},
-Kelley and Montgomery Pettitt \cite{KMP04}, and Vrbka
-\etal\ \cite{Vrbka09}.  We note that Vrbka provides an independent
-package called `pyOZ', implemented entirely in \python~\cite{Vrbka09}.
-There are some differences with the present approach: the
-Ornstein-Zernike relation is normalised slightly differently, a
-conjugate gradient method is used to accelerate convergence, and pyOZ
-provides other closures in addition to the ones provided here.
+information.  The closures currently implemented are the RPA, MSA,
+EXP, and HNC.  Though we say it ourselves, the code is \emph{fast}
+since it is written in native \FORTRAN\ and implements the Ng
+acceleration schemes \cite{Ng74}.  The interaction potentials are
+specified in their own routines and the code could be used for other
+potentials with minor modifications.  Further technical background to
+liquid state integral equation methods can be found in Hansen and
+McDonald \cite{HM06}, Kelley and Montgomery Pettitt \cite{KMP04}, and
+Vrbka \etal\ \cite{Vrbka09}.  We note that Vrbka provides an
+independent package called `pyOZ', implemented entirely in
+\python~\cite{Vrbka09}.  There are some differences with the present
+approach: the Ornstein-Zernike relation is normalised slightly
+differently, a conjugate gradient method is used to accelerate
+convergence, and pyOZ provides other closures in addition to the ones
+provided here.
 
 The present code is based on an HNC code developed by Lucian Anton,
 modified for dissipative particle dynamics (DPD) by Andrey Vlasov with
@@ -419,15 +419,14 @@ the above expression by multiplying by $({\rho_\mu\rho_\nu})^{-1/2}$.
 
 \subsection{Multicomponent RPA}
 %
-The random phase approximation (RPA) is equivalent to the mean
-spherical approximation (MSA) for soft potentials.  The RPA closes the
-Ornstein-Zernike equations by the choice $c_{\mu\nu}(r)=-\beta
-v_{\mu\nu}(r)$.  This is in fact one of the choices for initialising
-the HNC solver.  Given the HNC machinery, the implementation of the
-RPA is almost completely trivial and comprises a single round trip
-through the OZ solver starting from $c'_{\mu\nu}(r)=-\beta
-v'_{\mu\nu}(r)$.  The RPA does not make sense for hard core potentials
-and instead the full MSA should be used.
+The RPA closure of the Ornstein-Zernike equations is
+$c_{\mu\nu}(r)=-\beta v_{\mu\nu}(r)$.  This is in fact one of the
+choices for initialising the HNC solver.  Given the HNC machinery, the
+implementation of the RPA is almost completely trivial and comprises a
+single round trip through the OZ solver starting from
+$c'_{\mu\nu}(r)=-\beta v'_{\mu\nu}(r)$.  The RPA does not make sense
+for hard core potentials and instead the full MSA should be used (see
+below).
 
 \subsection{Multicomponent EXP}
 %
@@ -458,6 +457,31 @@ c'_{\mu\nu}$ follows by subtraction.  Since it depends on the RPA, the
 EXP approximation in this form cannot be used for hard core
 potentials.
 
+\subsection{Multicomponent MSA}
+%
+The mean spherical approximation (MSA) differs from the RPA only in
+the presence of hard cores.  In this case we require $g_{\mu\nu}(r)=0$
+for $r<d_{\mu\nu}$, together with $c_{\mu\nu}(r)= -\beta
+v_{\mu\nu}(r)$ for $r>d_{\mu\nu}$, where $d_{\mu\nu}$ is the hard core
+between species $\mu$ and $\nu$.  Combined with the OZ equation, this
+gives a closed problem.  Rewriting as usual in terms of
+$h_{\mu\nu}=g_{\mu\nu}-1$ and $e_{\mu\nu}=h_{\mu\nu}-c_{\mu\nu}$, and
+in terms of our offset functions
+$v'_{\mu\nu}=v_{\mu\nu}-v\lr_{\mu\nu}$, $c'_{\mu\nu}=c_{\mu\nu}+\beta
+v\lr_{\mu\nu}$ and $e'_{\mu\nu}=e_{\mu\nu}-\beta v\lr_{\mu\nu}$, the
+MSA closure becomes
+%
+\begin{equation}
+  c'_{\mu\nu}=\Bigl\{\begin{array}{ll}
+  -e'_{\mu\nu}-1 & (r<d_{\mu\nu})\,,\\[3pt]
+  -\beta v'_{\mu\nu} & (r>d_{\mu\nu})\,.
+  \end{array}
+\end{equation}
+%
+This can be compared to the HNC closure in \Eqref{eq:hncnd}.
+Numerically, the MSA closure in this form is a drop-in replacement for
+the HNC real-space closure.
+  
 \subsection{Thermodynamics}
 \label{sec:thermo}
 %
@@ -1194,7 +1218,7 @@ equation problem as fast and robust as possible.
   enough Picard steps to pump-prime the Ng acceleration method, then
   attempt to converge to a solution.  This is the basic HNC solver routine
   and contains appropriate calls to \verb+oz_solve+,
-  \verb+picard_method+, \verb+ng_method+ and \verb+conv_test+ below.
+  \verb+hnc_picard+, \verb+hnc_ng+ and \verb+conv_test+ below.
   If successful (and the flag \verb+auto_fns+ is set) then the three
   \verb+make_*+ functions are also called, resulting in a complete
   solution to the problem.  The function \verb+hnc_solve+ should be
@@ -1225,6 +1249,22 @@ equation problem as fast and robust as possible.
   fixed potential, or with a different potential if
   \verb+dpd_potential+ is called in between.
 %
+\item\verb+msa_solve+ -- Calculate the MSA solution, using a similar
+  iterative algorithm to the HNC closure. This routine is the basic
+  MSA solver and contains appropriate calls to \verb+oz_solve+,
+  \verb+msa_picard+, \verb+msa_ng+ and \verb+conv_test+.  Like the
+  other solvers, if successful (and the flag \verb+auto_fns+ is set)
+  then the three \verb+make_*+ functions are also called, resulting in
+  a complete solution to the problem.  The function \verb+msa_solve+
+  should be called after \verb+initialise+ and \verb+dpd_potential+,
+  and may be called multiple times with different densities for a
+  fixed potential, or with a different potential if
+  \verb+dpd_potential+ is called in between.  In these subsequent
+  calls, the existing $c'_{\mu\nu}$ is used as a starting point unless
+  the flag \verb+cold_start+ is reset.  Note that MSA is the same as
+  RPA if there are no hard cores (therefore, use \verb+rpa_solve+ in
+  that case!).
+%
 \item\verb+oz_solve+ -- Solve the OZ relation in the form of
   \Eqref{eq:oznd} to find $e'_{\mu\nu}$ from $c'_{\mu\nu}$ (as a
   byproduct, this generates ${\tilde e}_{\mu\nu}\myprime$ and ${\tilde
@@ -1235,12 +1275,20 @@ equation problem as fast and robust as possible.
   $h_{\mu\nu}$ (and as a byproduct generate ${\tilde
     e}_{\mu\nu}\myprime$ and ${\tilde c}_{\mu\nu}\myprime$).
 %
-\item\verb+picard_method+ -- Solve the HNC closure to find $c'_{\mu\nu}$
+\item\verb+hnc_picard+ -- Solve the HNC closure to find $c'_{\mu\nu}$
   from $e'_{\mu\nu}$, and take a Picard step in the sense of mixing a
   fraction \verb+alpha+ of the new $c'_{\mu\nu}$ with the old
   $c'_{\mu\nu}$.
 %
-\item\verb+ng_method+ -- Solve the HNC closure to find a new
+\item\verb+hnc_ng+ -- Solve the HNC closure to find a new
+$c'_{\mu\nu}$ given $e'_{\mu\nu}$, but using the Ng acceleration scheme.
+%
+\item\verb+msa_picard+ -- Solve the MSA closure to find $c'_{\mu\nu}$
+  from $e'_{\mu\nu}$, and take a Picard step in the sense of mixing a
+  fraction \verb+alpha+ of the new $c'_{\mu\nu}$ with the old
+  $c'_{\mu\nu}$.
+%
+\item\verb+msa_ng+ -- Solve the MSA closure to find a new
 $c'_{\mu\nu}$ given $e'_{\mu\nu}$, but using the Ng acceleration scheme.
 %
 \item\verb+conv_test+ -- Check HNC convergence by calculating the
