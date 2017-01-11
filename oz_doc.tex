@@ -461,15 +461,15 @@ potentials.
 %
 The mean spherical approximation (MSA) differs from the RPA only in
 the presence of hard cores.  In this case we require $g_{\mu\nu}(r)=0$
-for $r<d_{\mu\nu}$, together with $c_{\mu\nu}(r)= -\beta
-v_{\mu\nu}(r)$ for $r>d_{\mu\nu}$, where $d_{\mu\nu}$ is the hard core
-between species $\mu$ and $\nu$.  Combined with the OZ equation, this
-gives a closed problem.  Rewriting as usual in terms of
-$h_{\mu\nu}=g_{\mu\nu}-1$ and $e_{\mu\nu}=h_{\mu\nu}-c_{\mu\nu}$, and
-in terms of our offset functions
+for $r\le d_{\mu\nu}$.  Together with the RPA-like $c_{\mu\nu}(r)=
+-\beta v_{\mu\nu}(r)$ for $r> d_{\mu\nu}$, this gives the MSA closure.
+Here, $d_{\mu\nu}$ is the range of the hard core repulsion between
+species $\mu$ and $\nu$ (\ie\ $v'_{\mu\nu}=\infty$ for $r\le
+d_{\mu\nu}$).  Rewriting as usual in terms of our offset functions
 $v'_{\mu\nu}=v_{\mu\nu}-v\lr_{\mu\nu}$, $c'_{\mu\nu}=c_{\mu\nu}+\beta
-v\lr_{\mu\nu}$ and $e'_{\mu\nu}=e_{\mu\nu}-\beta v\lr_{\mu\nu}$, the
-MSA closure becomes
+v\lr_{\mu\nu}$ and $e'_{\mu\nu}=e_{\mu\nu}-\beta v\lr_{\mu\nu}$, where
+$h_{\mu\nu}=g_{\mu\nu}-1$ and $e_{\mu\nu}=h_{\mu\nu}-c_{\mu\nu}$, the
+MSA closure is
 %
 \begin{equation}
   c'_{\mu\nu}=\Bigl\{\begin{array}{ll}
@@ -478,9 +478,13 @@ MSA closure becomes
   \end{array}
 \end{equation}
 %
-This can be compared to the HNC closure in \Eqref{eq:hncnd}.
-Numerically, the MSA closure in this form is a drop-in replacement for
-the HNC real-space closure.
+This is almost a drop-in replacement for the HNC closure in
+\Eqref{eq:hncnd}.  For a cold start we can initialise $c'_{\mu\nu}=-1$
+for $r\le d_{\mu\nu}$.  In practice we can leave $c'_{\mu\nu}=-\beta
+v'_{\mu\nu}$ untouched for $r>d_{\mu\nu}$, during the iterative
+solution.  However, if doing this, one should make sure $c'_{\mu\nu}$
+is correctly reset for $r>d_{\mu\nu}$ whenever the potential is
+changed.
   
 \subsection{Thermodynamics}
 \label{sec:thermo}
@@ -878,10 +882,10 @@ $\sigma=\lambda$.  Originally, Gon\-z\'a\-lez-Melchor
 but choosing $\beta=5/(8\lambda)$ makes \Eqsref{eq:slaterapprox} and
 \eqref{eq:slaterexact} have the same limiting value as $r\to0$ and
 brings the approximate interaction much closer to the exact result.
-Note that there is a natural hierarchy going from Bessel, to Slater
-(approximate), to Slater (exact), in terms of the powers of
-$1+(\mathrm{const})k^2$ that appear in the denominator of the
-reciprocal space interactions.
+Note that there is a natural hierarchy going from Bessel ($n=1$), to
+approximate Slater ($n=2$), to exact Slater ($n=4$), to Gaussian
+($n\to\infty$), in terms of the reciprocal space potential
+$\beta {\tilde v}\lr(k)=4\pi\lB k^{-2}(1+\sigma^2k^2/n)^{-n}$.
 
 \subsection{Softened URPM potential}
 \label{sec:softURPM}

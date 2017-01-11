@@ -41,8 +41,10 @@ parser.add_argument('--rhoz', action='store', default=0.1, type=float, help='tot
 parser.add_argument('--grcut', action='store', default=15.0, type=float, help='r cut off for g(r) plots (default 15.0)')
 parser.add_argument('--skcut', action='store', default=15.0, type=float, help='k cut off for S(k) plots (default 15.0)')
 
-parser.add_argument('--rpa', action='store_true', help='use RPA (default HNC)')
-parser.add_argument('--exp', action='store_true', help='use EXP (default HNC)')
+parser.add_argument('--show', action='store_true', help='show results')
+parser.add_argument('--dump', action='store_true', help='write out g(r)')
+parser.add_argument('--msa', action='store_true', help='use MSA (default HNC)')
+parser.add_argument('--verbose', action='store_true', help='more output')
 
 args = parser.parse_args()
 
@@ -65,68 +67,78 @@ w.rho[1] = args.rhoz / 2.0
 
 eps = 1e-20
 
-w.write_params()
+if args.verbose:
+    w.write_params()
+    w.verbose = 1
 
-if (args.rpa):
-    w.rpa_solve()
-    print('*** RPA solved')
-elif (args.exp):
-    w.exp_solve()
-    print('*** EXP solved')
+if args.msa:
+    w.msa_solve()
 else:
     w.hnc_solve()
-    print('*** HNC solved, error = ', w.error)
 
-w.write_thermodynamics()
+if not args.dump:
+    if args.msa:
+        print('*** MSA solved, error = ', w.error)
+    else:
+        print('*** HNC solved, error = ', w.error)
+    w.write_thermodynamics()
 
 # code plots log10(r h(r)) versus r
 
-plt.figure(1)
+if args.show:
 
-plt.subplot(2, 2, 1)
+    plt.figure(1)
 
-if (args.rpa): plt.title('RPA solution')
-elif (args.exp): plt.title('EXP solution')
-else: plt.title('HNC solution, error = %0.1g' % w.error)
+    plt.subplot(2, 2, 1)
 
-plt.plot(w.r[:], 
-         list(map(lambda x, y: m.log10(eps + m.fabs(x*y)), w.hr[:, 0, 0], w.r[:])), 
-         label="$+\!+$")
+    if (args.msa): plt.title('MSA solution, error = %0.1g' % w.error)
+    else: plt.title('HNC solution, error = %0.1g' % w.error)
 
-plt.plot(w.r[:], 
-         list(map(lambda x, y: m.log10(eps + m.fabs(x*y)), w.hr[:, 0, 1], w.r[:])), 
-         label="$+ -$")
+    plt.plot(w.r[:], 
+             list(map(lambda x, y: m.log10(eps + m.fabs(x*y)), w.hr[:, 0, 0], w.r[:])), 
+             label="$+\!+$")
 
-plt.legend(loc='upper right')
-plt.xlabel('$r$')
-plt.ylabel('$\log_{10}|rh|$')
+    plt.plot(w.r[:], 
+             list(map(lambda x, y: m.log10(eps + m.fabs(x*y)), w.hr[:, 0, 1], w.r[:])), 
+             label="$+ -$")
 
-plt.subplot(2, 2, 2)
+    plt.legend(loc='upper right')
+    plt.xlabel('$r$')
+    plt.ylabel('$\log_{10}|rh|$')
 
-imax = int(args.grcut / w.deltar)
+    plt.subplot(2, 2, 2)
 
-plt.plot(w.r[0:imax], 1.0 + w.hr[0:imax, 0, 0], label="$+\!+$")
-plt.plot(w.r[0:imax], 1.0 + w.hr[0:imax, 0, 1], label="$+ -$")
+    imax = int(args.grcut / w.deltar)
 
-plt.legend(loc='upper right')
-plt.xlabel('$r$')
-plt.ylabel('$g(r)$')
+    plt.plot(w.r[0:imax], 1.0 + w.hr[0:imax, 0, 0], label="$+\!+$")
+    plt.plot(w.r[0:imax], 1.0 + w.hr[0:imax, 0, 1], label="$+ -$")
 
-# density-density structure factor
+    plt.legend(loc='upper right')
+    plt.xlabel('$r$')
+    plt.ylabel('$g(r)$')
 
-ddsf = np.sum(np.sum(w.sk, axis=2), axis=1) / np.sum(w.rho)
+    # density-density structure factor
 
-# charge-charge structure factor (notice how elegant this is :-)
+    ddsf = np.sum(np.sum(w.sk, axis=2), axis=1) / np.sum(w.rho)
 
-ccsf = np.dot(np.dot(w.z, w.sk), w.z) / np.sum(w.rho)
+    # charge-charge structure factor (notice how elegant this is :-)
 
-plt.subplot(2, 2, 3)
+    ccsf = np.dot(np.dot(w.z, w.sk), w.z) / np.sum(w.rho)
 
-jmax = int(args.skcut / w.deltak)
-plt.plot(w.k[:jmax], ddsf[:jmax], label='$S_{NN}$')
-plt.plot(w.k[:jmax], ccsf[:jmax], label='$S_{ZZ}$')
-plt.legend(loc='lower right')
-plt.xlabel('$k$')
-plt.ylabel('$S(k)$')
+    plt.subplot(2, 2, 3)
 
-plt.show()
+    jmax = int(args.skcut / w.deltak)
+    plt.plot(w.k[:jmax], ddsf[:jmax], label='$S_{NN}$')
+    plt.plot(w.k[:jmax], ccsf[:jmax], label='$S_{ZZ}$')
+    plt.legend(loc='lower right')
+    plt.xlabel('$k$')
+    plt.ylabel('$S(k)$')
+    
+    plt.show()
+
+    
+if args.dump:
+
+    for i in range(w.ng-1):
+        print("%g\t%g\t%g\t%g" % (w.r[i], w.hr[i, 0, 0], w.hr[i, 0, 1], w.hr[i, 1, 1]))
+

@@ -646,7 +646,7 @@ contains
     ! Forward transform the real space functions c, to the reciprocal
     ! space functions ck.
 
-    do i=1, nfnc
+    do i=1, nfnc ! check if this can be done with :
        fftwx(1:ng-1) = r(1:ng-1) * c(1:ng-1, i, i1)
        call dfftw_execute(plan)
        ck(1:ng-1, i) =  (twopi * deltar) * fftwy(1:ng-1) / k(1:ng-1)
@@ -948,18 +948,6 @@ contains
 
   end subroutine hnc_ng
 
-! Calculate the difference between the direct correlation functions
-! for the current and previous iteration, used as a convergence test;
-! return answer in variable 'error'.
-
-  subroutine conv_test
-    implicit none
-    integer i1, i0
-    i1 = mod(istep - 1, nps) + 1
-    i0 = i1 - 1; if (i0 .eq. 0) i0 = nps
-    error = sqrt(deltar * sum( (c(:, :, i1) - c(:, :, i0))**2 ))
-  end subroutine conv_test
-
 ! Basic driver routine for solving HNC: take a number of Picard
 ! iterations to pump-prime the Ng method.  Stop when error is less
 ! than tolerance, or when exceed maximum number of iterations.  The
@@ -1009,42 +997,157 @@ contains
        if (error .lt. tol) exit
     end do
     if (error .gt. tol) then
-       print *, "oz_mod.f90: hnc_solve: HNC error > tol"
-    else
-       if (auto_fns.eq.1) then
-          call make_pair_functions
-          call make_structure_factors
-          call make_thermodynamics
-       end if
+       print *, "oz_mod.f90: hnc_solve: **WARNING*** error > tol"
+    end if
+    if (auto_fns.eq.1) then
+       call make_pair_functions
+       call make_structure_factors
+       call make_thermodynamics
     end if
   end subroutine hnc_solve
+
+! Calculate the difference between the direct correlation functions
+! for the current and previous iteration, used as a convergence test;
+! return answer in variable 'error'.
+
+  subroutine conv_test
+    implicit none
+    integer i1, i0
+!    double precision norm
+    i1 = mod(istep - 1, nps) + 1
+    i0 = i1 - 1; if (i0 .eq. 0) i0 = nps
+    error = sqrt(deltar * sum( (c(:, :, i1) - c(:, :, i0))**2 ))
+!    norm = sqrt(deltar * sum( c(:, :, i1)**2 ))
+!    print *, "conv_test: norm = ", norm
+  end subroutine conv_test
   
+! This routine implements the MSA closure expressed as c' = - e' - 1
+! within the hard core, in similar terms to the HNC closure.  Outwith
+! the hard core, c' = - beta v' is left untouched, presuming it is
+! set correctly in the MSA initialisation step.
+
+  subroutine msa_picard
+    implicit none
+    integer :: i1, i0, i, irc
+
+    istep = istep + 1
+    i1 = mod(istep-1, nps) + 1
+    i0 = i1 - 1; if (i0.eq.0) i0 = nps
+
+    do i = 1, nfnc
+       irc = nint(diam(i) / deltar) ! Only work inside the hard core
+       c(1:irc,i,i1) = alpha * (  - e(1:irc,i,i0) - 1.0d0 ) &
+            & + (1.0d0 - alpha) * c(1:irc,i,i0)
+    end do
+
+  end subroutine msa_picard
+
+! The next routine implements the Ng method [K-C Ng, J. Chem. Phys.
+! v61, 2680 (1974)] as an accelerated solver for the MSA closure (cf
+! HNC above).
+
+  subroutine msa_ng
+    implicit none
+    integer :: i, i1, i0, j, j1, j2, p, nd, icp, irc
+    double precision :: dc(ng-1,nfnc,nps-1), de(ng-1,nfnc,nps-1), &
+         & a(nps-1,nps-1), x(nps-1), y(nps-1), yy, aux
+
+    integer :: ipiv(nps-1), info  ! DSYSV stuff
+    double precision :: work(100) ! DSYSV stuff
+
+    istep = istep + 1
+    i1 = mod(istep-1, nps) + 1
+    i0 = i1 - 1; if (i0 .eq. 0) i0 = nps
+
+    if (istep .le. nps) then
+       nd = istep - 2
+    else
+       nd = nps - 1
+    end if
+
+    do p = 1, nd
+       j1 = i0 - p
+       if( j1 .le. 0) j1 = nps + j1
+       dc(:,:,p) = c(:,:,i0) - c(:,:,j1)
+       de(:,:,p) = e(:,:,i0) - e(:,:,j1)
+    end do
+
+    a(:,:) = 0.0d0
+
+    x(:) = 0.0d0
+
+    do icp = 1, nfnc
+       irc = nint(diam(icp) / deltar) ! Only work inside the hard core
+       do j = 1, irc
+          aux = - 1.0d0
+
+          do j1 = 1, nd
+             y(j1) = aux * de(j,icp,j1) - dc(j,icp,j1)
+          end do
+
+          yy = aux - e(j,icp,i0) - c(j,icp,i0)
+
+          do j1 = 1, nd
+             do j2 = j1, nd
+                a(j1,j2) = a(j1,j2) + y(j1) * y(j2)
+             end do
+             x(j1) = x(j1) + y(j1) * yy
+          end do
+
+       end do
+    end do
+
+    call DSYSV( 'U', nd, 1, a, nps-1, ipiv, x, nps-1, work, &
+         & 100, info)
+
+    if (info .gt. 0) then
+       print *, 'det=0', (x(i),i=1,nd)
+    endif
+
+    do icp = 1, nfnc
+       irc = nint(diam(icp) / deltar) ! Only work inside the hard core
+       do j = 1, irc
+          aux = e(j,icp,i0)
+          do j1 = 1, nd
+             aux = aux - de(j,icp,j1) * x(j1)
+          end do
+          c(j,icp,i1) = - aux - 1.0d0
+       end do
+    end do
+
+  end subroutine msa_ng
+
 ! Basic driver routine for solving MSA: take a number of Picard
 ! iterations to pump-prime the Ng method.  Stop when error is less
 ! than tolerance, or when exceed maximum number of iterations.  The
 ! flag cold_start indicates whether the direct correlation function
-! should be re-initialised.  The initial guess to the direct
-! correlation function is either zero (start_type = 1), or c =
-! e^(-Ushort)-1 (start_type = 3).  Either of these should do in
-! principle, but the initial convergence may be different.  Note from
-! above that c is actually defined c' = c + Ulong, ie with the
-! long-range part of the potential added.
+! should be re-initialised.  For a cold start, the initial guess to
+! the direct correlation function inside the hard core is c' = -1.
+! Irrespective of this, we need to make sure c' is correctly
+! initialised outwith the hard core
 
   subroutine msa_solve
     implicit none
-    integer :: i
+    integer :: i, p, irc
+    do i = 1, nfnc
+       irc = nint(diam(i) / deltar) ! Reset everywhere outwith hard core
+       do p = 1, nps
+          c(irc+1:ng-1,i,p) = - ushort(irc+1:ng-1,i)
+       end do
+    end do
     if (cold_start.eq.1) then
        istep = 1
-       if (start_type.eq.1) c(:,:,1) = 0.0
-       if (start_type.eq.3) c(:,:,1) = expnegus(:,:) - 1.0
+       do i = 1, nfnc
+          irc = nint(diam(i) / deltar) ! Only initialise inside the hard core
+          c(1:irc,i,1) = - 1.0
+       end do
        cold_start = 0
        if (verbose.eq.1) then
-          if (start_type.eq.1) print *, "MSA cold start c' = 0"
-          if (start_type.eq.3) print *, "MSA cold start c' = e^(-v')-1"
+          print *, "MSA cold start c' = -1 (inside hard core)"
        end if
     else
        if (verbose.eq.1) then
-          print *, "MSA warm start c' = previous c'"
+          print *, "MSA warm start c' = previous c' (inside hard core)"
        end if
     end if
     call oz_solve
@@ -1066,13 +1169,12 @@ contains
        if (error .lt. tol) exit
     end do
     if (error .gt. tol) then
-       print *, "oz_mod.f90: msa_solve: error > tol"
-    else
-       if (auto_fns.eq.1) then
-          call make_pair_functions
-          call make_structure_factors
-          call make_thermodynamics
-       end if
+       print *, "oz_mod.f90: msa_solve: **WARNING*** error > tol"
+    end if
+    if (auto_fns.eq.1) then
+       call make_pair_functions
+       call make_structure_factors
+       call make_thermodynamics
     end if
   end subroutine msa_solve
 
@@ -1334,7 +1436,7 @@ contains
        print *, 'Compressibility factor: correlation contribution = ', cf_xc
        print *, 'Compressibility factor: total = ', 1.0 + cf_mf + cf_gc + cf_xc
        print *, 'Pressure (virial route) = ', press
-       print *, 'Excess pressure (virial route) = ', sum(rho) * (cf_mf + cf_xc)
+       print *, 'Excess pressure (virial route) = ', sum(rho) * (cf_mf + cf_gc + cf_xc)
        print *, 'Compressibility: correlation contribution = ', comp_xc
        print *, 'Compressibility: total = ', comp
        print *, 'Internal energy: mean field contribution = ', un_mf

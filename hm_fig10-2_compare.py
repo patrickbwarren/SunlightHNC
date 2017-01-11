@@ -47,6 +47,8 @@ data = [[0.00911,  0.1029, 0.0013,  0.0044, 0.0007,  0.9701, 0.0008],
 # and a cation).  Thus rho d^3 ranges from about 5e-4 to 0.2 in the
 # above table.
 
+# Calculations are done for both HNC and MSA, but only HNC printed
+
 import math as m
 
 xdat = list(m.sqrt(0.425**3 * 1.204 * data[i][0]) for i in range(len(data)))
@@ -80,25 +82,33 @@ lrhi = m.log(rhohi)
 x = []
 y1 = []
 y2 = []
+y3 = []
+y4 = []
 
 for i in range(npt):
     lr = lrlo + (lrhi - lrlo) * i / (npt - 1.0)
     rho = m.exp(lr)
+    x.append(m.sqrt(rho))
     w.rho[0] = rho / 2.0
     w.rho[1] = rho / 2.0
     w.hnc_solve()
     comp = 1.0 + w.un / 3.0 + w.cf_gc
-    x.append(m.sqrt(rho))
     y1.append(-w.un)
     y2.append(comp)
     print("%f\t%f\t%f\t%g" % (m.sqrt(rho), w.un, comp, w.error))
+    w.msa_solve()
+    comp = 1.0 + w.un / 3.0 + w.cf_gc
+    y3.append(-w.un)
+    y4.append(comp)
 
 import matplotlib.pyplot as plt
 
-plt.plot(xdat, nundat, 'ro', label='Rasaiah et al (1972) - energy (minus)')
-plt.plot(xdat, compdat, 'co', label='Rasaiah et al (1972) - pressure')
+plt.plot(xdat, nundat, 'ro', label='Rasaiah et al (1972): -U/V')
+plt.plot(xdat, compdat, 'co', label='Rasaiah et al (1972): p')
 plt.plot(x, y1, 'b-', label='HNC')
 plt.plot(x, y2, 'b-')
+plt.plot(x, y3, 'b--', label='MSA')
+plt.plot(x, y4, 'b--')
 plt.xlabel('$(\\rho\\sigma^3)^{1/2}$')
 plt.ylabel('$-U_n$ and $p/\\rho k_\\mathrm{B}T$')
 plt.legend(loc='upper left')
