@@ -417,7 +417,7 @@ alternative (and more popular) normalisation, for which
 $S_{\mu\nu}(k)\to\delta_{\mu\nu}$ as $k\to\infty$, is obtained from
 the above expression by multiplying by $({\rho_\mu\rho_\nu})^{-1/2}$.
 
-\subsection{Multicomponent RPA}
+\subsection{Multicomponent RPA}\label{sec:RPA}
 %
 The RPA closure of the Ornstein-Zernike equations is
 $c_{\mu\nu}(r)=-\beta v_{\mu\nu}(r)$.  This is in fact one of the
@@ -428,7 +428,7 @@ $c'_{\mu\nu}(r)=-\beta v'_{\mu\nu}(r)$.  The RPA does not make sense
 for hard core potentials and instead the full MSA should be used (see
 below).
 
-\subsection{Multicomponent EXP}
+\subsection{Multicomponent EXP}\label{sec:EXP}
 %
 The EXP approximation is a straightforward development of the RPA in
 which the real space total correlation functions are replaced by
@@ -481,10 +481,9 @@ MSA closure is
 This is almost a drop-in replacement for the HNC closure in
 \Eqref{eq:hncnd}.  For a cold start we can initialise $c'_{\mu\nu}=-1$
 for $r\le d_{\mu\nu}$.  In practice we can leave $c'_{\mu\nu}=-\beta
-v'_{\mu\nu}$ untouched for $r>d_{\mu\nu}$, during the iterative
-solution.  However, if doing this, one should make sure $c'_{\mu\nu}$
-is correctly reset for $r>d_{\mu\nu}$ whenever the potential is
-changed.
+v'_{\mu\nu}$ untouched for $r>d_{\mu\nu}$ during the iterative
+solution.  However, we make sure $c'_{\mu\nu}$ is correctly reset for
+$r>d_{\mu\nu}$ whenever the potential is changed.
   
 \subsection{Thermodynamics}
 \label{sec:thermo}
@@ -1220,54 +1219,58 @@ equation problem as fast and robust as possible.
 \item\verb+hnc_solve+ -- Calculate the HNC solution.  Specifically,
   initialise $c'_{\mu\nu}$ if the flag \verb+cold_start+ is set, take
   enough Picard steps to pump-prime the Ng acceleration method, then
-  attempt to converge to a solution.  This is the basic HNC solver routine
-  and contains appropriate calls to \verb+oz_solve+,
-  \verb+hnc_picard+, \verb+hnc_ng+ and \verb+conv_test+ below.
-  If successful (and the flag \verb+auto_fns+ is set) then the three
-  \verb+make_*+ functions are also called, resulting in a complete
-  solution to the problem.  The function \verb+hnc_solve+ should be
-  called after \verb+initialise+ and \verb+dpd_potential+, and may be
-  called multiple times with different densities for a fixed
-  potential, or with a different potential if \verb+dpd_potential+ is
-  called in between.  In these subsequent calls, the existing
-  $c'_{\mu\nu}$ is used as a starting point unless the flag
-  \verb+cold_start+ is reset.
+  attempt to converge to a solution.  This is the basic HNC solver
+  routine and contains appropriate calls to \verb+oz_solve+,
+  \verb+hnc_picard+, \verb+hnc_ng+ and \verb+conv_test+ below.  A
+  warning is issued if the convergence criterion is not met.  If the
+  flag \verb+auto_fns+ is set the three \verb+make_*+ functions are
+  also called, resulting in a complete solution to the problem.  The
+  function \verb+hnc_solve+ should be called only after
+  \verb+initialise+ and the potential has been initialised.  It may be
+  called multiple times with different densities for a given
+  potential, or the potential can be reset between calls.  In
+  later calls, the existing $c'_{\mu\nu}$ is used as a
+  starting point unless the flag \verb+cold_start+ is reset.
 %
 \item\verb+rpa_solve+ -- Calculate the RPA solution.  This involves
   only a single round trip through \verb+oz_solve+ from a specified
   start and does not require initialisation or a convergence
   criterion.  Provided the flag \verb+auto_fns+ is set, the three
-  \verb+make_*+ functions are also called. Like the HNC routine
-  \verb+rpa_solve+ should be called after \verb+initialise+ and
-  \verb+dpd_potential+, and may be called multiple times with
-  different densities for a fixed potential, or with a different
-  potential if \verb+dpd_potential+ is called in between.
+  \verb+make_*+ functions are also called. The function
+  \verb+rpa_solve+ should be called only after \verb+initialise+ and
+  the potential has been initialised.  It may be called multiple times
+  with different densities for a given potential, or the potential can
+  be reset between calls.  The RPA closure cannot be used with
+  hard cores (see section \ref{sec:RPA}).
 %
 \item\verb+exp_solve+ -- Calculate the EXP solution.  This involves
   first solving the RPA then implementing \Eqsref{eq:exp} and
   \eqref{eq:ozndb} (the latter involves a call to \verb+oz_solve2+).
   Provided the flag \verb+auto_fns+ is set, the three \verb+make_*+
-  functions are also called. Like the HNC routine \verb+exp_solve+
-  should be called after \verb+initialise+ and \verb+dpd_potential+,
-  and may be called multiple times with different densities for a
-  fixed potential, or with a different potential if
-  \verb+dpd_potential+ is called in between.
+  functions are also called. Like the RPA, the function
+  \verb+exp_solve+ should be called only after \verb+initialise+ and
+  the potential has been initialised.  It may be called multiple times
+  with different densities for a given potential, or the potential can
+  be reset between calls. The EXP closure cannot be used with
+  hard cores (see section \ref{sec:EXP}).
 %
 \item\verb+msa_solve+ -- Calculate the MSA solution, using a similar
   iterative algorithm to the HNC closure. This routine is the basic
   MSA solver and contains appropriate calls to \verb+oz_solve+,
-  \verb+msa_picard+, \verb+msa_ng+ and \verb+conv_test+.  Like the
-  other solvers, if successful (and the flag \verb+auto_fns+ is set)
-  then the three \verb+make_*+ functions are also called, resulting in
-  a complete solution to the problem.  The function \verb+msa_solve+
-  should be called after \verb+initialise+ and \verb+dpd_potential+,
-  and may be called multiple times with different densities for a
-  fixed potential, or with a different potential if
-  \verb+dpd_potential+ is called in between.  In these subsequent
-  calls, the existing $c'_{\mu\nu}$ is used as a starting point unless
-  the flag \verb+cold_start+ is reset.  Note that MSA is the same as
-  RPA if there are no hard cores (therefore, use \verb+rpa_solve+ in
-  that case!).
+  \verb+msa_picard+, \verb+msa_ng+ and \verb+conv_test+.  A warning is
+  issued if the convergence criterion is not met.  If the flag
+  \verb+auto_fns+ is set the three \verb+make_*+ functions are also
+  called, resulting in a complete solution to the problem.  Like the
+  others, the function \verb+msa_solve+ should be called only after
+  \verb+initialise+ and the potential has been initialised.  It may be
+  called multiple times with different densities for a given
+  potential, or the potential can be reset between calls.  In
+  these subsequent calls, the existing $c'_{\mu\nu}$ within the hard
+  core regions is used as a starting point unless the flag
+  \verb+cold_start+ is reset. In all cases it is ensured that outside
+  the hard core regions $c'_{\mu\nu}=-\beta v'_{\mu\nu}$. Note that the
+  MSA is the same as the RPA if there are no hard cores (therefore, use
+  \verb+rpa_solve+ in that case!).
 %
 \item\verb+oz_solve+ -- Solve the OZ relation in the form of
   \Eqref{eq:oznd} to find $e'_{\mu\nu}$ from $c'_{\mu\nu}$ (as a
@@ -1295,9 +1298,9 @@ $c'_{\mu\nu}$ given $e'_{\mu\nu}$, but using the Ng acceleration scheme.
 \item\verb+msa_ng+ -- Solve the MSA closure to find a new
 $c'_{\mu\nu}$ given $e'_{\mu\nu}$, but using the Ng acceleration scheme.
 %
-\item\verb+conv_test+ -- Check HNC convergence by calculating the
-  difference (saved in \verb+error+) between the current and
-  immediately preceeding $c'_{\mu\nu}$.
+\item\verb+conv_test+ -- Check convergence in iterative schemes by
+  calculating the difference (saved in \verb+error+) between the
+  current and immediately preceeding $c'_{\mu\nu}$.
 %
 \item\verb+make_pair_functions+ -- from \Eqref{eq:hrs}.  The
   choice to present $h_{\mu\nu}$ rather $g_{\mu\nu}$ is made because
@@ -1345,10 +1348,10 @@ convergence (usually safe to leave at default 100).
 %
 \item\verb+cold_start+ -- Flag (0 or 1) to indicate that that the
   solver should execute a cold start by initialising $c'_{\mu\nu}$;
-  this flag is by default only set for the first call to
-  \verb+hnc_solve+ since it is often the case that a later call
-  can re-use the current solution as the initial guess.  The flag
-  can be re-set by the user for subsequent calls.
+  this flag is by default only set for the first call to the solvers
+  since it is often the case that a later call can re-use the current
+  solution as the initial guess.  The flag can be re-set by the user
+  for subsequent calls.
 %
 \item\verb+start_type+ -- In a cold start initialise $c'_{\mu\nu}=0$
   (start type 1), $c'_{\mu\nu}=-\beta v'_{\mu\nu}$ (start type 2), or
@@ -1389,8 +1392,8 @@ convergence (usually safe to leave at default 100).
 %
 \item\verb+lbda+ -- Slater charge smearing length $\lambda$ (default
   1.0) in the DPD potential with exact interaction
-  (\verb+charge_type = 4+).  The name is truncated to avoid a clash
-  with python.
+  (\verb+charge_type = 4+).  The name is truncated because
+  \verb+lambda+ is a reserved word in python.
 %
 \item\verb+beta+ -- Slater charge smearing parameter $\beta$
   (default 1.0) in the DPD potential with approximate interaction
@@ -1448,8 +1451,8 @@ convergence (usually safe to leave at default 100).
   $k_j=j\times\delta_k$ for $j=1\dots n-1$.  Available after a call to
   \verb+initialise+.
 %
-\item\verb+error+ -- The final error estimate for the HNC solution, should
-  be less than \verb+tol+ if converged.
+\item\verb+error+ -- The final error estimate for the iterative
+  solvers, should be less than \verb+tol+ if converged.
 %
 \item\verb+potential_type+ -- The last used potential type. This is
   zero if no potential has been initialised, is equal to
@@ -1752,9 +1755,9 @@ Sections \ref{sec:vrp}--\ref{sec:feng} have been coded up as
   DPD is so good at representing fluid mixtures which fit
   Flory-Huggins (regular solution) theory.
 %
-\item\verb+hm_fig10-2_compare.py+ solves the HNC for the RPM and
-  compares with Monte-Carlo data, as in Fig 10.2 of \Refcite{HM06}.
-  See comments in file for more details.
+\item\verb+hm_fig10-2_compare.py+ solves the MSA and the HNC for the
+  RPM and compares with Monte-Carlo data, as in Fig 10.2 of
+  \Refcite{HM06}.  See comments in file for more details.
 %
 \item\verb+urpm_oneoff.py+ and \verb+urpm_scan.py+ are a pair of
   driver routines for solving the ultrasoft restricted primitive model
