@@ -6,9 +6,9 @@ Version 1.7 handles an arbitrary number of components (rather than a
 maximum of three, as for previous versions).
 
 The present development snapshot incorporates the exact and
-approximate pair potentials for Slater charge smearing, and adds plots
+approximate pair potentials for Slater charge smearing, adds plots
 to the demo scripts which compare with published data for various
-systems.
+systems, and now includes the MSA closure for hard core potentials (not fully tested).
 
 #### Features
 
