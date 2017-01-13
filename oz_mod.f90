@@ -1390,9 +1390,10 @@ contains
 
     ! Evaluate t_ij = 4 pi int_0^inf (h_ij e_ij / 2 - c_ij) r^2 dr.
     ! Note that the contribution from both end-points again vanishes.
-    ! Also we can use c' for c in the second term because charge
-    ! neutrality causes the contribution from Ulong to vanish, but
-    ! we must use e = e' + Ulong for the first term.
+    ! We can use c' for c in the second term because the long range
+    ! part is accounted for analytically (it is the same integral as
+    ! appears in the compressibility), but we must use e = e' + Ulong
+    ! for the first term.
 
     do i = 1, nfnc
        t(i) = fourpi * deltar * sum((0.5*(c(:,i,i1) + e(:,i,i1)) &
