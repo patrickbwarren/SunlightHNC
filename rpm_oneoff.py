@@ -83,7 +83,14 @@ if not args.dump:
         print('*** HNC solved, error = ', w.error)
     w.write_thermodynamics()
 
-# code plots log10(r h(r)) versus r
+
+# density-density structure factor
+
+ddsf = np.sum(np.sum(w.sk, axis=2), axis=1) / np.sum(w.rho)
+
+# charge-charge structure factor (notice how elegant this is :-)
+
+ccsf = np.dot(np.dot(w.z, w.sk), w.z) / np.sum(w.rho)
 
 if args.show:
 
@@ -109,22 +116,12 @@ if args.show:
     plt.subplot(2, 2, 2)
 
     imax = int(args.grcut / w.deltar)
-
     plt.plot(w.r[0:imax], 1.0 + w.hr[0:imax, 0, 0], label="$+\!+$")
     plt.plot(w.r[0:imax], 1.0 + w.hr[0:imax, 0, 1], label="$+ -$")
-
     plt.legend(loc='upper right')
     plt.xlabel('$r$')
     plt.ylabel('$g(r)$')
-
-    # density-density structure factor
-
-    ddsf = np.sum(np.sum(w.sk, axis=2), axis=1) / np.sum(w.rho)
-
-    # charge-charge structure factor (notice how elegant this is :-)
-
-    ccsf = np.dot(np.dot(w.z, w.sk), w.z) / np.sum(w.rho)
-
+    
     plt.subplot(2, 2, 3)
 
     jmax = int(args.skcut / w.deltak)
@@ -140,5 +137,9 @@ if args.show:
 if args.dump:
 
     for i in range(w.ng-1):
-        print("%g\t%g\t%g\t%g" % (w.r[i], w.hr[i, 0, 0], w.hr[i, 0, 1], w.hr[i, 1, 1]))
+        print("H\t%g\t%g\t%g\t%g" % (w.r[i], w.hr[i, 0, 0], w.hr[i, 0, 1], w.hr[i, 1, 1]))
+
+
+    for i in range(w.ng-1):
+        print("S\t%g\t%g\t%g" % (w.k[i], ddsf[i], ccsf[i]))
 
