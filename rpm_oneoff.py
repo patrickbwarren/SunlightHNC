@@ -86,11 +86,11 @@ if not args.dump:
 
 # density-density structure factor
 
-ddsf = np.sum(np.sum(w.sk, axis=2), axis=1) / np.sum(w.rho)
+snn = np.sum(np.sum(w.sk, axis=2), axis=1) / np.sum(w.rho)
 
 # charge-charge structure factor (notice how elegant this is :-)
 
-ccsf = np.dot(np.dot(w.z, w.sk), w.z) / np.sum(w.rho)
+szz = np.dot(np.dot(w.z, w.sk), w.z) / np.sum(w.rho)
 
 if args.show:
 
@@ -125,8 +125,8 @@ if args.show:
     plt.subplot(2, 2, 3)
 
     jmax = int(args.skcut / w.deltak)
-    plt.plot(w.k[:jmax], ddsf[:jmax], label='$S_{NN}$')
-    plt.plot(w.k[:jmax], ccsf[:jmax], label='$S_{ZZ}$')
+    plt.plot(w.k[:jmax], snn[:jmax], label='$S_{NN}$')
+    plt.plot(w.k[:jmax], szz[:jmax], label='$S_{ZZ}$')
     plt.legend(loc='lower right')
     plt.xlabel('$k$')
     plt.ylabel('$S(k)$')
@@ -141,5 +141,5 @@ if args.dump:
 
 
     for i in range(w.ng-1):
-        print("S\t%g\t%g\t%g" % (w.k[i], ddsf[i], ccsf[i]))
+        print("S\t%g\t%g\t%g" % (w.k[i], snn[i], szz[i]))
 

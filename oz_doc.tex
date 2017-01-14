@@ -27,6 +27,7 @@
 
 \DeclareMathOperator{\erf}{erf}
 \DeclareMathOperator{\erfc}{erfc}
+\DeclareMathOperator{\imaginary}{Im}
 
 \newcommand{\latin}[1]{\emph{#1}}
 \newcommand{\german}[1]{$\frak{#1}$}
@@ -411,7 +412,16 @@ Fourier transforms ${\tilde c}_{\mu\nu}\myprime$ and ${\tilde
   e}_{\mu\nu}\myprime$ are available as a byproduct of solving the OZ
 relation.  The unusual choice of normalisation is made to facilitate
 the calculation of the charge-charge and density-density structure
-factors.  With this choice the structure factors obey
+factors, \viz\
+%
+\begin{equation}
+  S_{NN}(k) = \frac{\sum_{\mu\nu}S_{\mu\nu}(k)}{\sum_\mu\rho_\mu}\,\quad
+  S_{ZZ}(k) = \frac{\sum_{\mu\nu}z_\mu z_\nu S_{\mu\nu}(k)}{\sum_\mu\rho_\mu}\,.
+  \label{eq:snnszz}
+\end{equation}
+%
+assuming the ion valencies are $z_\mu$.
+With the above normalisation the structure factors obey
 $S_{\mu\nu}(k)\to\rho_\mu\delta_{\mu\nu}$ as $k\to\infty$.  An
 alternative (and more popular) normalisation, for which
 $S_{\mu\nu}(k)\to\delta_{\mu\nu}$ as $k\to\infty$, is obtained from
@@ -1710,9 +1720,8 @@ print 'HNC fnex =   ', w.fnex
 (the last of these uses the built-in free energy evaluation for HNC), giving
 %
 \begin{verbatim}
-energy fnex = 5.31588405588
-mu fnex =     5.31606130848
-HNC fnex =    5.31593361272
+energy fnex = 5.31588405588 mu fnex = 5.31606130848 HNC fnex =
+ 5.31593361272
 \end{verbatim}
 %
 We see that all three routes agree to the fourth decimal place,
@@ -1797,6 +1806,110 @@ Sections \ref{sec:vrp}--\ref{sec:feng} have been coded up as
 %
 \end{itemize}
 
+\appendix
+%
+\section{Appendix}
+%
+\subsection{MSA charge-charge structure factor for RPM}
+%
+The MSA solution for the RPM is known analytically \cite{WL72}.  Some results are
+summarised here, for benchmarking MSA in the code.  We focus
+particularly on the charge-charge structure factor as the closed form
+solution is fairly simple.  As in section \ref{sec:softRPM} we suppose
+the potential is given by
+%
+\begin{equation}
+  \beta v_{ij}=\Bigl\{\begin{array}{ll}
+  \infty & r\le R\\[3pt]
+  z_iz_j\lB/r & r>R
+  \end{array}
+\end{equation}
+%
+where $z_1=1$ and $z_2=-1$. In this section we shall use $R$ for the
+hard core diameter, to match with literature notation.  We shall set
+$\rho_1=\rho_2=\rho/2$.  Generically, because of symmetry
+($h_{11}=h_{22}$ and $h_{12}=h_{21}$ \etc), the charge-charge
+structure factor is given by
+%
+\begin{equation}
+  S_{ZZ}=1+{\textstyle\frac{1}{2}}\rho(\tilde h_{11}-\tilde h_{12})\,.
+\end{equation}
+%
+The symmetry also means that the OZ equation decouples,
+%
+\begin{equation}
+  \tilde h_{11}-\tilde h_{12}=
+  \tilde c_{11}-\tilde c_{12} + 
+  {\textstyle\frac{1}{2}}\rho(\tilde h_{11}-\tilde h_{12})
+  (\tilde c_{11}-\tilde c_{12})\,.
+\end{equation}
+%
+This means that the charge-charge structure factor can be expressed
+simply in terms of the Fourier-transformed direct correlation functions,
+%
+\begin{equation}
+  S_{ZZ}=[1-{\textstyle\frac{1}{2}}\rho(\tilde c_{11}-\tilde c_{12})]^{-1}\,.
+\end{equation}
+%
+Now we turn to the MSA solution of the RPM.  There are two ways to
+calculate the charge-charge structure factor, both of which lead to
+the same result.  The first is to Fourier transform the known solution
+to the real space direct correlation function.  For this, we introduce
+some notation.  We define the inverse Debye length, and dimensionless
+version of the same, $\kappa^2=4\pi\lB\rho$ and $x=\kappa R$.  In
+terms of the latter we define $B=[1+x+(1+2x)^{1/2}]/x$.  Then the MSA
+solution for the direct correlation function difference is \cite{WL72}
+%
+\begin{equation}
+  c_{11}-c_{12}=-\frac{2\lB}{r}+\Bigl[\frac{2\lB}{r}
+  -\frac{4\lB}{R}\Bigl(B-\frac{B^2 r}{2R}\Bigr)\Bigr]\,\Theta(R-r)\,.
+\end{equation}
+%
+In this, $\Theta(R-r)$ is the Heaviside function, which switches
+on the second term for  $r\le R$.  The reason for focusing on the
+charge-charge structure factor is now apparent as this difference
+expression does not involved the Percus-Yevick solution for uncharged
+hard spheres, which would otherwise accompany the individual direct
+correlation functions.
+
+The Fourier transform of this is readily performed: the first term
+gives $-8\pi\lB/k^2$ and the second term, $(4\pi/k)\int_0^R
+dr\,r\,\sin kr\,[\dots]$, is easily evaluated.  This is inserted in
+the expression for the charge-charge structure factor to obtain, after
+some simplification,
+%
+\begin{equation}
+  S_{ZZ}(k)=\frac{k^4}{k^4+8q^4+4q^2(k^2-2q^2)\cos kR+8kq^3\sin kR}\,.
+  \label{eq:szzrpm}
+\end{equation}
+%
+In this, $q=[(1+2x)^{1/2}-1]/(2R)$.\footnote{Note that $x=2qR(1+qR)$
+  and $B=qR/(1+qR)$.}  This can be compared directly with the
+charge-charge structure factor reported by \verb+rpm_oneoff.py+.
+Complete agreement to within numerical accuracy should be observed.
+Note that correctly $S_{ZZ}(k)=k^2/\kappa^2+O(k^4)$ as $k\to0$ (thus
+satisfying the Stillinger-Lovett moment conditions), and
+$S_{ZZ}(k)\to1$ as $k\to\infty$.
+
+An alternative route to the same result uses analytic continuation on
+the Laplace-transformed direct correlation function.  Specifically,
+Waisman and Lebowitz \cite{WL72} define $\bar G(s)=\int_0^\infty
+e^{-sr} dr\,r\, [g_{11}(r)-g_{12}(r)]$ and give the result (see also
+Stell and Sun \cite{SS75})
+%
+\begin{equation}
+  \bar G(s)=-s(2q^2/\pi\rho)[(s^2+2qs+2q^2)e^{sR}-2q^2]^{-1}\,.
+\end{equation}
+%
+From the definitions it is easy to infer
+%
+\begin{equation}
+  S_{ZZ}(k)=1+\frac{2\pi\rho}{k}\imaginary \bar G(-ik)\,.
+\end{equation}
+%
+If the indicated operations are carried out, one recovers
+\Eqref{eq:szzrpm}.
+
 \thebibliography{}
 
 \bibitem{WVA+13} P.~B.~Warren, A.~Vlasov, L.~Anton and A.~J.~Masters
@@ -1823,20 +1936,20 @@ Sections \ref{sec:vrp}--\ref{sec:feng} have been coded up as
 \bibitem{Vrbka09} L.~Vrbka, M.~Lund, I.~Kalcher, J.~Dzubiella,
   R.~R.~Netz, and W.~Kunz, ``Ion-specific thermodynamics of
   multicomponent electrolytes: A hybrid HNC/MD approach'',
-  J. Chem. Phys. {\bf131}, 154109 (2009).
+  J.\ Chem.\ Phys.\ {\bf131}, 154109 (2009).
   
 \bibitem{WV14} P.~B.~Warren and A.~Vlasov ``Screening properties of
   four mesoscale smoothed charge models, with application to
-  dissipative particle dynamics'', J. Chem. Phys. {\bf140}, 084904
+  dissipative particle dynamics'', J.\ Chem.\ Phys.\ {\bf140}, 084904
   (2014).
 
 \bibitem{Groot03}R.~D.~Groot, ``Electrostatic interactions in
   dissipative particle dynamics---simulation of polyelectrolytes and
-  anionic surfactants'', J. Chem. Phys. {\bf118}, 11265 (2003).
+  anionic surfactants'', J.\ Chem.\ Phys.\ {\bf118}, 11265 (2003).
 
 \bibitem{GM+06}M.~Gonz\'alez-Melchor, E.~Mayoral, M. E. Vel\'azquez
   and J. Alejandre, ``Electrostatic interactions in dissipative
-  particle dynamics using the Ewald sums'', J. Chem. Phys. {\bf125},
+  particle dynamics using the Ewald sums'', J.\ Chem.\ Phys.\ {\bf125},
   224107 (2006).
 
 \bibitem{NR92} W. H. Press, B. P. Flannery, S. A. Teukolsky,
@@ -1845,10 +1958,18 @@ Sections \ref{sec:vrp}--\ref{sec:feng} have been coded up as
 
 \bibitem{GW97} R.~D.~Groot and P.~B.~Warren, ``Dissipative particle
   dynamics: bridging the gap between atomistic and mesoscopic
-  simulation'', J. Chem. Phys. {\bf107}, 4423 (1997).
+  simulation'', J.\ Chem.\ Phys.\ {\bf107}, 4423 (1997).
 
 \bibitem{WSG01} C.~M.~Wijmans, B.~Smit and R.~D.~Groot, ``Phase
   behavior of monomeric mixtures and polymer solutions with soft
-  interaction potentials'', J. Chem. Phys. {\bf114}, 7644 (2001).
+  interaction potentials'', J.\ Chem.\ Phys.\ {\bf114}, 7644 (2001).
+
+\bibitem{WL72} E.~Waisman and J.~L.~Lebowitz, ``Mean spherical model
+  integral equation for charged hard spheres. II Results'',
+  J.\ Chem.\ Phys.\ {\bf56}, 3093 (1972).
+
+\bibitem{SS75} G.~Stell and S.~F.~Sun, ``Generalised mean spherical
+  approximation for charged hard spheres: The electrolyte regime'',
+  J.\ Chem.\ Phys.\ {\bf63}, 5333 (1975).
 
 \end{document}
