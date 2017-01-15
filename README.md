@@ -1,18 +1,15 @@
 ## General purpose HNC code
 
-The current stable release is version 1.7
+The current stable release is version 1.8
 
-Version 1.7 handles an arbitrary number of components (rather than a
-maximum of three, as for previous versions).
-
-The present development snapshot incorporates the exact and
-approximate pair potentials for Slater charge smearing, adds plots
-to the demo scripts which compare with published data for various
-systems, and now includes the MSA closure for hard core potentials (not fully tested).
+Version 1.8 includes the MSA closure and various potentials for Slater
+smeared charges.  Version 1.7 handles an arbitrary number of
+components (rather than a maximum of three, as for previous versions).
 
 #### Features
 
 * FORTRAN 90 based, with example python driver scripts ;
+* HNC, MSA, RPA closures; and EXP refinement ;
 * fast Ng solver, and Ng decomposition for electrostatics ;
 * multicomponent (arbitrary number of components) ;
 * hard and soft core (DPD) potentials ;
@@ -90,7 +87,7 @@ along with this program.  If not, see
 
 SunlightDPD is based on an original code copyright &copy; 2007 Lucian
 Anton, with modifications copyright &copy; 2008, 2009 Andrey Vlasov, and
-additional modifications copyright &copy; 2009-2016 Unilever UK Central
+additional modifications copyright &copy; 2009-2017 Unilever UK Central
 Resources Ltd (Registered in London number 29140;
 Registered Office: Unilever House, 100 Victoria Embankment, London EC4Y 0DY, UK).
 
