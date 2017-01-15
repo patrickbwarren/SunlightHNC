@@ -36,14 +36,19 @@ parser.add_argument('--npic', action='store', default=6, type=int, help='number 
 
 parser.add_argument('--lb', action='store', default=1.0, type=float, help='Bjerrum length (default 1.0)')
 parser.add_argument('--sigma', action='store', default=1.0, type=float, help='hard core diameter (default 1.0)')
+parser.add_argument('--kappa', action='store', default=-1.0, type=float, help='softening parameter (default off)')
 
 parser.add_argument('--rhoz', action='store', default=0.1, type=float, help='total charge density (default 0.1)')
 parser.add_argument('--grcut', action='store', default=15.0, type=float, help='r cut off for g(r) plots (default 15.0)')
 parser.add_argument('--skcut', action='store', default=15.0, type=float, help='k cut off for S(k) plots (default 15.0)')
 
+parser.add_argument('--msa', action='store_true', help='use MSA (default HNC)')
+parser.add_argument('--exp', action='store_true', help='use EXP refinement')
+parser.add_argument('--npt', action='store', default=1, type=int, help='number of intermediate warm-up steps')
+
 parser.add_argument('--show', action='store_true', help='show results')
 parser.add_argument('--dump', action='store_true', help='write out g(r)')
-parser.add_argument('--msa', action='store_true', help='use MSA (default HNC)')
+
 parser.add_argument('--verbose', action='store_true', help='more output')
 
 args = parser.parse_args()
@@ -58,7 +63,7 @@ w.initialise()
 
 w.lb = args.lb
 w.sigma = args.sigma
-w.kappa = -1.0
+w.kappa = args.kappa
 
 w.soft_rpm_potential(0)
 
@@ -71,25 +76,36 @@ if args.verbose:
     w.write_params()
     w.verbose = 1
 
+if args.exp: args.msa = args.exp
+
 if args.msa:
     w.msa_solve()
 else:
-    w.hnc_solve()
+    if args.npt == 1:
+        w.hnc_solve()
+    else:
+        for i in range(args.npt):
+            w.lb = (i + 1.0) / args.npt * args.lb
+            print('lb = ', w.lb)
+            w.soft_rpm_potential(0)
+            w.hnc_solve()
+            if args.verbose:
+                print('HNC error = ', w.error)
+
+if args.exp: w.exp_refine()
 
 if not args.dump:
     if args.msa:
         print('*** MSA solved, error = ', w.error)
     else:
         print('*** HNC solved, error = ', w.error)
+    if args.exp: print('*** EXP refinement applied')
     w.write_thermodynamics()
 
-
-# density-density structure factor
+# density-density and charge-charge structure factor (notice how
+# elegant this is :-)
 
 snn = np.sum(np.sum(w.sk, axis=2), axis=1) / np.sum(w.rho)
-
-# charge-charge structure factor (notice how elegant this is :-)
-
 szz = np.dot(np.dot(w.z, w.sk), w.z) / np.sum(w.rho)
 
 if args.show:
@@ -98,7 +114,9 @@ if args.show:
 
     plt.subplot(2, 2, 1)
 
-    if (args.msa): plt.title('MSA solution, error = %0.1g' % w.error)
+    if (args.msa):
+        if args.exp: plt.title('MSA+EXP solution, error = %0.1g' % w.error)
+        else: plt.title('MSA solution, error = %0.1g' % w.error)
     else: plt.title('HNC solution, error = %0.1g' % w.error)
 
     plt.plot(w.r[:], 

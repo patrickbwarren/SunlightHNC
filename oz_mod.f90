@@ -160,7 +160,8 @@ module wizard
        & muex(:),           & ! chemical potential array
        & c(:, :, :),        & ! direct correlation functions (dcfs)
        & e(:, :, :),        & ! indirect correlation functions (icfs)
-       & hr(:, :, :),       & ! total correlation functions (tcfs)
+       & h(:, :),           & ! total correlation functions (tcfs)
+       & hr(:, :, :),       & ! total correlation functions (alt form)
        & ck(:, :),          & ! transform of dcfs
        & ek(:, :),          & ! transform of icfs
        & hk(:, :),          & ! transform of total correlation functions
@@ -192,6 +193,7 @@ contains
     allocate(tl(nfnc))
     allocate(c(ng-1, nfnc, nps))
     allocate(e(ng-1, nfnc, nps))
+    allocate(h(ng-1, nfnc))
     allocate(hr(ng-1, ncomp, ncomp))
     allocate(ck(ng-1, nfnc))
     allocate(ek(ng-1, nfnc))
@@ -390,8 +392,7 @@ contains
     end if
 
     ! Slater charge smearing as in Gonzales-Melchor et al, [JCP v125,
-    ! 224107 (2006)] with exact expression for interaction (here
-    ! translated into reciprocal space).
+    ! 224107 (2006)] with exact expression for interaction.
 
     if (charge_type .eq. 4) then
 
@@ -748,21 +749,10 @@ contains
     integer :: perm(ncomp)
     double precision :: &
          & a(ncomp, ncomp), b(ncomp, ncomp), &
-         & h(ng-1, nfnc), hmat(ncomp, ncomp), &
-         & rhomat(ncomp, ncomp), unita(ncomp, ncomp)
+         & hmat(ncomp, ncomp), rhomat(ncomp, ncomp), &
+         & unita(ncomp, ncomp)
 
     i1 = mod(istep-1, nps) + 1
-
-    ! This is called after the correlation function h_ij have been
-    ! calculated (using RPA).  We therefore unpack the matrix
-    ! functions and Fourier transform to reciprocal space
-
-    do j = 1, ncomp
-       do i = 1, j
-          ij = i + j*(j-1)/2
-          h(:, ij) = hr(:, i, j)
-       end do
-    end do
 
     do i=1, nfnc
        fftwx(1:ng-1) = r(1:ng-1) * h(1:ng-1, i)
@@ -830,8 +820,8 @@ contains
 
     ! Do the Fourier back transforms and calculate e = h - c.  This
     ! means the results can be used in the structure and
-    ! thermodynamics routines as though they had come from the HNC
-    ! solution.
+    ! thermodynamics routines as though they had come from the
+    ! HNC/MSA/RPA solution.
 
     do i = 1, nfnc
 
@@ -1003,6 +993,9 @@ contains
        call make_pair_functions
        call make_structure_factors
        call make_thermodynamics
+    end if
+    if (verbose.eq.1) then
+       print *, "HNC solved"
     end if
   end subroutine hnc_solve
 
@@ -1176,12 +1169,14 @@ contains
        call make_structure_factors
        call make_thermodynamics
     end if
+    if (verbose.eq.1) then
+       print *, "MSA solved"
+    end if
   end subroutine msa_solve
 
 ! Given the HNC machinery, the implementation of the RPA is almost
 ! completely trivial and corresponds to one iteration through the
-! Ornstein-Zernike solver given the choice c = - Ushort (HNC
-! start_type = 2).
+! Ornstein-Zernike solver given the choice c = - Ushort.
 
   subroutine rpa_solve
     implicit none
@@ -1194,31 +1189,37 @@ contains
        call make_thermodynamics
     end if
     if (verbose.eq.1) then
-       print *, "RPA solution, c' = - v'"
+       print *, "RPA solve"
     end if
   end subroutine rpa_solve
 
-! The EXP approximation is a development of the RPA approximation, in
-! which h --> exp(h)-1.  A full solution requires a follow-up round
-! trip through another version of the Ornstein-Zernike relation, to
-! obtain the direct and indirect correlation functions.
+! The EXP approximation refines the RPA/MSA solution by sending h -->
+! exp(h)-1 outwith any hard core regions.  A full solution requires a
+! follow-up round trip through another version of the Ornstein-Zernike
+! relation, to obtain the direct and indirect correlation functions.
+! This function should be called *after* MSA or RPA, as it assumes
+! these initial solutions.
 
-  subroutine exp_solve
+  subroutine exp_refine
     implicit none
-    istep = 1
-    c(:,:,1) = - ushort(:,:)
-    call oz_solve
-    call make_pair_functions
-    hr(:,:,:) = exp(hr(:,:,:)) - 1.0d0
+    integer :: i, i1, irc
+    i1 = mod(istep-1, nps) + 1
+    h(:,:) = c(:,:,i1) + e(:,:,i1)
+    h = exp(h) - 1.0
+    do i = 1, nfnc
+       irc = nint(diam(i) / deltar) ! Reset inside the hard core
+       h(1:irc,i) = - 1.0
+    end do
     call oz_solve2
     if (auto_fns.eq.1) then
+       call make_pair_functions
        call make_structure_factors
        call make_thermodynamics
     end if
     if (verbose.eq.1) then
-       print *, "EXP solution"
+       print *, "EXP refined"
     end if
-  end subroutine exp_solve
+  end subroutine exp_refine
 
 ! Construct the structure factors out of the transform of the total
 ! correlation function.  Note that ck and ek are available after a

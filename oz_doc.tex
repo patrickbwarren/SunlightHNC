@@ -386,6 +386,8 @@ should be regarded as belonging to $\beta v_{\mu\nu}'$ and the
 numerical scheme should be constructed to use only $\exp[-\beta
   v_{\mu\nu}']$ (which can be pre-computed).
 
+\subsubsection{Pair functions}
+%
 Given a converged solution pair $(c_{\mu\nu}', e_{\mu\nu}')$, the
 total correlation functions can be evaluated from
 %
@@ -396,6 +398,8 @@ h_{\mu\nu}(r) = c'_{\mu\nu}(r) +  e'_{\mu\nu}(r)\label{eq:hrs}
 (note that $\beta v_{\mu\nu}\lr$ cancels).  The pair functions are
 given by $g_{\mu\nu}=\delta_{\mu\nu}+h_{\mu\nu}$.
 
+\subsubsection{Structure factors}
+%
 For the partial structure factors, there is a choice of normalisation.
 In the present code the structure factors are perhaps unusually
 defined to be
@@ -411,71 +415,30 @@ where ${\tilde h}_{\mu\nu}={\tilde c}_{\mu\nu}\myprime + {\tilde
 Fourier transforms ${\tilde c}_{\mu\nu}\myprime$ and ${\tilde
   e}_{\mu\nu}\myprime$ are available as a byproduct of solving the OZ
 relation.  The unusual choice of normalisation is made to facilitate
-the calculation of the charge-charge and density-density structure
+the calculation of the density-density and charge-charge structure
 factors, \viz\
 %
 \begin{equation}
-  S_{NN}(k) = \frac{\sum_{\mu\nu}S_{\mu\nu}(k)}{\sum_\mu\rho_\mu}\,\quad
-  S_{ZZ}(k) = \frac{\sum_{\mu\nu}z_\mu z_\nu S_{\mu\nu}(k)}{\sum_\mu\rho_\mu}\,.
+  S_{NN}(k) = \frac{\sum_{\mu\nu}S_{\mu\nu}(k)}{\sum_\mu\rho_\mu}\,,\quad
+  S_{ZZ}(k) = \frac{\sum_{\mu\nu}z_\mu z_\nu S_{\mu\nu}(k)}{\sum_\mu\rho_\mu}
   \label{eq:snnszz}
 \end{equation}
 %
-assuming the ion valencies are $z_\mu$.
+(assuming the ion valencies are $z_\mu$ for the latter).
 With the above normalisation the structure factors obey
 $S_{\mu\nu}(k)\to\rho_\mu\delta_{\mu\nu}$ as $k\to\infty$.  An
 alternative (and more popular) normalisation, for which
 $S_{\mu\nu}(k)\to\delta_{\mu\nu}$ as $k\to\infty$, is obtained from
 the above expression by multiplying by $({\rho_\mu\rho_\nu})^{-1/2}$.
 
-\subsection{Multicomponent RPA}\label{sec:RPA}
-%
-The RPA closure of the Ornstein-Zernike equations is
-$c_{\mu\nu}(r)=-\beta v_{\mu\nu}(r)$.  This is in fact one of the
-choices for initialising the HNC solver.  Given the HNC machinery, the
-implementation of the RPA is almost completely trivial and comprises a
-single round trip through the OZ solver starting from
-$c'_{\mu\nu}(r)=-\beta v'_{\mu\nu}(r)$.  The RPA does not make sense
-for hard core potentials and instead the full MSA should be used (see
-below).
-
-\subsection{Multicomponent EXP}\label{sec:EXP}
-%
-The EXP approximation is a straightforward development of the RPA in
-which the real space total correlation functions are replaced by
-%
-\begin{equation}
-h_{\mu\nu}(r)\to \exp[h_{\mu\nu}(r)]-1\,.\label{eq:exp}
-\end{equation}
-%
-This breaks unwarranted symmetries such as $h_{++}=-h_{+-}$ and
-ensures that $h_{\mu\nu}(r)>-1$ which is not always satisfied by the
-RPA.  In practice EXP can be nearly as good as HNC and extends to
-state points where HNC doesn't have a solution.  Since the EXP
-approximation is defined as an action on the total correlation
-functions in real space, a round trip through the OZ relation is
-required to compute the corresponding direct and indirect correlation
-functions.  To do this we rewrite the OZ relation in \Eqref{eq:oz2a} as
-%
-\begin{equation}
-{\tilde C}' = (I+{\tilde H}\cdot R)^{-1}\cdot{\tilde H}
- + \beta{\tilde U}\lr\,.
-\label{eq:ozndb}
-\end{equation}
-%
-Once this has been implemented, $e'_{\mu\nu}= h_{\mu\nu} -
-c'_{\mu\nu}$ follows by subtraction.  Since it depends on the RPA, the
-EXP approximation in this form cannot be used for hard core
-potentials.
-
 \subsection{Multicomponent MSA}
 %
-The mean spherical approximation (MSA) differs from the RPA only in
-the presence of hard cores.  In this case we require $g_{\mu\nu}(r)=0$
-for $r\le d_{\mu\nu}$.  Together with the RPA-like $c_{\mu\nu}(r)=
--\beta v_{\mu\nu}(r)$ for $r> d_{\mu\nu}$, this gives the MSA closure.
-Here, $d_{\mu\nu}$ is the range of the hard core repulsion between
-species $\mu$ and $\nu$ (\ie\ $v'_{\mu\nu}=\infty$ for $r\le
-d_{\mu\nu}$).  Rewriting as usual in terms of our offset functions
+The closure in the mean spherical approximation (MSA) is
+$g_{\mu\nu}(r)=0$ for $r\le d_{\mu\nu}$, and $c_{\mu\nu}(r)= -\beta
+v_{\mu\nu}(r)$ for $r> d_{\mu\nu}$.  Here, $d_{\mu\nu}$ is the range
+of the hard core repulsion between species $\mu$ and $\nu$
+(\ie\ $v'_{\mu\nu}=\infty$ for $r\le d_{\mu\nu}$).  Rewriting as usual
+in terms of our offset functions
 $v'_{\mu\nu}=v_{\mu\nu}-v\lr_{\mu\nu}$, $c'_{\mu\nu}=c_{\mu\nu}+\beta
 v\lr_{\mu\nu}$ and $e'_{\mu\nu}=e_{\mu\nu}-\beta v\lr_{\mu\nu}$, where
 $h_{\mu\nu}=g_{\mu\nu}-1$ and $e_{\mu\nu}=h_{\mu\nu}-c_{\mu\nu}$, the
@@ -494,16 +457,53 @@ for $r\le d_{\mu\nu}$.  In practice we can leave $c'_{\mu\nu}=-\beta
 v'_{\mu\nu}$ untouched for $r>d_{\mu\nu}$ during the iterative
 solution.  However, we make sure $c'_{\mu\nu}$ is correctly reset for
 $r>d_{\mu\nu}$ whenever the potential is changed.
-  
+
+\subsection{Multicomponent RPA}\label{sec:RPA}
+%
+The RPA closure is a special case of the MSA when there are no hard
+cores, and is represented by $c_{\mu\nu}(r)=-\beta v_{\mu\nu}(r)$.
+This is in fact one of the choices for initialising the HNC solver.
+Given the HNC machinery, the implementation of the RPA is almost
+completely trivial and comprises a single round trip through the OZ
+solver starting from $c'_{\mu\nu}(r)=-\beta v'_{\mu\nu}(r)$.
+
+\subsection{EXP refinement}\label{sec:EXP}
+%
+The EXP approximation is a straightforward refinement of the MSA/RPA
+in which the real space total correlation functions outside the hard
+cores are replaced by
+%
+\begin{equation}
+h_{\mu\nu}(r)\to \exp[h_{\mu\nu}(r)]-1\,.\label{eq:exp}
+\end{equation}
+%
+This breaks unwarranted symmetries such as $h_{++}=-h_{+-}$ and
+ensures that $h_{\mu\nu}(r)>-1$ which is not always satisfied by the
+MSA/RPA.  In practice EXP can be nearly as good as HNC and extends to
+state points where HNC doesn't have a solution.  Since the EXP
+approximation is defined as an action on the total correlation
+functions in real space, a round trip through the OZ relation is
+required to compute the corresponding direct and indirect correlation
+functions.  To do this we rewrite the OZ relation in \Eqref{eq:oz2a} as
+%
+\begin{equation}
+{\tilde C}' = (I+{\tilde H}\cdot R)^{-1}\cdot{\tilde H}
+ + \beta{\tilde U}\lr\,.
+\label{eq:ozndb}
+\end{equation}
+%
+Once this has been implemented, $e'_{\mu\nu}= h_{\mu\nu} -
+c'_{\mu\nu}$ follows by subtraction.
+
 \subsection{Thermodynamics}
 \label{sec:thermo}
 %
-The above section completely specifies the HNC closure for the
+The above section completely specifies the various closures for the
 integral equation problem for multicomponent system.  We provide here
 the suite of thermodynamic quantities which can be evaluated from the
-converged solution pair $(c_{\mu\nu}', e_{\mu\nu}')$ (or indeed for
-the RPA or EXP solutions).  Some care is needed in the case of hard
-core potentials, where $v_{\mu\nu}=\infty$ for $r<d_{\mu\nu}$.
+converged solution pair $(c_{\mu\nu}', e_{\mu\nu}')$.  Some care is
+needed in the case of hard core potentials, where $v_{\mu\nu}=\infty$
+for $r<d_{\mu\nu}$.
 
 The first thermodynamic quantity is the so-called virial route
 compressibility factor
@@ -863,10 +863,12 @@ expression for the interaction potential, for which we have
 These actually corresponds to a charge density $\beta^2 e^{-2\beta
   r}/\pi r$ ($\beta$ is a parameter here, not to be confused with
 $1/\kT$). The equivalent Gaussian smearing length is here
-$\sigma=1/\beta\sqrt{2}$.  The intended charge density in the Slater
-smearing proposal is $(1/\pi\lambda^3)e^{-2r/\lambda}$.  It turns out
-that there are exact expressions for the interaction between such
-charges \cite{WV14}, namely
+$\sigma=1/\beta\sqrt{2}$.
+
+The intended charge density in Slater smearing is
+$(1/\pi\lambda^3)e^{-2r/\lambda}$.  It turns out that there are exact
+expressions for the interaction between such charges \cite{WV14},
+namely
 %
 \begin{equation}
   \beta v\lr(r)=\frac{\lB}{r}\Bigl[1-e^{-2r/\lambda}\Bigl(
@@ -891,10 +893,10 @@ $\sigma=\lambda$.  Originally, Gon\-z\'a\-lez-Melchor
 but choosing $\beta=5/(8\lambda)$ makes \Eqsref{eq:slaterapprox} and
 \eqref{eq:slaterexact} have the same limiting value as $r\to0$ and
 brings the approximate interaction much closer to the exact result.
-Note that there is a natural hierarchy going from Bessel ($n=1$), to
-approximate Slater ($n=2$), to exact Slater ($n=4$), to Gaussian
-($n\to\infty$), in terms of the reciprocal space potential
-$\beta {\tilde v}\lr(k)=4\pi\lB k^{-2}(1+\sigma^2k^2/n)^{-n}$.
+Note that in terms of the reciprocal space potential $\beta {\tilde
+  v}\lr(k)=4\pi\lB k^{-2}(1+\sigma^2k^2/n)^{-n}$, there is a natural
+hierarchy from Bessel ($n=1$), to approximate Slater ($n=2$), to
+exact Slater ($n=4$), to Gaussian ($n\to\infty$).
 
 \subsection{Softened URPM potential}
 \label{sec:softURPM}
@@ -1242,28 +1244,6 @@ equation problem as fast and robust as possible.
   later calls, the existing $c'_{\mu\nu}$ is used as a
   starting point unless the flag \verb+cold_start+ is reset.
 %
-\item\verb+rpa_solve+ -- Calculate the RPA solution.  This involves
-  only a single round trip through \verb+oz_solve+ from a specified
-  start and does not require initialisation or a convergence
-  criterion.  Provided the flag \verb+auto_fns+ is set, the three
-  \verb+make_*+ functions are also called. The function
-  \verb+rpa_solve+ should be called only after \verb+initialise+ and
-  the potential has been initialised.  It may be called multiple times
-  with different densities for a given potential, or the potential can
-  be reset between calls.  The RPA closure cannot be used with
-  hard cores (see section \ref{sec:RPA}).
-%
-\item\verb+exp_solve+ -- Calculate the EXP solution.  This involves
-  first solving the RPA then implementing \Eqsref{eq:exp} and
-  \eqref{eq:ozndb} (the latter involves a call to \verb+oz_solve2+).
-  Provided the flag \verb+auto_fns+ is set, the three \verb+make_*+
-  functions are also called. Like the RPA, the function
-  \verb+exp_solve+ should be called only after \verb+initialise+ and
-  the potential has been initialised.  It may be called multiple times
-  with different densities for a given potential, or the potential can
-  be reset between calls. The EXP closure cannot be used with
-  hard cores (see section \ref{sec:EXP}).
-%
 \item\verb+msa_solve+ -- Calculate the MSA solution, using a similar
   iterative algorithm to the HNC closure. This routine is the basic
   MSA solver and contains appropriate calls to \verb+oz_solve+,
@@ -1281,6 +1261,23 @@ equation problem as fast and robust as possible.
   the hard core regions $c'_{\mu\nu}=-\beta v'_{\mu\nu}$. Note that the
   MSA is the same as the RPA if there are no hard cores (therefore, use
   \verb+rpa_solve+ in that case!).
+%
+\item\verb+rpa_solve+ -- Calculate the RPA solution.  This involves
+  only a single round trip through \verb+oz_solve+ from a specified
+  start and does not require initialisation or a convergence
+  criterion.  Provided the flag \verb+auto_fns+ is set, the three
+  \verb+make_*+ functions are also called. The function
+  \verb+rpa_solve+ should be called only after \verb+initialise+ and
+  the potential has been initialised.  It may be called multiple times
+  with different densities for a given potential, or the potential can
+  be reset between calls.  The RPA closure cannot be used with
+  hard cores (see section \ref{sec:RPA}).
+%
+\item\verb+exp_refine+ -- Implement the EXP refinement after 
+  first solving the MSA or RPA.  This involves \Eqsref{eq:exp} and
+  \eqref{eq:ozndb} (the latter involves a call to \verb+oz_solve2+).
+  Provided the flag \verb+auto_fns+ is set, the three \verb+make_*+
+  functions are also called.
 %
 \item\verb+oz_solve+ -- Solve the OZ relation in the form of
   \Eqref{eq:oznd} to find $e'_{\mu\nu}$ from $c'_{\mu\nu}$ (as a
@@ -1323,11 +1320,11 @@ $c'_{\mu\nu}$ given $e'_{\mu\nu}$, but using the Ng acceleration scheme.
 \item\verb+make_thermodynamics+ -- everything in section
   \ref{sec:thermo}.
 %
-\item\verb+write_params+ -- Write out basic information.
+\item\verb+write_params+ -- Write out basic information.  Often useful
+  as a check that the right potential is being solved.
 %
 \item\verb+write_thermodynamics+ -- Write out all thermodynamic
-  quantities, assuming \verb+make_thermodynamics+ has been called
-  either explicitly or implicitly.
+  quantities, assuming \verb+make_thermodynamics+ has been called.
 %
 \end{itemize}
 %
@@ -1363,15 +1360,15 @@ convergence (usually safe to leave at default 100).
   solution as the initial guess.  The flag can be re-set by the user
   for subsequent calls.
 %
-\item\verb+start_type+ -- In a cold start initialise $c'_{\mu\nu}=0$
-  (start type 1), $c'_{\mu\nu}=-\beta v'_{\mu\nu}$ (start type 2), or
-  $c'_{\mu\nu}=\exp(-\beta v'_{\mu\nu})-1$ (start type 3, default).
-  Usually safe to leave at default.
+\item\verb+start_type+ -- In a HNC cold start initialise
+  $c'_{\mu\nu}=0$ (start type 1), $c'_{\mu\nu}=-\beta v'_{\mu\nu}$
+  (start type 2), or $c'_{\mu\nu}=\exp(-\beta v'_{\mu\nu})-1$ (start
+  type 3, default).  Usually safe to leave at default.
 %
 \item\verb+auto_fns+ -- Flag (0 or 1) if set (default) the integral
-  equation solver calls all the \verb+make_*+ routines on exit.
-  Since these routines are relatively inexpensive compared to the
-  calculating the solution, one would usually leave this flag set.
+  equation solver calls all the \verb+make_*+ routines on exit.  Since
+  these routines are relatively inexpensive one would usually leave
+  this flag set.
 %
 \item\verb+deltar+ -- The real space grid spacing $\delta_r$ (default 0.01).
 %
@@ -1415,8 +1412,12 @@ convergence (usually safe to leave at default 100).
   zero after a call to \verb+initialise+.
 %
 \item\verb+z(:)+ -- An array of size \verb+ncomp+ where
-  \verb+z(mu)+ is $z_\mu$.  All entries default to
+  \verb+z(mu)+ is the valence $z_\mu$.  All entries default to
   zero after a call to \verb+initialise+.
+%
+\item\verb+diam(:)+ -- An array of size \verb+ncomp+ where
+  \verb+diam(mu)+ is the hard core diameter $d_\mu$.  All entries
+  default to zero after a call to \verb+initialise+.
 %
 \item\verb+arep(:, :)+ -- An array of size
   \verb+ncomp+$\times$\verb+ncomp+ where \verb+arep(mu, nu)+ is
@@ -1478,9 +1479,9 @@ convenient.
 \end{itemize}
 %
 The following quantities are available after a call to
-\verb+make_thermodynamics+ (which is done automatically by the solver
-routines unless \verb+auto_fns+ is turned off).  They are also
-reported by \verb+write_thermodynamics+.
+\verb+make_thermodynamics+ (which is done automatically unless
+\verb+auto_fns+ is turned off).  They are also reported by
+\verb+write_thermodynamics+.
 %
 \begin{itemize}
 %
@@ -1812,11 +1813,11 @@ Sections \ref{sec:vrp}--\ref{sec:feng} have been coded up as
 %
 \subsection{MSA charge-charge structure factor for RPM}
 %
-The MSA solution for the RPM is known analytically \cite{WL72}.  Some results are
-summarised here, for benchmarking MSA in the code.  We focus
-particularly on the charge-charge structure factor as the closed form
-solution is fairly simple.  As in section \ref{sec:softRPM} we suppose
-the potential is given by
+The MSA solution for the RPM is known analytically \cite{WL72}.  Some
+results are summarised here, for benchmarking the code.  We
+focus particularly on the charge-charge structure factor as the closed
+form solution is fairly simple.  As in section \ref{sec:softRPM} we
+suppose the potential is given by
 %
 \begin{equation}
   \beta v_{ij}=\Bigl\{\begin{array}{ll}
@@ -1851,50 +1852,58 @@ simply in terms of the Fourier-transformed direct correlation functions,
   S_{ZZ}=[1-{\textstyle\frac{1}{2}}\rho(\tilde c_{11}-\tilde c_{12})]^{-1}\,.
 \end{equation}
 %
-Now we turn to the MSA solution of the RPM.  There are two ways to
-calculate the charge-charge structure factor, both of which lead to
-the same result.  The first is to Fourier transform the known solution
-to the real space direct correlation function.  For this, we introduce
-some notation.  We define the inverse Debye length, and dimensionless
-version of the same, $\kappa^2=4\pi\lB\rho$ and $x=\kappa R$.  In
-terms of the latter we define $B=[1+x+(1+2x)^{1/2}]/x$.  Then the MSA
-solution for the direct correlation function difference is \cite{WL72}
+Now we turn to the MSA solution of the RPM \cite{WL72}.  There are two
+ways to calculate the charge-charge structure factor, both of which
+lead to the same result.  The first is to Fourier transform the known
+solution to the real space direct correlation function.  For this, we
+introduce the inverse Debye length $\kappa=(4\pi\lB\rho)^{1/2}$, and
+dimensionless version of the same, $x=\kappa R$.  In terms of the
+latter we define $B=[1+x+(1+2x)^{1/2}]/x$.  Then the MSA solution for
+the direct correlation function difference is
+$c_{11}-c_{12}=-({4\lB}/{R})(B-{B^2 r}/{2R})$ for $r\le R$, and
+$c_{11}-c_{12}= -{2\lB}/{r}$ for $r > R$ (the latter reflects the MSA
+choice $c_{\mu\nu}=-\beta v_{\mu\nu}$ outside the hard core).  The
+reason for focusing on the charge-charge structure factor is now
+apparent as this difference expression does not involved the
+Percus-Yevick solution for uncharged hard spheres, which would
+otherwise accompany the individual direct correlation functions.
+
+To do the Fourier transform we write this as
 %
 \begin{equation}
   c_{11}-c_{12}=-\frac{2\lB}{r}+\Bigl[\frac{2\lB}{r}
-  -\frac{4\lB}{R}\Bigl(B-\frac{B^2 r}{2R}\Bigr)\Bigr]\,\Theta(R-r)\,.
+  -\frac{4\lB}{R}\Bigl(B-\frac{B^2 r}{2R}\Bigr)\Bigr]\,\Theta(R-r)
 \end{equation}
 %
-In this, $\Theta(R-r)$ is the Heaviside function, which switches
-on the second term for  $r\le R$.  The reason for focusing on the
-charge-charge structure factor is now apparent as this difference
-expression does not involved the Percus-Yevick solution for uncharged
-hard spheres, which would otherwise accompany the individual direct
-correlation functions.
-
-The Fourier transform of this is readily performed: the first term
-gives $-8\pi\lB/k^2$ and the second term, $(4\pi/k)\int_0^R
-dr\,r\,\sin kr\,[\dots]$, is easily evaluated.  This is inserted in
-the expression for the charge-charge structure factor to obtain, after
-some simplification,
+then, \cf\ \Eqref{eq:fFB},
+%
+\begin{equation}
+  \tilde c_{11}-\tilde c_{12}=-\frac{8\pi\lB}{k^2}+
+  \frac{4\pi}{k}\int_0^R\!dr\,r\,\sin kr\,\Bigl[\frac{2\lB}{r}
+  -\frac{4\lB}{R}\Bigl(B-\frac{B^2 r}{2R}\Bigr)\Bigr]\,.
+\end{equation}
+%
+The integral is easily evaluated and inserted in the expression
+for the charge-charge structure factor to obtain, after some
+simplification,
 %
 \begin{equation}
   S_{ZZ}(k)=\frac{k^4}{k^4+8q^4+4q^2(k^2-2q^2)\cos kR+8kq^3\sin kR}\,.
   \label{eq:szzrpm}
 \end{equation}
 %
-In this, $q=[(1+2x)^{1/2}-1]/(2R)$.\footnote{Note that $x=2qR(1+qR)$
-  and $B=qR/(1+qR)$.}  This can be compared directly with the
+In this, $q=[(1+2x)^{1/2}-1]/(2R)$.\footnote{Thus $x=2qR(1+qR)$, and
+  $B=qR/(1+qR)$.}  \Eqref{eq:szzrpm} can be compared directly with the
 charge-charge structure factor reported by \verb+rpm_oneoff.py+.
 Complete agreement to within numerical accuracy should be observed.
 Note that correctly $S_{ZZ}(k)=k^2/\kappa^2+O(k^4)$ as $k\to0$ (thus
-satisfying the Stillinger-Lovett moment conditions), and
+the MSA satisfies the Stillinger-Lovett moment conditions), and
 $S_{ZZ}(k)\to1$ as $k\to\infty$.
 
 An alternative route to the same result uses analytic continuation on
 the Laplace-transformed direct correlation function.  Specifically,
 Waisman and Lebowitz \cite{WL72} define $\bar G(s)=\int_0^\infty
-e^{-sr} dr\,r\, [g_{11}(r)-g_{12}(r)]$ and give the result (see also
+dr\,e^{-sr} r\, [g_{11}(r)-g_{12}(r)]$ and give the result (see also
 Stell and Sun \cite{SS75})
 %
 \begin{equation}

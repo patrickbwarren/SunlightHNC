@@ -40,7 +40,7 @@
 # this will form the first estimate of the high density phase
 # boundary.  (3) Determine the density of the Wertheim + softened URPM
 # fluid (solved by HNC) which has the same chemical potential - this
-# can be done by hand, by interval halvin,g and forms the first
+# can be done by hand, by interval halving, and forms the first
 # estimate of the low density phase boundary.  (4) Record the pressure
 # of the low density phase (which will be small and positive) and
 # recalculate the high density phase boundary with this target

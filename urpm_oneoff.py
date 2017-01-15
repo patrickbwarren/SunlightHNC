@@ -51,7 +51,7 @@ parser.add_argument('--grcut', action='store', default=15.0, type=float, help='r
 parser.add_argument('--skcut', action='store', default=15.0, type=float, help='k cut off for S(k) plots (default 15.0)')
 
 parser.add_argument('--rpa', action='store_true', help='use RPA (default HNC)')
-parser.add_argument('--exp', action='store_true', help='use EXP (default HNC)')
+parser.add_argument('--exp', action='store_true', help='use EXP refinement')
 
 args = parser.parse_args()
 
@@ -97,15 +97,20 @@ eps = 1e-20
 
 w.write_params()
 
-if (args.rpa):
+# EXP implies RPA
+
+if args.exp: args.rpa = args.exp
+
+if args.rpa:
     w.rpa_solve()
     print('*** RPA solved')
-elif (args.exp):
-    w.exp_solve()
-    print('*** EXP solved')
 else:
     w.hnc_solve()
     print('*** HNC solved, error = ', w.error)
+
+if args.exp:
+    w.exp_refine()
+    print('*** EXP refined')
 
 w.write_thermodynamics()
 
@@ -117,9 +122,10 @@ plt.figure(1)
 
 plt.subplot(2, 2, 1)
 
-if (args.rpa): plt.title('RPA solution')
-elif (args.exp): plt.title('EXP solution')
-else: plt.title('HNC solution, error = %0.1g' % w.error)
+if args.exp: plt.title('RPA solution with EXP refinement')
+else:
+    if args.rpa: plt.title('RPA solution')
+    else: plt.title('HNC solution, error = %0.1g' % w.error)
 
 plt.plot(w.r[:], 
          list(map(lambda x, y: m.log10(eps + m.fabs(x*y)), w.hr[:, 0, 0], w.r[:])), 

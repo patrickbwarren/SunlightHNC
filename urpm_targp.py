@@ -40,9 +40,9 @@ from oz import wizard as w
 def urpm_press(rhoz):
     w.rho[0] = rhoz / 2.0
     w.rho[1] = w.rho[0]
-    if (args.rpa): w.rpa_solve()
-    elif (args.exp): w.exp_solve()
+    if args.rpa: w.rpa_solve()
     else: w.hnc_solve()
+    if args.exp: w.exp_refine()
     if (args.verbose):
         w.write_params()
         w.write_thermodynamics()
@@ -62,7 +62,7 @@ parser.add_argument('--rhoz', action='store', default=0.1, type=float, help='tot
 parser.add_argument('--targp', action='store', default=0.0, type=float, help='target pressure (default 0.0)')
 
 parser.add_argument('--rpa', action='store_true', help='use RPA (default HNC)')
-parser.add_argument('--exp', action='store_true', help='use EXP (default HNC)')
+parser.add_argument('--exp', action='store_true', help='use EXP refinement')
 
 parser.add_argument('--verbose', action='store_true', help='more output')
 

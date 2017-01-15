@@ -77,7 +77,7 @@ parser.add_argument('--sigmap', action='store', default=1.5, type=float, help='u
 parser.add_argument('--rhoz', action='store', default=0.1, type=float, help='total charge density (default 0.1)')
 
 parser.add_argument('--rpa', action='store_true', help='use RPA (default HNC)')
-parser.add_argument('--exp', action='store_true', help='use EXP (default HNC)')
+parser.add_argument('--exp', action='store_true', help='use EXP refinement')
 parser.add_argument('--ushort', action='store_true', help='use U_short in potential')
 parser.add_argument('--test', action='store', default=0, type=int, help='select a test to perform (see code for details)')
 
@@ -108,12 +108,13 @@ eps = 1e-20
 if (args.rpa):
     w.rpa_solve()
     print('*** RPA solved')
-elif (args.exp):
-    w.exp_solve()
-    print('*** EXP solved')
 else:
     w.hnc_solve()
     print('*** HNC solved, error = ', w.error)
+
+if args.exp:
+    w.exp_refine()
+    print('*** EXP refinement')
 
 w.write_thermodynamics()
 

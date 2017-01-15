@@ -39,7 +39,7 @@ parser.add_argument('--sigmap', action='store', default=1.5, type=float, help='u
 parser.add_argument('--rhoz', action='store', default=0.1, type=float, help='total charge density (default 0.1)')
 
 parser.add_argument('--rpa', action='store_true', help='use RPA (default HNC)')
-parser.add_argument('--exp', action='store_true', help='use EXP (default HNC)')
+parser.add_argument('--exp', action='store_true', help='use EXP refinement')
 parser.add_argument('--ushort', action='store_true', help='use U_short in potential')
 
 parser.add_argument('--grcut', action='store', default=15.0, type=float, help='r cut off for g(r) plots (default 15.0)')
@@ -67,17 +67,19 @@ w.rho[1] = args.rhoz / 2.0
 
 eps = 1e-20
 
-if (args.rpa): w.rpa_solve()
-elif (args.exp): w.exp_solve()
+if args.rpa: w.rpa_solve()
 else: w.hnc_solve()
+
+if args.exp: w.exp_refine()
 
 if args.show:
 
     w.write_params()
 
-    if (args.rpa): print("RPA solved")
-    elif (args.exp): print("EXP solved")
+    if args.rpa: print("RPA solved")
     else: print("HNC solved, error = ", w.error)
+    
+    if args.exp: print("EXP refined")
 
     w.write_thermodynamics()
 
