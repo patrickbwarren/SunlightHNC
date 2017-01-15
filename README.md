@@ -3,7 +3,7 @@
 The current stable release is version 1.8
 
 Version 1.8 includes the MSA closure and various potentials for Slater
-smeared charges.
+smeared charges.  
 Version 1.7 handles an arbitrary number of
 components (rather than a maximum of three, as for previous versions).
 
