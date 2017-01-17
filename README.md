@@ -2,7 +2,7 @@
 
 The current stable release is version 1.8
 
-<i>Bug alert: EXP + MSA is incorrectly implemented in v1.8, will be fixed in v1.8.1</i>
+<i>Bug alert : EXP + MSA is incorrectly implemented in v1.8, will be fixed very soon in v1.8.1</i>
 
 Version 1.8 includes the MSA closure and various potentials for Slater
 smeared charges.  
