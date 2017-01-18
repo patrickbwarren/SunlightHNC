@@ -61,6 +61,8 @@ w.npic = args.npic
 
 w.initialise()
 
+print(w.c.shape)
+
 w.lb = args.lb
 w.sigma = args.sigma
 w.kappa = args.kappa
@@ -112,8 +114,6 @@ if args.show:
 
     plt.figure(1)
 
-    plt.subplot(2, 2, 1)
-
     if (args.msa):
         if args.exp: plt.title('MSA+EXP solution, error = %0.1g' % w.error)
         else: plt.title('MSA solution, error = %0.1g' % w.error)
@@ -131,23 +131,35 @@ if args.show:
     plt.xlabel('$r$')
     plt.ylabel('$\log_{10}|rh|$')
 
-    plt.subplot(2, 2, 2)
+    plt.subplot(2, 2, 1)
 
     imax = int(args.grcut / w.deltar)
-    plt.plot(w.r[0:imax], 1.0 + w.hr[0:imax, 0, 0], label="$+\!+$")
-    plt.plot(w.r[0:imax], 1.0 + w.hr[0:imax, 0, 1], label="$+ -$")
-    plt.legend(loc='upper right')
+    plt.plot(w.r[0:imax], 1.0 + w.hr[0:imax, 0, 0], label="$g_{11}$")
+    plt.plot(w.r[0:imax], 1.0 + w.hr[0:imax, 0, 1], label="$g_{12}$")
+    plt.legend(loc='lower right')
     plt.xlabel('$r$')
-    plt.ylabel('$g(r)$')
     
-    plt.subplot(2, 2, 3)
+    plt.subplot(2, 2, 2)
 
     jmax = int(args.skcut / w.deltak)
     plt.plot(w.k[:jmax], snn[:jmax], label='$S_{NN}$')
     plt.plot(w.k[:jmax], szz[:jmax], label='$S_{ZZ}$')
     plt.legend(loc='lower right')
     plt.xlabel('$k$')
-    plt.ylabel('$S(k)$')
+
+    plt.subplot(2, 2, 3)
+
+    plt.plot(w.r[0:imax], w.c[0:imax, 0, 0]+w.c[0:imax, 1, 0], label="$c_{11}+c_{12}$")
+    plt.plot(w.r[0:imax], w.c[0:imax, 0, 0]-w.c[0:imax, 1, 0]-2*w.ulong[0:imax, 0], label="$c_{11}-c_{12}$")
+    plt.legend(loc='upper right')
+    plt.xlabel('$r$')
+    
+    plt.subplot(2, 2, 4)
+
+    plt.plot(w.k[0:jmax], w.ck[0:jmax, 0]+w.ck[0:jmax, 1], label="$c_{11}+c_{12}$")
+    plt.plot(w.k[0:jmax], w.ck[0:jmax, 0]-w.ck[0:jmax, 1]-2*w.ulongk[0:jmax, 0], label="$c_{11}-c_{12}$")
+    plt.legend(loc='lower right')
+    plt.xlabel('$k$')
     
     plt.show()
 
@@ -155,8 +167,10 @@ if args.show:
 if args.dump:
 
     for i in range(w.ng-1):
-        print("H\t%g\t%g\t%g\t%g" % (w.r[i], w.hr[i, 0, 0], w.hr[i, 0, 1], w.hr[i, 1, 1]))
+        print("C\t%g\t%g\t%g\t%g" % (w.r[i], w.c[i, 0, 0], w.c[i, 1, 0], w.c[i, 2, 0]))
 
+    for i in range(w.ng-1):
+        print("H\t%g\t%g\t%g\t%g" % (w.r[i], w.hr[i, 0, 0], w.hr[i, 0, 1], w.hr[i, 1, 1]))
 
     for i in range(w.ng-1):
         print("S\t%g\t%g\t%g" % (w.k[i], snn[i], szz[i]))

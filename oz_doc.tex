@@ -1277,11 +1277,11 @@ equation problem as fast and robust as possible.
   be reset between calls.  The RPA closure cannot be used with hard
   cores (see section \ref{sec:RPA}).
 %
-\item\verb+save_reference+ -- With the MSA, the EXP requires a
-  reference state, and this routine saves the current $h_{\mu\nu}$ as
-  said reference.  Usually, this reference state will be the MSA
-  solution to hard sphere problem without the tail potential, however
-  this is not enforced.
+\item\verb+save_reference+ -- The EXP requires a reference state, and
+  this routine saves the current $h_{\mu\nu}$ as said reference.
+  Usually, this reference state will be the MSA solution to hard
+  sphere problem without the tail potential, however this is not
+  enforced.
 %
 \item\verb+exp_refine+ -- Implement the EXP refinement.  Use
   \Eqsref{eq:exp} to compute a refined $h_{\mu\nu}$ then call
@@ -1296,9 +1296,10 @@ equation problem as fast and robust as possible.
     c}_{\mu\nu}\myprime$.
 %
 \item\verb+oz_solve2+ -- Solve the OZ relation in the form of
-  \Eqref{eq:ozndb} to find $e'_{\mu\nu}$ and $c'_{\mu\nu}$ from
-  $h_{\mu\nu}$ stored in the reference state.  As a byproduct generate
-  ${\tilde e}_{\mu\nu}\myprime$ and ${\tilde c}_{\mu\nu}\myprime$.
+  \Eqref{eq:ozndb} to find $e'_{\mu\nu}$ and $c'_{\mu\nu}$ from the
+  \emph{reference} $h_{\mu\nu}$.  As a byproduct generate ${\tilde
+    e}_{\mu\nu}\myprime$ and ${\tilde c}_{\mu\nu}\myprime$.  Store the
+  result in the first position in the cyclical histroy array.
 %
 \item\verb+hnc_picard+ -- Solve the HNC closure to find $c'_{\mu\nu}$
   from $e'_{\mu\nu}$, and take a Picard step in the sense of mixing a
@@ -1341,6 +1342,11 @@ $c'_{\mu\nu}$ given $e'_{\mu\nu}$, but using the Ng acceleration scheme.
 %
 Note that the three \verb+make_*+ routines are independent and can be
 called in any order.
+
+
+Need to add a note describing the use of \verb+save_reference+ and
+\verb+exp_refine+.
+
 
 \subsection{User parameters}
 %
@@ -1543,7 +1549,9 @@ The following internal variables may be useful.
   \verb+n+ is the species pair index as in \Eqref{eq:ij}, and \verb+p+
   is the position in the cyclical history array.  After a successful
   call to one of the main solver routines, the most converged solution
-  is always moved to the \verb+p = 1+ position.
+  is always moved to the \verb+p = 1+ position.  Remember to subtract
+  $\beta v\lr_{\mu\nu}$ if comparing these functions to literature results
+  for $c_{\mu\nu}$.
 %
 \item\verb+ck(:, :)+ and \verb+ek(:, :)+ -- Arrays containing the
   Fourier-transformed offset direct and indirect correlation
@@ -1553,11 +1561,32 @@ The following internal variables may be useful.
 %
 \item\verb+h0(:, :)+ -- An array containing the reference state, such
   that \verb+h0(j, n)+ contains the reference $h_{\mu\nu}(r_i)$ where
-  \verb+n+ is the species pair index.  This is used in
-  \verb+oz_solve2+ to recover the full solution (in the \verb+p = 1+
-  position in the case of $c'_{\mu\nu}$ and $e'_{\mu\nu}$).
+  \verb+n+ is the species pair index. 
+%
+\item\verb+ushort(:, :)+ and \verb+ulong(:, :)+ -- Arrays containing
+  the potential, such that \verb+ushort(i, n)+ contains $\beta
+  v'_{\mu\nu}(r_i)$ and \verb+ulong(i, n)+ contains $\beta
+  v\lr_{\mu\nu}(r_i)$, where \verb+n+ is the species index.
+%
+\item\verb+expnegus(:, :)+ -- Array containing $\exp(-\beta
+  v'_{\mu\nu})$, thus the exponentiated short range part of the
+  potential.
+%
+\item\verb+dushort(:, :)+ and \verb+dulong(:, :)+ -- Similar arrays
+  containing the derivatives of the potential, $\partial(\beta
+  v'_{\mu\nu})/\partial r$ and $\partial(\beta v\lr_{\mu\nu})/\partial
+  r$.
+%
+\item\verb+ulongk(:, :)+ -- Array containing the Fourier transform of
+  the long range part of the potential, such that \verb+ulong(j, n)+
+  contains $\beta{\tilde v}\lr_{\mu\nu}(k_j)$, where \verb+n+ is the
+  species index.
 %
 \end{itemize}
+%
+Of these, the potential parts may of course be initialised outside the
+code, as may the reference total correlation function in which latter
+case \verb+oz_solve2+ acts as a general OZ solver.
 
 \section{Examples}
 %
