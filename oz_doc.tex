@@ -128,8 +128,8 @@ projects. If you end up publishing results based on this, please cite\\
 The \FORTRAN\ 90 module \verb+oz_mod.f90+ implements an
 Ornstein-Zernike solver for multicomponent mixtures of possibly
 charged particles, returning both structural and thermodynamic
-information.  The closures currently implemented are the RPA, MSA,
-EXP, and HNC.  Though we say it ourselves, the code is \emph{fast}
+information.  The closures currently implemented are the HNC, MSA,
+RPA, and EXP.  Though we say it ourselves, the code is \emph{fast}
 since it is written in native \FORTRAN\ and implements the Ng
 acceleration schemes \cite{Ng74}.  The interaction potentials are
 specified in their own routines and the code could be used for other
@@ -280,8 +280,9 @@ c(r)=c'(r)-\beta v\lr(r)\,,\quad
 e(r)=e'(r)+\beta v\lr(r)\,.
 \end{equation}
 %
-These are taken to provide the definitions of $c'(r)$ and $e'(r)$.  We
-rewrite the OZ relation and the HNC closure in terms of these,
+These are taken to provide the definitions of the offset functions
+$c'(r)$ and $e'(r)$.  We rewrite the OZ relation and the HNC closure
+in terms of these,
 %
 \begin{equation}
 \tilde e\myprime=\frac{\tilde c\myprime-\beta\tildevlr}{1-\rho(\tilde
@@ -467,24 +468,26 @@ Given the HNC machinery, the implementation of the RPA is almost
 completely trivial and comprises a single round trip through the OZ
 solver starting from $c'_{\mu\nu}(r)=-\beta v'_{\mu\nu}(r)$.
 
-\subsection{EXP refinement}\label{sec:EXP}
+\subsection{Multicomponent EXP}\label{sec:EXP}
 %
-The EXP approximation is a straightforward refinement of the MSA/RPA
-in which the real space total correlation functions outside the hard
-cores are replaced by
+The EXP approximation is a  refinement of the MSA/RPA
+in which the  total correlation functions are replaced by \dots
+
 %
-\begin{equation}
-h_{\mu\nu}(r)\to \exp[h_{\mu\nu}(r)]-1\,.\label{eq:exp}
-\end{equation}
+%\begin{equation}
+%h_{\mu\nu}(r)\to \exp[h_{\mu\nu}(r)]-1\,.\label{eq:exp}
+%\end{equation}
 %
-This breaks unwarranted symmetries such as $h_{++}=-h_{+-}$ and
+The EXP breaks unwarranted symmetries such as $h_{++}=-h_{+-}$ and
 ensures that $h_{\mu\nu}(r)>-1$ which is not always satisfied by the
 MSA/RPA.  In practice EXP can be nearly as good as HNC and extends to
-state points where HNC doesn't have a solution.  Since the EXP
-approximation is defined as an action on the total correlation
+state points where HNC doesn't have a solution.
+
+Since the EXP approximation is defined as an action on the correlation
 functions in real space, a round trip through the OZ relation is
-required to compute the corresponding direct and indirect correlation
-functions.  To do this we rewrite the OZ relation in \Eqref{eq:oz2a} as
+required to compute the corresponding offset direct and indirect
+correlation functions.  To do this we rewrite the OZ relation in
+\Eqref{eq:oz2a} as
 %
 \begin{equation}
 {\tilde C}' = (I+{\tilde H}\cdot R)^{-1}\cdot{\tilde H}
@@ -1121,6 +1124,7 @@ $n$ according to the following rule
   i+j(j-1)/2 & \hbox{if $i\le j$\,,}\\[3pt]
   j+i(i-1)/2 & \hbox{if $i>j$\,.}
   \end{array}
+  \label{eq:ij}
 \end{equation}
 %
 This is implemented in various forms throughout the code.  The mapping
@@ -1254,40 +1258,47 @@ equation problem as fast and robust as possible.
   others, the function \verb+msa_solve+ should be called only after
   \verb+initialise+ and the potential has been initialised.  It may be
   called multiple times with different densities for a given
-  potential, or the potential can be reset between calls.  In
-  these subsequent calls, the existing $c'_{\mu\nu}$ within the hard
-  core regions is used as a starting point unless the flag
-  \verb+cold_start+ is reset. In all cases it is ensured that outside
-  the hard core regions $c'_{\mu\nu}=-\beta v'_{\mu\nu}$. Note that the
-  MSA is the same as the RPA if there are no hard cores (therefore, use
+  potential, or the potential can be reset between calls.  In these
+  subsequent calls, the existing $c'_{\mu\nu}$ within the hard core
+  regions is used as a starting point unless the flag
+  \verb+cold_start+ is reset. In the case of a warm start, outwith the
+  hard core regions $c'_{\mu\nu}$ is set equal to $-\beta
+  v'_{\mu\nu}$ for the current potential. Note that the MSA is the
+  same as the RPA if there are no hard cores (therefore, use
   \verb+rpa_solve+ in that case!).
 %
 \item\verb+rpa_solve+ -- Calculate the RPA solution.  This involves
-  only a single round trip through \verb+oz_solve+ from a specified
-  start and does not require initialisation or a convergence
-  criterion.  Provided the flag \verb+auto_fns+ is set, the three
-  \verb+make_*+ functions are also called. The function
+  only a single round trip through \verb+oz_solve+ from $c'_{\mu\nu} =
+  -\beta v'_{\mu\nu}$.  Provided the flag \verb+auto_fns+ is set,
+  the three \verb+make_*+ functions are also called. The function
   \verb+rpa_solve+ should be called only after \verb+initialise+ and
   the potential has been initialised.  It may be called multiple times
   with different densities for a given potential, or the potential can
-  be reset between calls.  The RPA closure cannot be used with
-  hard cores (see section \ref{sec:RPA}).
+  be reset between calls.  The RPA closure cannot be used with hard
+  cores (see section \ref{sec:RPA}).
 %
-\item\verb+exp_refine+ -- Implement the EXP refinement after 
-  first solving the MSA or RPA.  This involves \Eqsref{eq:exp} and
-  \eqref{eq:ozndb} (the latter involves a call to \verb+oz_solve2+).
-  Provided the flag \verb+auto_fns+ is set, the three \verb+make_*+
-  functions are also called.
+\item\verb+save_reference+ -- With the MSA, the EXP requires a
+  reference state, and this routine saves the current $h_{\mu\nu}$ as
+  said reference.  Usually, this reference state will be the MSA
+  solution to hard sphere problem without the tail potential, however
+  this is not enforced.
+%
+\item\verb+exp_refine+ -- Implement the EXP refinement.  Use
+  \Eqsref{eq:exp} to compute a refined $h_{\mu\nu}$ then call
+  \verb+oz_solve2+ to rebuild the complete solution according to
+  \Eqref{eq:ozndb}.  Provided the flag \verb+auto_fns+ is set, the
+  three \verb+make_*+ functions are also called.  The reference state
+  is overwritten by the new $h_{\mu\nu}$.
 %
 \item\verb+oz_solve+ -- Solve the OZ relation in the form of
-  \Eqref{eq:oznd} to find $e'_{\mu\nu}$ from $c'_{\mu\nu}$ (as a
+  \Eqref{eq:oznd} to find $e'_{\mu\nu}$ from $c'_{\mu\nu}$.  As a
   byproduct, this generates ${\tilde e}_{\mu\nu}\myprime$ and ${\tilde
-    c}_{\mu\nu}\myprime$).
+    c}_{\mu\nu}\myprime$.
 %
 \item\verb+oz_solve2+ -- Solve the OZ relation in the form of
   \Eqref{eq:ozndb} to find $e'_{\mu\nu}$ and $c'_{\mu\nu}$ from
-  $h_{\mu\nu}$ (and as a byproduct generate ${\tilde
-    e}_{\mu\nu}\myprime$ and ${\tilde c}_{\mu\nu}\myprime$).
+  $h_{\mu\nu}$ stored in the reference state.  As a byproduct generate
+  ${\tilde e}_{\mu\nu}\myprime$ and ${\tilde c}_{\mu\nu}\myprime$.
 %
 \item\verb+hnc_picard+ -- Solve the HNC closure to find $c'_{\mu\nu}$
   from $e'_{\mu\nu}$, and take a Picard step in the sense of mixing a
@@ -1519,6 +1530,32 @@ virial route compressibility factor $\beta p/\rho$.
 \item\verb+fvex+ -- Excess free energy density $\beta \Fex/V$ (HNC only).
 %
 \item\verb+fnex+ -- Excess free energy per particle $\beta \Fex/N$ (HNC only).
+%
+\end{itemize}
+
+The following internal variables may be useful.
+%
+\begin{itemize}
+%
+\item\verb+c(:, :, :)+ and \verb+e(:, :, :)+ -- Arrays containing the
+  offset direct and indirect correlation functions, such that for
+  example \verb+c(i, n, p)+ contains $c'_{\mu\nu}(r_i)$, where
+  \verb+n+ is the species pair index as in \Eqref{eq:ij}, and \verb+p+
+  is the position in the cyclical history array.  After a successful
+  call to one of the main solver routines, the most converged solution
+  is always moved to the \verb+p = 1+ position.
+%
+\item\verb+ck(:, :)+ and \verb+ek(:, :)+ -- Arrays containing the
+  Fourier-transformed offset direct and indirect correlation
+  functions, such that for example \verb+ck(j, n)+ contains ${\tilde
+    c}_{\mu\nu}\myprime(k_j)$ where \verb+n+ is the species pair
+  index.
+%
+\item\verb+h0(:, :)+ -- An array containing the reference state, such
+  that \verb+h0(j, n)+ contains the reference $h_{\mu\nu}(r_i)$ where
+  \verb+n+ is the species pair index.  This is used in
+  \verb+oz_solve2+ to recover the full solution (in the \verb+p = 1+
+  position in the case of $c'_{\mu\nu}$ and $e'_{\mu\nu}$).
 %
 \end{itemize}
 

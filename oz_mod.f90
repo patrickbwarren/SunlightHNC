@@ -164,7 +164,6 @@ module wizard
        & hr(:, :, :),       & ! current total correlation functions
        & ck(:, :),          & ! transform of dcfs
        & ek(:, :),          & ! transform of icfs
-       & hk(:, :),          & ! transform of total correlation functions
        & sk(:, :, :),       & ! partial structure factors
        & ushort(:, :),      & ! short range potential in real space
        & expnegus(:, :),    & ! exp(-ushort) (includes hard cores)
@@ -197,7 +196,6 @@ contains
     allocate(hr(ng-1, ncomp, ncomp))
     allocate(ck(ng-1, nfnc))
     allocate(ek(ng-1, nfnc))
-    allocate(hk(ng-1, nfnc))
     allocate(sk(ng-1, ncomp, ncomp))
     allocate(ushort(ng-1, nfnc))
     allocate(expnegus(ng-1, nfnc))
@@ -752,7 +750,8 @@ contains
     double precision :: &
          & a(ncomp, ncomp), b(ncomp, ncomp), &
          & hmat(ncomp, ncomp), rhomat(ncomp, ncomp), &
-         & unita(ncomp, ncomp)
+         & unita(ncomp, ncomp), hk(ng-1, nfnc)
+
 
     do i=1, nfnc
        fftwx(1:ng-1) = r(1:ng-1) * h0(1:ng-1, i)
@@ -1224,6 +1223,7 @@ contains
   subroutine make_structure_factors
     implicit none
     integer :: i, j, ij
+    double precision :: hk(ng-1, nfnc)
     hk = ck + ek
     do j = 1, ncomp
        do i = 1, j
