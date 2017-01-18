@@ -936,7 +936,7 @@ contains
 
   subroutine hnc_solve
     implicit none
-    integer :: i
+    integer :: i, i1
     istep = 1
     if (cold_start.eq.1) then
        if (start_type.eq.1) c(:,:,1) = 0.0
@@ -997,7 +997,7 @@ contains
     implicit none
     integer i1, i0
 !    double precision norm
-    i1 = mod(istep - 1, nps) + 1
+    i1 = mod(istep-1, nps) + 1
     i0 = i1 - 1; if (i0 .eq. 0) i0 = nps
     error = sqrt(deltar * sum( (c(:, :, i1) - c(:, :, i0))**2 ))
 !    norm = sqrt(deltar * sum( c(:, :, i1)**2 ))
@@ -1099,7 +1099,7 @@ contains
 
   subroutine msa_solve
     implicit none
-    integer :: i, p, irc
+    integer :: i, i1, p, irc
     do i = 1, nfnc
        irc = nint(diam(i) / deltar) ! Reset everywhere outwith hard core
        do p = 1, nps
@@ -1142,6 +1142,7 @@ contains
     if (error .gt. tol) then
        print *, "oz_mod.f90: msa_solve: **WARNING*** error > tol"
     end if
+    i1 = mod(istep-1, nps) + 1
     if (i1.ne.1) then ! copy solution to first place
        c(:, :, 1) = c(:, :, i1)
        e(:, :, 1) = e(:, :, i1)
@@ -1196,15 +1197,15 @@ contains
   
   subroutine exp_refine
     implicit none
-    integer :: i, i1, irc
+!    integer :: i, irc
     double precision :: h(ng-1, nfnc)
     h(:,:) = c(:,:,1) + e(:,:,1)
     ! we now have h(:,:) and h0(:,:) so should be straightforward
     h0 = exp(h0) - 1.0 ! THIS NEEDS FIXING
-    do i = 1, nfnc
-       irc = nint(diam(i) / deltar) ! Reset inside the hard core
-       h0(1:irc,i) = - 1.0
-    end do
+!    do i = 1, nfnc
+!       irc = nint(diam(i) / deltar) ! Reset inside the hard core
+!       h0(1:irc,i) = - 1.0
+!    end do
     call oz_solve2
     if (auto_fns.eq.1) then
        call make_pair_functions

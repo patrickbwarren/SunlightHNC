@@ -103,7 +103,7 @@ for i in range(npt):
 
 import matplotlib.pyplot as plt
 
-plt.plot(xdat, nundat, 'ro', label='Rasaiah et al (1972): -U/V')
+plt.plot(xdat, nundat, 'ro', label='Rasaiah et al (1972): -U/N')
 plt.plot(xdat, compdat, 'co', label='Rasaiah et al (1972): p')
 plt.plot(x, y1, 'b-', label='HNC')
 plt.plot(x, y2, 'b-')
