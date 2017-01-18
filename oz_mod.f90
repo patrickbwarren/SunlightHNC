@@ -25,7 +25,7 @@
 
 ! The main purpose of this module is to provide integral equation
 ! closures for the multicomponent Ornstein-Zernike equations.  The
-! closures currently provided are RPA, EXP and HNC.
+! closures currently provided are HNC, MSA, RPA and EXP.
 
 ! Better documentation (which reproduces the below) is found in the
 ! accompanying LaTeX document.
@@ -137,7 +137,7 @@ module wizard
        & sigmap = 1.0,    & ! +- long-range Coulomb smearing length (URPM)
        & kappa = -1.0,    & ! +- long-range Coulomb smoothing parameter (RPM)
        & rgroot = 1.0,    & ! linear charge smearing range (Groot)
-       & lbda = 1.0,    & ! Slater charge smearing range (exact)
+       & lbda = 1.0,      & ! Slater charge smearing range (exact)
        & beta = 1.0,      & ! Slater charge smearing range (approx)
        & cf_mf, cf_xc,    & ! the virial route pressure contributions ..
        & cf_gc, press,    & ! .. and the virial route pressure
@@ -160,8 +160,8 @@ module wizard
        & muex(:),           & ! chemical potential array
        & c(:, :, :),        & ! direct correlation functions (dcfs)
        & e(:, :, :),        & ! indirect correlation functions (icfs)
-       & h(:, :),           & ! total correlation functions (tcfs)
-       & hr(:, :, :),       & ! total correlation functions (alt form)
+       & h0(:, :),          & ! reference total correlation functions
+       & hr(:, :, :),       & ! current total correlation functions
        & ck(:, :),          & ! transform of dcfs
        & ek(:, :),          & ! transform of icfs
        & hk(:, :),          & ! transform of total correlation functions
@@ -193,7 +193,7 @@ contains
     allocate(tl(nfnc))
     allocate(c(ng-1, nfnc, nps))
     allocate(e(ng-1, nfnc, nps))
-    allocate(h(ng-1, nfnc))
+    allocate(h0(ng-1, nfnc))
     allocate(hr(ng-1, ncomp, ncomp))
     allocate(ck(ng-1, nfnc))
     allocate(ek(ng-1, nfnc))
@@ -216,6 +216,7 @@ contains
     arep = 0.0
     z = 0.0
     diam = 0.0
+    h0 = 0.0
 
     ! Make grids
 
@@ -392,7 +393,7 @@ contains
     end if
 
     ! Slater charge smearing as in Gonzales-Melchor et al, [JCP v125,
-    ! 224107 (2006)] with exact expression for interaction.
+    ! 224107 (2006)] but here with exact expression for interaction.
 
     if (charge_type .eq. 4) then
 
@@ -647,7 +648,7 @@ contains
     ! Forward transform the real space functions c, to the reciprocal
     ! space functions ck.
 
-    do i=1, nfnc ! check if this can be done with :
+    do i=1, nfnc
        fftwx(1:ng-1) = r(1:ng-1) * c(1:ng-1, i, i1)
        call dfftw_execute(plan)
        ck(1:ng-1, i) =  (twopi * deltar) * fftwy(1:ng-1) / k(1:ng-1)
@@ -739,23 +740,22 @@ contains
   end subroutine oz_solve
 
 ! This routine solves an alternate version of the Ornstein-Zernicke
-! equation to determine c and e from h.  In practice as always we
-! actually calculate c' = c + Ulong and e' = e - Ulong.  Note h = e +
-! c = e' + c'.
+! equation to determine c and e from the reference h0.  In practice as
+! always we actually calculate c' = c + Ulong and e' = e - Ulong.
+! Note h = e + c = e' + c'.  The result is saved to first place in the
+! history trajectory.
 
   subroutine oz_solve2
     implicit none
-    integer :: i1, i, j, ij, ik, irc
+    integer :: i, j, ij, ik, irc
     integer :: perm(ncomp)
     double precision :: &
          & a(ncomp, ncomp), b(ncomp, ncomp), &
          & hmat(ncomp, ncomp), rhomat(ncomp, ncomp), &
          & unita(ncomp, ncomp)
 
-    i1 = mod(istep-1, nps) + 1
-
     do i=1, nfnc
-       fftwx(1:ng-1) = r(1:ng-1) * h(1:ng-1, i)
+       fftwx(1:ng-1) = r(1:ng-1) * h0(1:ng-1, i)
        call dfftw_execute(plan)
        hk(1:ng-1, i) =  (twopi * deltar) * fftwy(1:ng-1) / k(1:ng-1)
     end do
@@ -827,10 +827,10 @@ contains
 
        fftwx(1:ng-1) = k(1:ng-1) * ck(1:ng-1, i)
        call dfftw_execute(plan)
-       c(1:ng-1, i, i1) =  (deltak / twopi**2) * fftwy(1:ng-1) / r(1:ng-1)
+       c(1:ng-1, i, 1) =  (deltak / twopi**2) * fftwy(1:ng-1) / r(1:ng-1)
 
        ek(:, i) = hk(:, i) - ck(:, i)
-       e(:, i, i1) = h(:, i) - c(:, i, i1)
+       e(:, i, 1) = h0(:, i) - c(:, i, 1)
 
     end do
 
@@ -845,97 +845,78 @@ contains
 ! and e' = e - Ulong where Ulong is the long-range part of the
 ! potential for which the Fourier transform is simple.  This means
 ! that 'v' in the above expression is the short-range part of the
-! potential only.
+! potential only.  As we iterate we move forward in the history
+! trajectory, cyclically.
 
   subroutine hnc_picard
     implicit none
     integer :: i1, i0, i
-
     istep = istep + 1
     i1 = mod(istep-1, nps) + 1
     i0 = i1 - 1; if (i0.eq.0) i0 = nps
-
     do i = 1, nfnc
-       !!  c(:,i,i1) = alpha * ( exp(- ushort(:,i) + e(:,i,i0)) &
        c(:,i,i1) = alpha * ( expnegus(:,i) * exp(e(:,i,i0)) &
             & - e(:,i,i0) - 1.0d0 ) &
             & + (1.0d0 - alpha) * c(:,i,i0)
     end do
-
   end subroutine hnc_picard
 
 ! The next routine implements the Ng method [K-C Ng, J. Chem. Phys.
-! v61, 2680 (1974)] as an accelerated solver for the HNC closure.
+! v61, 2680 (1974)] as an accelerated solver for the HNC closure.  As
+! we iterate we move forward in the history trajectory, cyclically.
 
   subroutine hnc_ng
     implicit none
     integer :: i, i1, i0, j, j1, j2, p, nd, icp
     double precision :: dc(ng-1,nfnc,nps-1), de(ng-1,nfnc,nps-1), &
          & a(nps-1,nps-1), x(nps-1), y(nps-1), yy, aux
-
     integer :: ipiv(nps-1), info  ! DSYSV stuff
     double precision :: work(100) ! DSYSV stuff
-
     istep = istep + 1
     i1 = mod(istep-1, nps) + 1
     i0 = i1 - 1; if (i0 .eq. 0) i0 = nps
-
     if (istep .le. nps) then
        nd = istep - 2
     else
        nd = nps - 1
     end if
-
     do p = 1, nd
        j1 = i0 - p
        if( j1 .le. 0) j1 = nps + j1
        dc(:,:,p) = c(:,:,i0) - c(:,:,j1)
        de(:,:,p) = e(:,:,i0) - e(:,:,j1)
     end do
-
     a(:,:) = 0.0d0
-
     x(:) = 0.0d0
-
     do icp = 1, nfnc
        do j = 1, ng-1
-          !!  aux = exp( - ushort(j,icp) + e(j,icp,i0)) - 1.0d0
           aux = expnegus(j,icp) * exp(e(j,icp,i0)) - 1.0d0
-
           do j1 = 1, nd
              y(j1) = aux * de(j,icp,j1) - dc(j,icp,j1)
           end do
-
           yy = aux - e(j,icp,i0) - c(j,icp,i0)
-
           do j1 = 1, nd
              do j2 = j1, nd
                 a(j1,j2) = a(j1,j2) + y(j1) * y(j2)
              end do
              x(j1) = x(j1) + y(j1) * yy
           end do
-
        end do
     end do
-
     call DSYSV( 'U', nd, 1, a, nps-1, ipiv, x, nps-1, work, &
          & 100, info)
-
     if (info .gt. 0) then
        print *, 'det=0', (x(i),i=1,nd)
     endif
-
     do icp = 1, nfnc
        do j = 1, ng-1
           aux = e(j,icp,i0)
           do j1 = 1, nd
              aux = aux - de(j,icp,j1) * x(j1)
           end do
-          !!  c(j,icp,i1) = exp( - ushort(j,icp) + aux) - aux - 1.0d0
           c(j,icp,i1) = expnegus(j,icp) * exp(aux) - aux - 1.0d0
        end do
     end do
-
   end subroutine hnc_ng
 
 ! Basic driver routine for solving HNC: take a number of Picard
@@ -947,13 +928,17 @@ contains
 ! Ushort (start_type = 2), or c = e^(-Ushort)-1 (start_type = 3).  Any
 ! of these should do in principle, but the initial convergence may be
 ! different.  Note from above that c is actually defined c' = c +
-! Ulong, ie with the long-range part of the potential added.
+! Ulong, ie with the long-range part of the potential added.  Note
+! that we always start from first place in the history trajectory, and
+! the history trajectory is pump-primed by Picard steps before
+! attempting the Ng accelerator.  At the end, the final solution is
+! copied back to first place in the history trajectory.
 
   subroutine hnc_solve
     implicit none
     integer :: i
+    istep = 1
     if (cold_start.eq.1) then
-       istep = 1
        if (start_type.eq.1) c(:,:,1) = 0.0
        if (start_type.eq.2) c(:,:,1) = - ushort(:,:)
        if (start_type.eq.3) c(:,:,1) = expnegus(:,:) - 1.0
@@ -989,6 +974,11 @@ contains
     if (error .gt. tol) then
        print *, "oz_mod.f90: hnc_solve: **WARNING*** error > tol"
     end if
+    i1 = mod(istep-1, nps) + 1
+    if (i1.ne.1) then ! copy solution to first place
+       c(:, :, 1) = c(:, :, i1)
+       e(:, :, 1) = e(:, :, i1)
+    end if
     if (auto_fns.eq.1) then
        call make_pair_functions
        call make_structure_factors
@@ -1016,87 +1006,72 @@ contains
   
 ! This routine implements the MSA closure expressed as c' = - e' - 1
 ! within the hard core, in similar terms to the HNC closure.  Outwith
-! the hard core, c' = - beta v' is left untouched, presuming it is
-! set correctly in the MSA initialisation step.
-
+! the hard core, c' = - beta v' is left untouched, presuming it is set
+! correctly in the MSA initialisation step.  As we iterate we move
+! forward in the history trajectory, cyclically.
+  
   subroutine msa_picard
     implicit none
     integer :: i1, i0, i, irc
-
     istep = istep + 1
     i1 = mod(istep-1, nps) + 1
     i0 = i1 - 1; if (i0.eq.0) i0 = nps
-
     do i = 1, nfnc
        irc = nint(diam(i) / deltar) ! Only work inside the hard core
        c(1:irc,i,i1) = alpha * (  - e(1:irc,i,i0) - 1.0d0 ) &
             & + (1.0d0 - alpha) * c(1:irc,i,i0)
     end do
-
   end subroutine msa_picard
 
 ! The next routine implements the Ng method [K-C Ng, J. Chem. Phys.
 ! v61, 2680 (1974)] as an accelerated solver for the MSA closure (cf
-! HNC above).
-
+! HNC above).  As we iterate we move forward in the history
+! trajectory, cyclically.
+  
   subroutine msa_ng
     implicit none
     integer :: i, i1, i0, j, j1, j2, p, nd, icp, irc
     double precision :: dc(ng-1,nfnc,nps-1), de(ng-1,nfnc,nps-1), &
          & a(nps-1,nps-1), x(nps-1), y(nps-1), yy, aux
-
     integer :: ipiv(nps-1), info  ! DSYSV stuff
     double precision :: work(100) ! DSYSV stuff
-
     istep = istep + 1
     i1 = mod(istep-1, nps) + 1
     i0 = i1 - 1; if (i0 .eq. 0) i0 = nps
-
     if (istep .le. nps) then
        nd = istep - 2
     else
        nd = nps - 1
     end if
-
     do p = 1, nd
        j1 = i0 - p
        if( j1 .le. 0) j1 = nps + j1
        dc(:,:,p) = c(:,:,i0) - c(:,:,j1)
        de(:,:,p) = e(:,:,i0) - e(:,:,j1)
     end do
-
     a(:,:) = 0.0d0
-
     x(:) = 0.0d0
-
     do icp = 1, nfnc
        irc = nint(diam(icp) / deltar) ! Only work inside the hard core
        do j = 1, irc
           aux = - 1.0d0
-
           do j1 = 1, nd
              y(j1) = aux * de(j,icp,j1) - dc(j,icp,j1)
           end do
-
           yy = aux - e(j,icp,i0) - c(j,icp,i0)
-
           do j1 = 1, nd
              do j2 = j1, nd
                 a(j1,j2) = a(j1,j2) + y(j1) * y(j2)
              end do
              x(j1) = x(j1) + y(j1) * yy
           end do
-
        end do
     end do
-
     call DSYSV( 'U', nd, 1, a, nps-1, ipiv, x, nps-1, work, &
          & 100, info)
-
     if (info .gt. 0) then
        print *, 'det=0', (x(i),i=1,nd)
     endif
-
     do icp = 1, nfnc
        irc = nint(diam(icp) / deltar) ! Only work inside the hard core
        do j = 1, irc
@@ -1107,7 +1082,6 @@ contains
           c(j,icp,i1) = - aux - 1.0d0
        end do
     end do
-
   end subroutine msa_ng
 
 ! Basic driver routine for solving MSA: take a number of Picard
@@ -1117,7 +1091,11 @@ contains
 ! should be re-initialised.  For a cold start, the initial guess to
 ! the direct correlation function inside the hard core is c' = -1.
 ! Irrespective of this, we need to make sure c' is correctly
-! initialised outwith the hard core
+! initialised outwith the hard core.  Note that we always start from
+! first place in the history trajectory, and the history trajectory is
+! pump-primed by Picard steps before attempting the Ng accelerator.
+! At the end, the final solution is copied back to first place in the
+! history trajectory.
 
   subroutine msa_solve
     implicit none
@@ -1128,8 +1106,8 @@ contains
           c(irc+1:ng-1,i,p) = - ushort(irc+1:ng-1,i)
        end do
     end do
+    istep = 1
     if (cold_start.eq.1) then
-       istep = 1
        do i = 1, nfnc
           irc = nint(diam(i) / deltar) ! Only initialise inside the hard core
           c(1:irc,i,1) = - 1.0
@@ -1164,6 +1142,10 @@ contains
     if (error .gt. tol) then
        print *, "oz_mod.f90: msa_solve: **WARNING*** error > tol"
     end if
+    if (i1.ne.1) then ! copy solution to first place
+       c(:, :, 1) = c(:, :, i1)
+       e(:, :, 1) = e(:, :, i1)
+    end if
     if (auto_fns.eq.1) then
        call make_pair_functions
        call make_structure_factors
@@ -1176,8 +1158,8 @@ contains
 
 ! Given the HNC machinery, the implementation of the RPA is almost
 ! completely trivial and corresponds to one iteration through the
-! Ornstein-Zernike solver given the choice c = - Ushort.
-
+! Ornstein-Zernike solver given the choice c = - Ushort.  We save the
+! result to first place in the history trajectory.
   subroutine rpa_solve
     implicit none
     istep = 1
@@ -1193,22 +1175,35 @@ contains
     end if
   end subroutine rpa_solve
 
-! The EXP approximation refines the RPA/MSA solution by sending h -->
-! exp(h)-1 outwith any hard core regions.  A full solution requires a
-! follow-up round trip through another version of the Ornstein-Zernike
-! relation, to obtain the direct and indirect correlation functions.
-! This function should be called *after* MSA or RPA, as it assumes
-! these initial solutions.
+! Save the reference state, assuming the c and e functions are those
+! in the first place in the history trajectory.  The corresponding c
+! and e functions can be restored by a call to oz_solve2.
 
+  subroutine save_reference
+    implicit none
+    integer :: i
+    do i = 1, nfnc
+       h0(:, i) = c(:, i, 1) + e(:, i, 1)
+    end do
+  end subroutine save_reference
+
+! The EXP approximation refines the current RPA/MSA solution by using
+! the current solution and a reference solution to calculate ...  The
+! result is saved back in the reference state, and a round trip
+! through the alternate version of the Ornstein-Zernike relation
+! populates the direct and indirect correlation functions.  We assume
+! the current solution is in first place in the history trajectory.
+  
   subroutine exp_refine
     implicit none
     integer :: i, i1, irc
-    i1 = mod(istep-1, nps) + 1
-    h(:,:) = c(:,:,i1) + e(:,:,i1)
-    h = exp(h) - 1.0
+    double precision :: h(ng-1, nfnc)
+    h(:,:) = c(:,:,1) + e(:,:,1)
+    ! we now have h(:,:) and h0(:,:) so should be straightforward
+    h0 = exp(h0) - 1.0 ! THIS NEEDS FIXING
     do i = 1, nfnc
        irc = nint(diam(i) / deltar) ! Reset inside the hard core
-       h(1:irc,i) = - 1.0
+       h0(1:irc,i) = - 1.0
     end do
     call oz_solve2
     if (auto_fns.eq.1) then
@@ -1247,16 +1242,16 @@ contains
 ! with c' = c + Ulong and e' = e - Ulong where Ulong is the long-range
 ! part of the potential, but h = g - 1 = e + c = e' + c'.  The pair
 ! correlation functions are g = 1 + h - the addition of '1' is left
-! for the user to implement.
+! for the user to implement.  We assume the c and e functions are
+! those in the first place in the history trajectory.
 
   subroutine make_pair_functions
     implicit none
-    integer :: i, j, ij, i1
-    i1 = mod(istep-1, nps) + 1
+    integer :: i, j, ij
     do j = 1, ncomp
        do i = 1, j
           ij = i + j*(j-1)/2
-          hr(:, i, j) = c(:, ij, i1) + e(:, ij, i1)
+          hr(:, i, j) = c(:, ij, 1) + e(:, ij, 1)
           hr(:, j, i) = hr(:, i, j)
        end do
     end do
@@ -1270,7 +1265,8 @@ contains
 ! above routines actually work with c' = c + Ulong and e' = e - Ulong
 ! where Ulong is the long-range part of the potential, so we have h =
 ! g - 1 = e + c = e' + c'.  See also Vrbka et al, J. Chem. Phys. 131,
-! 154109 (2009).
+! 154109 (2009).  We assume the c and e functions are those in the
+! first place in the history trajectory.
 !
 ! The mean-field thermodynamic expressions can often be obtained
 ! analytically from the potential. In this routine they are calculated
@@ -1280,11 +1276,9 @@ contains
 
   subroutine make_thermodynamics
     implicit none
-    integer :: i, j, ij, i1, irc
+    integer :: i, j, ij, irc
     double precision :: rhotot, r1, r2, g1, g2, gc
     double precision :: rhoxx(nfnc), t(nfnc)
-
-    i1 = mod(istep-1, nps) + 1
 
     ! rhoxx is rho x_i x_j, doubled up for the off-diagonal components
 
@@ -1314,7 +1308,7 @@ contains
 
     do i = 1, nfnc
        t(i) =  - twopi * deltar * sum((dushort(:,i) + dulong(:,i)) &
-            & * (c(:,i,i1) + e(:,i,i1)) * r(:)**3) / 3.0
+            & * (c(:,i,1) + e(:,i,1)) * r(:)**3) / 3.0
     end do
 
     ! The correlation contribution is sum_ij rho x_i x_j t_ij.
@@ -1330,8 +1324,8 @@ contains
           irc = nint(diam(i) / deltar)
           r1 = r(irc+1)
           r2 = r(irc+2)
-          g1 = 1.0 + c(irc+1,i,i1) + e(irc+1,i,i1)
-          g2 = 1.0 + c(irc+2,i,i1) + e(irc+2,i,i1)
+          g1 = 1.0 + c(irc+1,i,1) + e(irc+1,i,1)
+          g2 = 1.0 + c(irc+2,i,1) + e(irc+2,i,1)
           gc = ( (g1 - g2) * diam(i) + g2 * r1 - g1 * r2 ) / (r1 - r2)
           t(i) = twopi * diam(i)**3 * gc / 3.0
        else
@@ -1354,7 +1348,7 @@ contains
     ! consists of the middle part of the trapezium rule.
 
     do i = 1, nfnc
-       t(i) = fourpi * deltar * sum(c(:,i,i1) * r(:)**2)
+       t(i) = fourpi * deltar * sum(c(:,i,1) * r(:)**2)
     end do
 
     ! The compressibility is 1 - sum_ij rho x_i x_j t_ij
@@ -1374,7 +1368,7 @@ contains
 
     do i = 1, nfnc
        t(i) = twopi * deltar * sum((ushort(:,i) + ulong(:,i)) &
-            & * (c(:,i,i1) + e(:,i,i1)) * r(:)**2)
+            & * (c(:,i,1) + e(:,i,1)) * r(:)**2)
     end do
 
     ! The extra contribution is sum_ij rho x_i x_j t_ij
@@ -1397,8 +1391,8 @@ contains
     ! for the first term.
 
     do i = 1, nfnc
-       t(i) = fourpi * deltar * sum((0.5*(c(:,i,i1) + e(:,i,i1)) &
-            & * (e(:,i,i1) + ulong(:,i)) - c(:,i,i1)) * r(:)**2)
+       t(i) = fourpi * deltar * sum((0.5*(c(:,i,1) + e(:,i,1)) &
+            & * (e(:,i,1) + ulong(:,i)) - c(:,i,1)) * r(:)**2)
     end do
 
     ! The excess chemical potential of the ith component is then sum_j
