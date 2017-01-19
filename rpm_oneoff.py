@@ -149,15 +149,23 @@ if args.show:
 
     plt.subplot(2, 2, 3)
 
-    plt.plot(w.r[0:imax], w.c[0:imax, 0, 0]+w.c[0:imax, 1, 0], label="$c_{11}+c_{12}$")
-    plt.plot(w.r[0:imax], w.c[0:imax, 0, 0]-w.c[0:imax, 1, 0]-2*w.ulong[0:imax, 0], label="$c_{11}-c_{12}$")
+    plt.plot(w.r[0:imax],
+             w.c[0:imax, 0, 0]-w.ulong[0:imax, 0]+w.c[0:imax, 1, 0]-w.ulong[0:imax, 1],
+             label="$c_{11}+c_{12}$")
+    plt.plot(w.r[0:imax],
+             w.c[0:imax, 0, 0]-w.ulong[0:imax, 0]-w.c[0:imax, 1, 0]+w.ulong[0:imax, 1],
+             label="$c_{11}-c_{12}$")
     plt.legend(loc='upper right')
     plt.xlabel('$r$')
     
     plt.subplot(2, 2, 4)
 
-    plt.plot(w.k[0:jmax], w.ck[0:jmax, 0]+w.ck[0:jmax, 1], label="$c_{11}+c_{12}$")
-    plt.plot(w.k[0:jmax], w.ck[0:jmax, 0]-w.ck[0:jmax, 1]-2*w.ulongk[0:jmax, 0], label="$c_{11}-c_{12}$")
+    plt.plot(w.k[0:jmax],
+             w.ck[0:jmax, 0]-w.ulongk[0:jmax, 0]+w.ck[0:jmax, 1]-w.ulongk[0:jmax, 1],
+             label="$ck_{11}+ck_{12}$")
+    plt.plot(w.k[0:jmax],
+             w.ck[0:jmax, 0]-w.ulongk[0:jmax, 0]-w.ck[0:jmax, 1]+w.ulongk[0:jmax, 1],
+             label="$ck_{11}-ck_{12}$")
     plt.legend(loc='lower right')
     plt.xlabel('$k$')
     

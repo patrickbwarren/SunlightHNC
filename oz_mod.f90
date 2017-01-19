@@ -562,6 +562,7 @@ contains
 
     ulong(:,1) = lb / r
     ulongk(:,1) = fourpi * lb / k**2
+!    ulongk(:,1) = fourpi * lb * sin(k*sigma)  / (sigma * k**3)
     dulong(:,1) = - lb / r**2
 
     if (kappa.gt.0.0) then
@@ -615,7 +616,6 @@ contains
     do i = 1, nfnc
        irc = nint(diam(i) / deltar)
        ushort(1:irc, i) = 0.0d0
-       ulong(1:irc, i) = 0.0d0
        dushort(1:irc, i) = 0.0d0
        expnegus(1:irc, i) = 0.0d0
     end do
@@ -1188,24 +1188,18 @@ contains
   end subroutine save_reference
 
 ! The EXP approximation refines the current RPA/MSA solution by using
-! the current solution and a reference solution to calculate ...  The
-! result is saved back in the reference state, and a round trip
-! through the alternate version of the Ornstein-Zernike relation
-! populates the direct and indirect correlation functions.  We assume
-! the current solution is in first place in the history trajectory.
+! the current solution (h = c + e) and a reference solution (h0) to
+! send h0 --> (1 + h0) exp(h - h0) - 1.  A round trip through the
+! alternate version of the Ornstein-Zernike relation re-populates the
+! direct and indirect correlation functions.  We assume the current
+! solution is in first place in the history trajectory.  The reference
+! state is reset to h0 = 0 after a call to this function, for safety!
   
   subroutine exp_refine
     implicit none
-!    integer :: i, irc
-    double precision :: h(ng-1, nfnc)
-    h(:,:) = c(:,:,1) + e(:,:,1)
-    ! we now have h(:,:) and h0(:,:) so should be straightforward
-    h0 = exp(h0) - 1.0 ! THIS NEEDS FIXING
-!    do i = 1, nfnc
-!       irc = nint(diam(i) / deltar) ! Reset inside the hard core
-!       h0(1:irc,i) = - 1.0
-!    end do
+    h0 = (1.0d0 + h0) * exp(c(:,:,1) + e(:,:,1) - h0) - 1.0d0
     call oz_solve2
+    h0 = 0.0d0
     if (auto_fns.eq.1) then
        call make_pair_functions
        call make_structure_factors
@@ -1304,12 +1298,20 @@ contains
     ! Evaluate t_ij = - (2pi/3) int_d^inf d(U_ij)/dr h_ij r^3 dr. The
     ! contribution from both end-points r = 0 (i = 0) and r = L (i =
     ! ng) vanishes, hence the sum just consists of the middle part of
-    ! the trapezium rule.  If we have set dushort + dulong = 0 within
-    ! the hard core, the lower bound is taken care of automatically.
+    ! the trapezium rule.  With a hard core the first point
+    ! contributes half.
 
     do i = 1, nfnc
-       t(i) =  - twopi * deltar * sum((dushort(:,i) + dulong(:,i)) &
-            & * (c(:,i,1) + e(:,i,1)) * r(:)**3) / 3.0
+       if (diam(i).gt.0.0) then
+          irc = nint(diam(i) / deltar)
+          t(i) =  - twopi * deltar * sum((dushort(irc+2:,i) + dulong(irc+2:,i)) &
+               & * (c(irc+2:,i,1) + e(irc+2:,i,1)) * r(irc+2:)**3) / 3.0 &
+               & - 0.5 * twopi * deltar * ((dushort(irc+1,i) + dulong(irc+1,i)) &
+               & * (c(irc+1,i,1) + e(irc+1,i,1)) * r(irc+1)**3) / 3.0
+       else
+          t(i) =  - twopi * deltar * sum((dushort(:,i) + dulong(:,i)) &
+               & * (c(:,i,1) + e(:,i,1)) * r(:)**3) / 3.0
+       end if
     end do
 
     ! The correlation contribution is sum_ij rho x_i x_j t_ij.
@@ -1362,14 +1364,22 @@ contains
 
     un_mf = sum(rhoxx(:) * tu(:))
 
-    ! Evaluate t_ij = 2 pi int_0^inf U_ij h_ij r^2 dr.  Note that the
-    ! contribution from both end-points again vanishes.  If we have
-    ! set ushort + ulong = 0 within the hard core, the lower bound is
-    ! taken care of automatically.
+    ! Evaluate t_ij = 2 pi int_0^inf U_ij h_ij r^2 dr.  Note that with
+    ! a hard core the contribution from the inner end-point is halved
+    ! (trapezium rule) and the outer vanishes, otherwise the
+    ! contribution from both ends vanishes.
 
     do i = 1, nfnc
-       t(i) = twopi * deltar * sum((ushort(:,i) + ulong(:,i)) &
-            & * (c(:,i,1) + e(:,i,1)) * r(:)**2)
+       if (diam(i).gt.0.0) then
+          irc = nint(diam(i) / deltar)
+          t(i) = twopi * deltar * sum((ushort(irc+2:,i) + ulong(irc+2:,i)) &
+               & * (c(irc+2:,i,1) + e(irc+2:,i,1)) * r(irc+2:)**2) & 
+               & + 0.5 * twopi * deltar * ((ushort(irc+1,i) + ulong(irc+1,i)) &
+               & * (c(irc+1,i,1) + e(irc+1,i,1)) * r(irc+1)**2)
+       else
+          t(i) = twopi * deltar * sum((ushort(:,i) + ulong(:,i)) &
+               & * (c(:,i,1) + e(:,i,1)) * r(:)**2)
+       end if
     end do
 
     ! The extra contribution is sum_ij rho x_i x_j t_ij
