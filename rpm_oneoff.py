@@ -160,12 +160,8 @@ if args.show:
     
     plt.subplot(2, 2, 4)
 
-    plt.plot(w.k[0:jmax],
-             w.ck[0:jmax, 0]-w.ulongk[0:jmax, 0]+w.ck[0:jmax, 1]-w.ulongk[0:jmax, 1],
-             label="$ck_{11}+ck_{12}$")
-    plt.plot(w.k[0:jmax],
-             w.ck[0:jmax, 0]-w.ulongk[0:jmax, 0]-w.ck[0:jmax, 1]+w.ulongk[0:jmax, 1],
-             label="$ck_{11}-ck_{12}$")
+    plt.plot(w.k[0:jmax],w.ck[0:jmax, 0],label="$ck'_{11}$")
+    plt.plot(w.k[0:jmax],w.ck[0:jmax, 1],label="$ck'_{12}$")
     plt.legend(loc='lower right')
     plt.xlabel('$k$')
     
@@ -173,6 +169,9 @@ if args.show:
 
     
 if args.dump:
+
+    for i in range(w.ng-1):
+        print("L\t%g\t%g\t%g\t%g" % (w.r[i], w.ulong[i, 0], w.ulong[i, 1], w.ulong[i, 2]))
 
     for i in range(w.ng-1):
         print("C\t%g\t%g\t%g\t%g" % (w.r[i], w.c[i, 0, 0], w.c[i, 1, 0], w.c[i, 2, 0]))

@@ -544,7 +544,7 @@ contains
   subroutine soft_rpm_potential(use_ushort)
     implicit none
     integer, intent(in) :: use_ushort
-    integer :: i, irc
+    integer :: irc
     double precision :: rootpi
 
     rootpi = sqrt(pi)
@@ -560,10 +560,13 @@ contains
     diam(2) = sigma
     diam(3) = sigma
 
+    irc = nint(sigma / deltar)
+
     ulong(:,1) = lb / r
-    ulongk(:,1) = fourpi * lb / k**2
-!    ulongk(:,1) = fourpi * lb * sin(k*sigma)  / (sigma * k**3)
+    ulong(1:irc,1) = lB / sigma
+    ulongk(:,1) = fourpi * lb * sin(k*sigma)  / (sigma * k**3)
     dulong(:,1) = - lb / r**2
+    dulong(1:irc,1) = 0.0d0
 
     if (kappa.gt.0.0) then
        ulong(:,2) = - lb * erf(kappa*r) / r
@@ -571,9 +574,9 @@ contains
        dulong(:,2) = - 2.0d0*kappa*lb * exp(-kappa**2*r**2) / (rootpi * r) &
             & + lb * erf(kappa*r) / r**2
     else
-       ulong(:,2) = - lb / r
-       ulongk(:,2) = - fourpi * lb / k**2
-       dulong(:,2) = lb / r**2
+       ulong(:,2) = - ulong(:,1)
+       ulongk(:,2) = - ulongk(:,1)
+       dulong(:,2) = - dulong(:,1)
     end if
 
     ulong(:,3) = ulong(:,1)
@@ -591,6 +594,11 @@ contains
        dulong(:,2) = - dulong(:,1)
     end if
 
+    ! Generate auxiliary function
+
+    expnegus = exp(-ushort)
+    expnegus(1:irc, :) = 0.0d0
+
     ! These are the analytic contributions to the thermodynamics.
 
     tp = 0.0d0
@@ -606,19 +614,6 @@ contains
           tl(2) = pi*lb / kappa**2
        end if
     end if
-
-    ! Generate auxiliary function
-
-    expnegus = exp(-ushort)
-
-    ! Impose the hard core condition
-
-    do i = 1, nfnc
-       irc = nint(diam(i) / deltar)
-       ushort(1:irc, i) = 0.0d0
-       dushort(1:irc, i) = 0.0d0
-       expnegus(1:irc, i) = 0.0d0
-    end do
 
     ! Record the model type
 
