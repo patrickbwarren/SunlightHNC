@@ -1962,7 +1962,7 @@ lead to the same result.  The first is to Fourier transform the known
 solution to the real space direct correlation function.  For this, we
 introduce the inverse Debye length $\kappa=(4\pi\lB\rho)^{1/2}$, and
 dimensionless version of the same, $x=\kappa R$.  In terms of the
-latter we define $B=[1+x+(1+2x)^{1/2}]/x$.  Then the MSA solution for
+latter we define $B=[1+x-(1+2x)^{1/2}]/x$.  Then the MSA solution for
 the direct correlation function difference is
 $c_{11}-c_{12}=-({4\lB}/{R})(B-{B^2 r}/{2R})$ for $r\le R$, and
 $c_{11}-c_{12}= -{2\lB}/{r}$ for $r > R$ (the latter reflects the MSA
@@ -1975,16 +1975,17 @@ otherwise accompany the individual direct correlation functions.
 To do the Fourier transform we write this as
 %
 \begin{equation}
-  c_{11}-c_{12}=-\frac{2\lB}{r}+\Bigl[\frac{2\lB}{r}
-  -\frac{4\lB}{R}\Bigl(B-\frac{B^2 r}{2R}\Bigr)\Bigr]\,\Theta(R-r)
+  \half(c_{11}-c_{12})=-\frac{\lB}{r}+\Bigl[\frac{\lB}{r}
+    -\frac{2\lB}{R}\Bigl(B-\frac{B^2 r}{2R}\Bigr)\Bigr]\,\Theta(R-r)
+  \label{eq:msa1}
 \end{equation}
 %
 then, \cf\ \Eqref{eq:fFB},
 %
 \begin{equation}
-  \tilde c_{11}-\tilde c_{12}=-\frac{8\pi\lB}{k^2}+
-  \frac{4\pi}{k}\int_0^R\!dr\,r\,\sin kr\,\Bigl[\frac{2\lB}{r}
-  -\frac{4\lB}{R}\Bigl(B-\frac{B^2 r}{2R}\Bigr)\Bigr]\,.
+  \half(\tilde c_{11}-\tilde c_{12})=-\frac{4\pi\lB}{k^2}+
+  \frac{4\pi}{k}\int_0^R\!dr\,r\,\sin kr\,\Bigl[\frac{\lB}{r}
+  -\frac{2\lB}{R}\Bigl(B-\frac{B^2 r}{2R}\Bigr)\Bigr]\,.
 \end{equation}
 %
 The integral is easily evaluated and inserted in the expression
@@ -2004,11 +2005,25 @@ Note that correctly $S_{ZZ}(k)=k^2/\kappa^2+O(k^4)$ as $k\to0$ (thus
 the MSA satisfies the Stillinger-Lovett moment conditions), and
 $S_{ZZ}(k)\to1$ as $k\to\infty$.
 
-An alternative route to the same result uses analytic continuation on
-the Laplace-transformed direct correlation function.  Specifically,
-Waisman and Lebowitz \cite{WL72} define $\bar G(s)=\int_0^\infty
-dr\,e^{-sr} r\, [g_{11}(r)-g_{12}(r)]$ and give the result (see also
-Stell and Sun \cite{SS75})
+For completeness, the partner to \Eqref{eq:msa1} is the Percus-Yevick
+hard sphere solution \cite{HM06, Wert63}
+%
+\begin{equation}
+  \half(c_{11}+c_{12})=
+  -[\lambda_1-6\eta\lambda_2r/R
+  +\half\eta\lambda_1(r/R)^3]\,\Theta(1-x)
+  \label{eq:msa2}
+\end{equation}
+%
+where $\lambda_1=(1+2\eta)^2/(1-\eta)^4$,
+$\lambda_2=(1+\half\eta)^2/(1-\eta)^4$, and $\eta=\pi\rho R^3/6$ is
+the packing fraction.
+
+An alternative route to the charge-charge structure factor uses
+analytic continuation on the Laplace-transformed direct correlation
+function.  Specifically, Waisman and Lebowitz \cite{WL72} define $\bar
+G(s)=\int_0^\infty dr\,e^{-sr} r\, [g_{11}(r)-g_{12}(r)]$ and give the
+result (see also Stell and Sun \cite{SS75})
 %
 \begin{equation}
   \bar G(s)=-s(2q^2/\pi\rho)[(s^2+2qs+2q^2)e^{sR}-2q^2]^{-1}\,.
@@ -2020,7 +2035,7 @@ From the definitions it is easy to infer
   S_{ZZ}(k)=1+\frac{2\pi\rho}{k}\imaginary \bar G(-ik)\,.
 \end{equation}
 %
-If the indicated operations are carried out, one recovers
+If the indicated operations are carried out, one indeed recovers
 \Eqref{eq:szzrpm}.
 
 \thebibliography{}
@@ -2080,6 +2095,10 @@ If the indicated operations are carried out, one recovers
 \bibitem{WL72} E.~Waisman and J.~L.~Lebowitz, ``Mean spherical model
   integral equation for charged hard spheres. II Results'',
   J.\ Chem.\ Phys.\ {\bf56}, 3093 (1972).
+
+\bibitem{Wert63} M.~S.~Wertheim, ``Exact solution of the Percus-Yevick
+  integral equation for hard spheres'', Phys.\ Rev.\ Lett.\ {\bf10},
+  321 (1963).
 
 \bibitem{SS75} G.~Stell and S.~F.~Sun, ``Generalised mean spherical
   approximation for charged hard spheres: The electrolyte regime'',

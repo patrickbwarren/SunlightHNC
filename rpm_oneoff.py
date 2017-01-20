@@ -46,7 +46,6 @@ parser.add_argument('--msa', action='store_true', help='use MSA (default HNC)')
 parser.add_argument('--exp', action='store_true', help='use EXP refinement')
 parser.add_argument('--npt', action='store', default=1, type=int, help='number of intermediate warm-up steps')
 
-parser.add_argument('--show', action='store_true', help='show results')
 parser.add_argument('--dump', action='store_true', help='write out g(r)')
 
 parser.add_argument('--verbose', action='store_true', help='more output')
@@ -113,7 +112,23 @@ if not args.dump:
 snn = np.sum(np.sum(w.sk, axis=2), axis=1) / np.sum(w.rho)
 szz = np.dot(np.dot(w.z, w.sk), w.z) / np.sum(w.rho)
 
-if args.show:
+if args.dump:
+
+    for i in range(w.ng-1):
+        print("%g\t%g\t%g\t%g\tL" % (w.r[i], w.ulong[i, 0], w.ulong[i, 1], w.ulong[i, 2]))
+
+    for i in range(w.ng-1):
+        print("%g\t%g\t%g\tC" % (w.r[i],
+                                     0.5*(w.c[i, 0, 0]-w.ulong[i, 0]+w.c[i, 1, 0]-w.ulong[i, 1]),
+                                     0.5*(w.c[i, 0, 0]-w.ulong[i, 0]-w.c[i, 1, 0]+w.ulong[i, 1])))
+
+    for i in range(w.ng-1):
+        print("%g\t%g\t%g\t%g\tH" % (w.r[i], w.hr[i, 0, 0], w.hr[i, 0, 1], w.hr[i, 1, 1]))
+
+    for i in range(w.ng-1):
+        print("%g\t%g\t%g\tS" % (w.k[i], snn[i], szz[i]))
+
+else:
 
     plt.figure(1)
 
@@ -139,19 +154,18 @@ if args.show:
 
     plt.subplot(2, 2, 3)
     
-    imax = w.ng - 1
     plt.plot(w.r[0:imax],
-             w.c[0:imax, 0, 0]-w.ulong[0:imax, 0]+w.c[0:imax, 1, 0]-w.ulong[0:imax, 1],
-             label="$c_{11}+c_{12}$")
+             0.5*(w.c[0:imax, 0, 0]-w.ulong[0:imax, 0]+w.c[0:imax, 1, 0]-w.ulong[0:imax, 1]),
+             label="$[c_{11}+c_{12}]/2$")
     plt.plot(w.r[0:imax],
-             w.c[0:imax, 0, 0]-w.ulong[0:imax, 0]-w.c[0:imax, 1, 0]+w.ulong[0:imax, 1],
-             label="$c_{11}-c_{12}$")
+             0.5*(w.c[0:imax, 0, 0]-w.ulong[0:imax, 0]-w.c[0:imax, 1, 0]+w.ulong[0:imax, 1]),
+             label="$[c_{11}-c_{12}]/2$")
     plt.legend(loc='lower right')
     plt.xlabel('$r$')
     
     plt.subplot(2, 2, 4)
 
-    jmax = int(50.0 / w.deltak)
+    jmax = int(args.skcut*3 / w.deltak)
     plt.plot(w.k[0:jmax],w.ek[0:jmax, 0]+w.ck[0:jmax, 0],label="$hk_{11}$")
     plt.plot(w.k[0:jmax],w.ek[0:jmax, 1]+w.ck[0:jmax, 1],label="$hk_{12}$")
 #    plt.plot(w.k[0:jmax],
@@ -164,19 +178,4 @@ if args.show:
     plt.xlabel('$k$')
     
     plt.show()
-
-    
-if args.dump:
-
-    for i in range(w.ng-1):
-        print("%g\t%g\t%g\t%g\tL" % (w.r[i], w.ulong[i, 0], w.ulong[i, 1], w.ulong[i, 2]))
-
-    for i in range(w.ng-1):
-        print("%g\t%g\t%g\t%g\tC" % (w.r[i], w.c[i, 0, 0], w.c[i, 1, 0], w.c[i, 2, 0]))
-
-    for i in range(w.ng-1):
-        print("%g\t%g\t%g\t%g\tH" % (w.r[i], w.hr[i, 0, 0], w.hr[i, 0, 1], w.hr[i, 1, 1]))
-
-    for i in range(w.ng-1):
-        print("%g\t%g\t%g\tS" % (w.k[i], snn[i], szz[i]))
 
