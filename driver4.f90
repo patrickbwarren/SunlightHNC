@@ -47,7 +47,7 @@ program driver4
   z(3) = -1
   z(4) = -1
 
-  call dpd_potential(1)
+  call dpd_potential
 
   rhotot = 3.0d0
   mfcharge = 0.2d0

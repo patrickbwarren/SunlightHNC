@@ -80,11 +80,11 @@ if args.type < 4:
     w.dpd_potential(args.type)
 else:
     if args.case == 1:
-        w.dpd_potential(4)
+        w.dpd_potential(w.use_slater_exact)
     else:
         if args.case == 2: w.beta = 5 / (8*w.lbda)
         else: w.beta = 1 / w.lbda
-        w.dpd_potential(5)
+        w.dpd_potential(w.use_slater_approx)
 
 # The calculation here solves rhoz = z1^2*rho1 + z2^2*rho2, z1*rho1 + z2*rho2 = 0
 

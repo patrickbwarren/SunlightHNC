@@ -64,7 +64,7 @@ dA = 5.0
 
 w.arep[0,0] = w.arep[1,1] = A
 w.arep[0,1] = A + dA
-w.dpd_potential(1)
+w.dpd_potential()
 
 n = 41
 

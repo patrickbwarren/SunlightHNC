@@ -36,7 +36,7 @@ w.lb = args.lb
 w.sigma = args.sigma
 w.z[0] = 1.0
 w.z[1] = -1.0
-w.dpd_potential(1)
+w.dpd_potential()
 
 w.rho[0] = args.rhoz / 2.0
 w.rho[1] = w.rho[0]

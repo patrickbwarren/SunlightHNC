@@ -79,7 +79,7 @@ w.lb = args.lb
 w.sigma = args.sigma
 w.z[0] = 1.0
 w.z[1] = -1.0
-w.dpd_potential(1)
+w.dpd_potential()
 
 rho1 = scipy.optimize.fsolve(urpm_press, args.rhoz)
 p = urpm_press(rho1)

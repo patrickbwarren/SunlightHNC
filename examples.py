@@ -54,7 +54,7 @@ def fnex1(dA):
     w.cold_start = 1
     for i in range(n):
         w.arep[0,0] = dA * (i + 1.0)
-        w.dpd_potential(1)
+        w.dpd_potential()
         w.hnc_solve()
         curr = w.un_xc / w.arep[0,0]
         fnex_xc = fnex_xc + 0.5*dA*(prev + curr)
@@ -77,7 +77,7 @@ def fnex2(drho):
 
 w.initialise()
 w.arep[0,0] = A = 25.0
-w.dpd_potential(1)
+w.dpd_potential()
 w.rho[0] = rho = 3.0
 w.hnc_solve()
 

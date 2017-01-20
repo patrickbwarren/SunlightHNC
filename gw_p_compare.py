@@ -48,7 +48,7 @@ from oz import wizard as w
 
 w.initialise()
 w.arep[0,0] = A = 25.0
-w.dpd_potential(1)
+w.dpd_potential()
 
 npt = 41
 rhomax = 10.0

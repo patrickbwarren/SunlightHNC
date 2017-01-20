@@ -59,8 +59,8 @@ w.lb = args.lb
 w.sigma = args.sigma
 w.sigmap = args.sigmap
 
-if (args.ushort): w.soft_urpm_potential(1)
-else: w.soft_urpm_potential(0)
+if (args.ushort): w.soft_urpm_potential(w.use_ushort)
+else: w.soft_urpm_potential()
 
 w.rho[0] = args.rhoz / 2.0
 w.rho[1] = args.rhoz / 2.0

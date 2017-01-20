@@ -92,7 +92,7 @@ y = []
 for i in range(npt):
     dA = (Amax - A) * i / (npt - 1.0)
     w.arep[0,1] = A + dA
-    w.dpd_potential(1)
+    w.dpd_potential()
     w.hnc_solve()
     x.append(dA)
     y.append(w.muex[1]-w.muex[0])

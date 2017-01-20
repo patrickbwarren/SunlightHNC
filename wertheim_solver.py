@@ -56,7 +56,7 @@ def solve_wertheim(lb, rhoz, sigma, sigmap):
     w.lb = lb
     w.sigma = sigma
     w.sigmap = sigmap
-    w.soft_urpm_potential(0)
+    w.soft_urpm_potential()
     w.rho[0] = rhoz / 2.0
     w.rho[1] = w.rho[0]
     w.hnc_solve()

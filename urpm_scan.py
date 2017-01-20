@@ -54,7 +54,7 @@ parser.add_argument('--rc', action='store', default=1.0, type=float, help='DPD l
 parser.add_argument('--A', action='store', default=0.0, type=float, help='DPD repulsion amplitude (default 0.0)')
 parser.add_argument('--z1', action='store', default=1, type=int, help='valency of positive ions (default +1)')
 parser.add_argument('--z2', action='store', default=-1, type=int, help='valency of negative ions (default -1)')
-parser.add_argument('--type', action='store', default=1, type=int, help='charge type (1=Gaussian, 2=Bessel, 3=Groot, 4=Mexican)')
+parser.add_argument('--type', action='store', default=1, type=int, help='charge type (1=Gaussian, 2=Bessel, 3=Groot, 4=Slater)')
 
 parser.add_argument('--rho', action='store', default=3.0, type=float, help='total density if ncomp = 3 (default 3.0)')
 parser.add_argument('--npt', action='store', default=11, type=int, help='number of rho points (default 11)')

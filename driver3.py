@@ -40,7 +40,7 @@ w.arep[1, 2] = 20.0
 w.z[0] = 1
 w.z[1] = -1
 
-w.dpd_potential(1)
+w.dpd_potential()
 
 rho = 3.0
 xc = 0.2

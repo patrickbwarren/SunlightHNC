@@ -105,11 +105,13 @@ module wizard
   include "fftw3.f"
 
   integer, parameter :: &
-       & DPD_GAUSSIAN = 1, &
-       & DPD_BESSEL = 2, &
-       & DPD_LINEAR = 3, &
-       & DPD_SLATER_EXACT = 4, &
-       & DPD_SLATER_APPROX = 5
+       & USE_GAUSSIAN = 1, &
+       & USE_BESSEL = 2, &
+       & USE_LINEAR = 3, &
+       & USE_SLATER_EXACT = 4, &
+       & USE_SLATER_APPROX = 5
+
+  integer, parameter :: USE_USHORT = 1
 
   double precision, parameter :: &
        & pi = 3.141592653589793d0, &
@@ -258,22 +260,22 @@ contains
        end do
        print *, ' valencies, z = ', z
        print *, ' rc = ', rc, ' lb = ', lb
-       if (model_type.eq.DPD_GAUSSIAN) then
+       if (model_type.eq.USE_GAUSSIAN) then
           print *, ' Gaussian smearing, sigma = ', sigma
        end if
-       if (model_type.eq.DPD_BESSEL) then
+       if (model_type.eq.USE_BESSEL) then
           print *, ' Bessel smearing, sigma = ', sigma
        end if
-       if (model_type.eq.DPD_LINEAR) then
+       if (model_type.eq.USE_LINEAR) then
           print *, ' linear (Groot) smearing, R = ', rgroot
           print *, ' equivalent Gaussian sigma = ', &
                & sqrt(2.0d0/15.0d0) * rgroot
        end if
-       if (model_type.eq.DPD_SLATER_EXACT) then
+       if (model_type.eq.USE_SLATER_EXACT) then
           print *, ' Slater smearing (exact), lambda = ', lbda
           print *, ' equivalent Gaussian sigma = ', lbda
        end if
-       if (model_type.eq.DPD_SLATER_APPROX) then
+       if (model_type.eq.USE_SLATER_APPROX) then
           print *, ' Slater smearing (approx), beta = ', beta
           print *, ' 1 / beta = ', 1.0d0 / beta, ', &
                & 5 / (8 beta) = ', 0.625d0 / beta
@@ -313,15 +315,24 @@ contains
 ! Build the potential arrays, with parameters rc and arep(:,:) for the
 ! short-range DPD repulsion, and lb, sigma and z(:) for the long-range
 ! Gaussian-smeared Coulomb part.  A factor beta = 1/kT is implicit in
-! these definitions.  The parameter charge_type is Gaussian (1),
-! Bessel (2), Groot (3), Slater (exact) (4), Slater (approximate) (5).
+! these definitions.  The parameter charge_type is Gaussian (1 -
+! default), Bessel (2), Groot (3), Slater (exact) (4), Slater
+! (approximate) (5).  These can be selected agnostically of the number
+! scheme by using the defined integer constants USE_GAUSSIAN,
+! USE_BESSEL, USE_LINEAR, USE_SLATER_EXACT or USE_SLATER_APPROX.
+  
 
   subroutine dpd_potential(charge_type)
     implicit none
-    integer, intent(in) :: charge_type
+    integer, intent(in), optional :: charge_type
+    integer :: ctype = USE_GAUSSIAN
     integer :: i, j, ij, irc
     double precision :: aa(nfnc), zz(nfnc)
     double precision :: rootpi
+
+    if (present(charge_type) .and. charge_type.gt.0) then
+       ctype = charge_type
+    end if
 
     rootpi = sqrt(pi)
 
@@ -354,7 +365,7 @@ contains
 
     ! Gaussian charges
 
-    if (charge_type .eq. DPD_GAUSSIAN) then
+    if (ctype .eq. USE_GAUSSIAN) then
 
        ulong(:,nfnc) = (lb / r) * erf(0.5d0*r/sigma)
 
@@ -368,7 +379,7 @@ contains
 
     ! Bessel charges
 
-    if (charge_type .eq. DPD_BESSEL) then
+    if (ctype .eq. USE_BESSEL) then
 
        ulong(:,nfnc) = (lb / r) * (1.0d0 - exp(-r/sigma))
 
@@ -384,7 +395,7 @@ contains
     ! Note we do not give the real space part here hence the
     ! thermodynamic calculations will be wrong.
 
-    if (charge_type .eq. DPD_LINEAR) then
+    if (ctype .eq. USE_LINEAR) then
 
        ulong(:,nfnc) = 0.0d0
 
@@ -400,7 +411,7 @@ contains
     ! Slater charge smearing as in Gonzales-Melchor et al, [JCP v125,
     ! 224107 (2006)] but here with exact expression for interaction.
 
-    if (charge_type .eq. DPD_SLATER_EXACT) then
+    if (ctype .eq. USE_SLATER_EXACT) then
 
        ulong(:,nfnc) = (lb / r) * (1.0d0 - exp(-2.0d0*r/lbda) &
             & * (1.0d0 + 1.375d0*r/lbda + 0.75d0*r**2/lbda**2 &
@@ -419,7 +430,7 @@ contains
     ! 224107 (2006)] with original approximate expression (here
     ! translated into reciprocal space).
 
-    if (charge_type .eq. DPD_SLATER_APPROX) then
+    if (ctype .eq. USE_SLATER_APPROX) then
 
        ulong(:,nfnc) = (lb / r) * (1.0d0 - exp(-2*beta*r) * &
             & (1.0d0 + beta*r) )
@@ -457,7 +468,7 @@ contains
 
     ! Record the model type
 
-    model_type = charge_type
+    model_type = ctype
 
   end subroutine dpd_potential
 
@@ -466,10 +477,15 @@ contains
 ! will set z(1) = 1, z(2) = -1.  The parameter (0 or 1) controls
 ! whether ushort is used or not.
 
-  subroutine soft_urpm_potential(use_ushort)
+  subroutine soft_urpm_potential(use_ushort_flag)
     implicit none
-    integer, intent(in) :: use_ushort
+    integer, intent(in), optional :: use_ushort_flag
+    integer :: uuflag = 0
     double precision :: rootpi
+
+    if (present(use_ushort_flag) .and. use_ushort_flag.ne.0) then
+       uuflag = 1
+    end if
 
     rootpi = sqrt(pi)
 
@@ -502,7 +518,7 @@ contains
     ushort(:,:) = 0.0d0
     dushort(:,:) = 0.0d0
 
-    if (use_ushort.eq.1) then
+    if (uuflag.eq.1) then
        ushort(:,2) = ulong(:,2) + ulong(:,1)
        dushort(:,2) = dulong(:,2) + dulong(:,1)
        ulong(:,2) = - ulong(:,1)
@@ -526,7 +542,7 @@ contains
     ! the contribution of the long range part should be incorporated
     ! into the compressibility and chemical potential expressions.
 
-    if (use_ushort.eq.0) then
+    if (uuflag.eq.0) then
        tl = 2.0*tp
     else
        tl = 0.0d0
@@ -538,7 +554,7 @@ contains
 
     ! Record the model type
 
-    model_type = 10 + use_ushort
+    model_type = 10 + uuflag
 
   end subroutine soft_urpm_potential
 
@@ -548,11 +564,16 @@ contains
 ! sigma.  The parameter (0 or 1) controls whether ushort is used or
 ! not.  Using kappa < 0 implies the pure RPM case (kappa -> infinity).
 
-  subroutine soft_rpm_potential(use_ushort)
+  subroutine soft_rpm_potential(use_ushort_flag)
     implicit none
-    integer, intent(in) :: use_ushort
+    integer, intent(in), optional :: use_ushort_flag
+    integer :: uuflag = 0
     integer :: irc
     double precision :: rootpi
+
+    if (present(use_ushort_flag) .and. use_ushort_flag.ne.0) then
+       uuflag = 1
+    end if
 
     rootpi = sqrt(pi)
 
@@ -593,7 +614,7 @@ contains
     ushort(:,:) = 0.0d0
     dushort(:,:) = 0.0d0
 
-    if (use_ushort.eq.1) then
+    if (uuflag.eq.1) then
        ushort(:,2) = ulong(:,2) + ulong(:,1)
        dushort(:,2) = dulong(:,2) + dulong(:,1)
        ulong(:,2) = - ulong(:,1)
@@ -617,14 +638,14 @@ contains
             & + (1/(2.0d0*kappa**2) - sigma**2/3.0d0) * erfc(kappa*sigma) )
        tu(2) = pi*lb * ( sigma * exp(-kappa**2*sigma**2) / (kappa*rootpi) &
             & + (1/(2.0d0*kappa**2) - sigma**2) * erfc(kappa*sigma) )
-       if (use_ushort.eq.0) then ! off SYM condition
+       if (uuflag.eq.0) then ! off SYM condition
           tl(2) = pi*lb / kappa**2
        end if
     end if
 
     ! Record the model type
 
-    model_type = 20 + use_ushort
+    model_type = 20 + uuflag
 
   end subroutine soft_rpm_potential
 

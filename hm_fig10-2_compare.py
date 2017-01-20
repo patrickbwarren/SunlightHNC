@@ -68,7 +68,7 @@ w.lb = 0.71 / 0.425
 w.sigma = 1.0
 w.kappa = -1.0
 
-w.soft_rpm_potential(0)
+w.soft_rpm_potential()
 
 w.write_params();
 

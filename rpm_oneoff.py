@@ -66,7 +66,7 @@ w.lb = args.lb
 w.sigma = args.sigma
 w.kappa = args.kappa
 
-w.soft_rpm_potential(0)
+w.soft_rpm_potential()
 
 w.rho[0] = args.rhoz / 2.0
 w.rho[1] = args.rhoz / 2.0
@@ -81,11 +81,11 @@ if args.msa:
     w.msa_solve()
 elif args.exp:
     w.lb = 0.0
-    w.soft_rpm_potential(0)
+    w.soft_rpm_potential()
     w.msa_solve()
     w.save_reference()
     w.lb = args.lb
-    w.soft_rpm_potential(0)
+    w.soft_rpm_potential()
     w.msa_solve()
     w.exp_refine()
 else:
@@ -95,7 +95,7 @@ else:
         for i in range(args.npt):
             w.lb = (i + 1.0) / args.npt * args.lb
             print('lb = ', w.lb)
-            w.soft_rpm_potential(0)
+            w.soft_rpm_potential()
             w.hnc_solve()
             if args.verbose:
                 print('HNC error = ', w.error)
