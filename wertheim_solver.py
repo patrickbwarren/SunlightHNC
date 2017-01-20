@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 
 # This file is part of SunlightDPD - a home for open source software
 # related to the dissipative particle dynamics (DPD) simulation
@@ -56,7 +56,7 @@ def solve_wertheim(lb, rhoz, sigma, sigmap):
     w.lb = lb
     w.sigma = sigma
     w.sigmap = sigmap
-    w.soft_urpm_potential()
+    w.urpm_potential()
     w.rho[0] = rhoz / 2.0
     w.rho[1] = w.rho[0]
     w.hnc_solve()

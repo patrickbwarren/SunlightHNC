@@ -1129,10 +1129,10 @@ computed by calling \verb+RODFT00+ on $k_j h_j$.
 Version 1.7 of the code can handle an arbitrary number of components
 (versions prior to this could only handle at most three components).
 A species pair array index $(i, j)$ is mapped to a `function' index
-$n$ according to the following rule
+$s$ according to the following rule
 %
 \begin{equation}
-  n=\biggl\{\begin{array}{ll}
+  s=\biggl\{\begin{array}{ll}
   i+j(j-1)/2 & \hbox{if $i\le j$\,,}\\[3pt]
   j+i(i-1)/2 & \hbox{if $i>j$\,.}
   \end{array}
@@ -1157,11 +1157,11 @@ columns)
 \end{equation}
 %
 If necessary, one can recover the array indices $(i, j)$ from the the
-index $n$ by the following rule, where $\lfloor\cdots\rfloor$ is the
+index $s$ by the following rule, where $\lfloor\cdots\rfloor$ is the
 `floor' function,
 %
 \begin{equation}
-  j = \Bigl\lfloor{\frac{1+\sqrt{8n-7}}{2}}\Bigr\rfloor\,,\quad
+  j = \Bigl\lfloor{\frac{1+\sqrt{8s-7}}{2}}\Bigr\rfloor\,,\quad
   i = n - {j(j-1)}/{2}\,.
 \end{equation}
 %
@@ -1186,7 +1186,9 @@ therein.
 
 If scripting with \python\ note that the \python\ array index is one
 less than the \FORTRAN\ array index.  This conversion is seamlessly
-and invisibly implemented in \verb+f2py+.
+and invisibly implemented in \verb+f2py+.  Also note that the optional
+parameters in \FORTRAN\ function calls can be omitted also in \python,
+and the code will gracefully fall back to the documented defaults.
 
 The solver routines require only $\beta\tilde v_{\mu\nu}\lr$ and
 $\exp[-\beta v'_{\mu\nu}]$, which are prepared in the routines which
@@ -1216,34 +1218,37 @@ equation problem as fast and robust as possible.
   \FFTW\ plan for fast Fourier transforms.  This \verb+initialise+
   routine is typically called once, at the start, after the values of
   \verb+ncomp+, \verb+ng+, \verb+nps+, and \verb+deltar+ have been
-  settled.
+  fixed.
 %
 \item\verb+dpd_potential(charge_type)+ -- Sets up the DPD potential
   described in section \ref{sec:dpd}.  This routine can be called
-  multiple times.  The parameter indicates Gaussian charges
-  (\verb+charge_type = 1+), Bessel charges (\verb+charge_type = 2+),
-  linear (Groot) charges (\verb+charge_type = 3+), Slater charges with
-  exact interaction (\verb+charge_type = 4+), or Slater charges with
-  approximate interaction (\verb+charge_type = 5+).  The linear
-  (Groot) case (\verb+charge_type = 3+) is incomplete in the sense
-  that the thermodynamics is not calculated correctly.
+  multiple times.  The optional parameter indicates whether the
+  potential should be initialised with Gaussian charges (\verb+1+),
+  Bessel charges (\verb+2+), linear (Groot) charges (\verb+3+), Slater
+  charges with exact interaction (\verb+4+), or Slater charges
+  with approximate interaction (\verb+5+).  The linear case
+  (\verb+3+) is currently incomplete in the sense that the
+  thermodynamics is not calculated correctly.  If omitted, the
+  \verb+charge_type+ defaults to Gaussian (\verb+1+).
 %
-\item\verb+soft_urpm_potential(use_ushort)+ -- Sets up the
-  softened URPM potential described in section \ref{sec:softURPM}.
-  This routine can be called multiple times.  It checks that
-  \verb+ncomp = 2+ and forces $z_1=1$ and $z_2=-1$.  The parameter
-  indicates whether the potential should be a pure long range
-  reciprocal space part which then no longer satisfies SYM in
-  \Eqref{eq:sp} (\verb+use_ushort = 0+), or a long range
-  reciprocal space part which satisfies \Eqref{eq:sp} plus a short
-  range real space correction (\verb+use_ushort = 1+).
+\item\verb+urpm_potential(use_ushort_flag)+ -- Sets up the ultrasoft
+  restricted primitive model (URPM) potential with optional softening
+  as described in section \ref{sec:softURPM}.  This routine can be
+  called multiple times.  It checks that \verb+ncomp = 2+ and forces
+  $z_1=1$ and $z_2=-1$.  The optional flag indicates whether the
+  potential should be formulated to contain a short range real space
+  correction (\verb+use_ushort_flag = 1+).
 %
-\item\verb+soft_rpm_potential(use_ushort)+ -- Sets up the vanilla RPM
-  or softened RPM potential described in section \ref{sec:softRPM}.
-  This routine can be called multiple times.  It checks that
-  \verb+ncomp = 2+ and forces $z_1=1$ and $z_2=-1$.  The control
-  parameter \verb+use_ushort+ works the same way as described for the
-  softened URPM potential.
+\item\verb+rpm_potential(use_ushort_flag)+ -- Sets up the restricted
+  primitive model (RPM) with optional softening as described in
+  section \ref{sec:softRPM}.  This routine can be called multiple
+  times.  It checks that \verb+ncomp = 2+ and forces $z_1=1$ and
+  $z_2=-1$.  The optional flag \verb+use_ushort_flag+ works the same
+  way as described for the softened URPM potential.
+%
+\item\verb+hs_potential+ -- Sets up one component hard spheres with
+  diameter \verb+sigma+.  This routine can be called multiple times.
+  It checks that \verb+ncomp = 1+.
 %
 \item\verb+hnc_solve+ -- Calculate the HNC solution.  Specifically,
   initialise $c'_{\mu\nu}$ if the flag \verb+cold_start+ is set, take
@@ -1306,7 +1311,7 @@ equation problem as fast and robust as possible.
   \verb+initialise+ sets $\href_{\mu\nu}=0$, thus \verb+exp_refine+ is
   suitable for immediate use with soft potentials without hard cores.
   To use \verb+exp_refine+ for potentials with hard cores we need to
-  calculate and save the reference state, thus (in \FORTRAN):
+  calculate and save the reference state, thus (in \FORTRAN\ 90):
 %
 \begin{verbatim}
   [ .. remove tail, eg lb = 0.0 ]
@@ -1386,8 +1391,9 @@ called in any order.
 \item\verb+ng+ -- The real space grid size, $n$, usually a power of 2
   (default 4096).
 %
-\item\verb+nps+ -- The length of the Ng trajectory (cyclical history
-  array) (usually safe to leave at the default 6).
+\item\verb+nps+ -- The length of the Ng trajectory, equivalently the
+  size of the cyclical history array (usually safe to leave at the
+  default 6).
 %
 \item\verb+npic+ -- The number of Picard steps to pump-prime the Ng
   acceleration scheme (usually safe to leave at the default 6, but
@@ -1428,9 +1434,9 @@ convergence (usually safe to leave at default 100).
 \item\verb+lb+ -- Coulomb coupling strength $\lB$ (default 0.0)
 %
 \item\verb+sigma+ -- smearing length $\sigma$ (default 1.0) in the
-  case of Gaussian or Bessel charges in the DPD potential
-  (\verb+charge_type = 1-2+), and URPM potentials; hard core diameter
-  $\sigma$ in the case of the RPM.
+  case of Gaussian or Bessel charges in the DPD potential and URPM
+  potentials; hard core diameter $\sigma$ in the case of the RPM or
+  hard sphere potentials.
 %
 \item\verb+kappa+ -- parameter $\kappa$ (default $-$1.0) in the
   softened RPM potential.  A negative value is interpreted as
@@ -1470,7 +1476,7 @@ convergence (usually safe to leave at default 100).
   \eg\ \verb+arep(1,2)+, \verb+arep(1,3)+, and \verb+arep(2,3)+.  {\bf
     Elements below the diagonal are ignored}, \cf\ the matrix in
   \Eqref{eq:mat}.  All entries default to zero after a call to
-    \verb+initialise+.
+  \verb+initialise+.
 %
 \end{itemize}
 
@@ -1482,23 +1488,6 @@ convergence (usually safe to leave at default 100).
   $\delta_k=\pi/(n\delta_k)$, fixed by the needs of the fast Fourier
   transform algorithm.  Available after a call to \verb+initialise+.
 %
-\item\verb+hr(:, :, :)+ -- An array containing the total correlation
-  functions $h_{\mu\nu}(r)$ as in \Eqref{eq:hrs}.  Specifically
-  \verb+hr(i, mu, nu)+ contains $h_{\mu\nu}(r_i)$ where
-  $r_i=i\times\delta_r$ for $i=1\dots n-1$.  The values at $r=0$ can
-  be obtained by linear extrapolation \cite{KMP04}.  These arrays are
-  available after a call to \verb+make_pair_functions+ (which is done
-  automatically by the solver routines unless \verb+auto_fns+ is
-  turned off).
-%
-\item\verb+sk(:, :, :)+ -- An array containing structure factors
-  $S_{\mu\nu}(k)$ as in \Eqref{eq:skdef}.  Specifically
-  \verb+sk(j, mu, nu)+ contains $S_{\mu\nu}(k_j)$ where
-  $k_j=j\times\delta_k$ for $j=1\dots n-1$. These arrays are available
-  after a call to \verb+make_structure_functions+ (which is done
-  automatically by the solver routines unless \verb+auto_fns+ is
-  turned off).
-%
 \item\verb+r(:)+ -- The array \verb+r(i)+ contains
   $r_i=i\times\delta_r$ for $i=1\dots n-1$.  Available after a call to
   \verb+initialise+.
@@ -1507,19 +1496,25 @@ convergence (usually safe to leave at default 100).
   $k_j=j\times\delta_k$ for $j=1\dots n-1$.  Available after a call to
   \verb+initialise+.
 %
+\item\verb+hr(:, :, :)+ -- An array containing the total correlation
+  functions $h_{\mu\nu}(r)$ as in \Eqref{eq:hrs}.  Specifically
+  \verb+hr(i, mu, nu)+ contains $h_{\mu\nu}(r_i)$ where
+  $r_i=i\times\delta_r$ for $i=1\dots n-1$.  The values at $r=0$ can
+  be obtained by linear extrapolation \cite{KMP04}.  These arrays are
+  available after a call to \verb+make_pair_functions+ which is done
+  automatically by the solver routines unless \verb+auto_fns+ is
+  turned off.
+%
+\item\verb+sk(:, :, :)+ -- An array containing structure factors
+  $S_{\mu\nu}(k)$ as in \Eqref{eq:skdef}.  Specifically
+  \verb+sk(j, mu, nu)+ contains $S_{\mu\nu}(k_j)$ where
+  $k_j=j\times\delta_k$ for $j=1\dots n-1$. These arrays are available
+  after a call to \verb+make_structure_functions+ which is done
+  automatically by the solver routines unless \verb+auto_fns+ is
+  turned off.
+%
 \item\verb+error+ -- The final error estimate for the iterative
   solvers, should be less than \verb+tol+ if converged.
-%
-\item\verb+potential_type+ -- The last used potential type. This is
-  zero if no potential has been initialised, is equal to
-  \verb+charge_type+ in the case where \verb+dpd_potential+ was
-  called, is equal to \verb:10 + use_short: when
-  \verb+soft_urpm_potential+ is called, and is equal to
-  \verb:20 + use_short: when \verb+soft_rpm_potential+ is called.
-%
-\item The fixed parameters \verb+pi+, \verb+twopi+, and \verb+fourpi+ 
-($\pi$, $2\pi$, and $4\pi$) are available and can be utilised if
-convenient.
 %
 \end{itemize}
 %
@@ -1567,14 +1562,14 @@ virial route compressibility factor $\beta p/\rho$.
 %
 \end{itemize}
 
-The following internal variables may be useful.
+The following additional variables may be useful.
 %
 \begin{itemize}
 %
 \item\verb+c(:, :, :)+ and \verb+e(:, :, :)+ -- Arrays containing the
   offset direct and indirect correlation functions, such that for
-  example \verb+c(i, n, p)+ contains $c'_{\mu\nu}(r_i)$, where
-  \verb+n+ is the species pair index as in \Eqref{eq:ij}, and \verb+p+
+  example \verb+c(i, s, p)+ contains $c'_{\mu\nu}(r_i)$, where
+  \verb+s+ is the species pair index as in \Eqref{eq:ij}, and \verb+p+
   is the position in the cyclical history array.  After a successful
   call to one of the main solver routines, the most converged solution
   is always moved to the \verb+p = 1+ position.  Remember to subtract
@@ -1583,20 +1578,20 @@ The following internal variables may be useful.
 %
 \item\verb+ck(:, :)+ and \verb+ek(:, :)+ -- Arrays containing the
   Fourier-transformed offset direct and indirect correlation
-  functions, such that for example \verb+ck(j, n)+ contains ${\tilde
-    c}_{\mu\nu}\myprime(k_j)$ where \verb+n+ is the species pair
+  functions, such that for example \verb+ck(j, s)+ contains ${\tilde
+    c}_{\mu\nu}\myprime(k_j)$ where \verb+s+ is the species pair
   index.
 %
 \item\verb+h0(:, :)+ -- An array containing the reference state, such
-  that \verb+h0(j, n)+ contains $\href_{\mu\nu}(r_i)$ where
-  \verb+n+ is the species pair index. 
+  that \verb+h0(j, s)+ contains $\href_{\mu\nu}(r_i)$ where
+  \verb+s+ is the species pair index. 
 %
 \item\verb+ushort(:, :)+ and \verb+ulong(:, :)+ -- Arrays containing
-  the potential, such that \verb+ushort(i, n)+ contains $\beta
-  v'_{\mu\nu}(r_i)$ and \verb+ulong(i, n)+ contains $\beta
-  v\lr_{\mu\nu}(r_i)$, where \verb+n+ is the species index.
+  the potential, such that \verb+ushort(i, s)+ contains $\beta
+  v'_{\mu\nu}(r_i)$ and \verb+ulong(i, s)+ contains $\beta
+  v\lr_{\mu\nu}(r_i)$, where \verb+s+ is the species index.
 %
-\item\verb+expnegus(:, :)+ -- Array containing $\exp(-\beta
+\item\verb+expnegus(:, :)+ -- A similar array containing $\exp(-\beta
   v'_{\mu\nu})$, thus the exponentiated short range part of the
   potential.
 %
@@ -1606,25 +1601,45 @@ The following internal variables may be useful.
   r$.
 %
 \item\verb+ulongk(:, :)+ -- Array containing the Fourier transform of
-  the long range part of the potential, such that \verb+ulongk(j, n)+
-  contains $\beta{\tilde v}\lr_{\mu\nu}(k_j)$, where \verb+n+ is the
+  the long range part of the potential, such that \verb+ulongk(j, s)+
+  contains $\beta{\tilde v}\lr_{\mu\nu}(k_j)$, where \verb+s+ is the
   species index.
 %
-\end{itemize}
+\item\verb+potential_type+ -- The last used potential type. Currently
+  set to:
+\begin{verbatim}
+1 -- 5 : dpd_potential, corresponds to charge_type
+10, 11 : urpm_potential without, with use_ushort_flag
+20, 21 : rpm_potential without, with use_ushort_flag
+\end{verbatim}
 %
-Of these, the potential parts may of course be initialised outside the
-code, as may the reference state total correlation function in which
-latter case \verb+oz_solve2+ acts as a general OZ solver.
+\item The fixed parameters \verb+pi+, \verb+twopi+, and \verb+fourpi+ 
+($\pi$, $2\pi$, and $4\pi$) are available and can be utilised if
+convenient.
+%
+\item\verb+USE_GAUSSIAN+, \verb+USE_BESSEL+, \verb+USE_LINEAR+,
+  \verb+USE_SLATER_APPROX+ and\\ \verb+USE_SLATER_EXACT+ are integer
+  constants which can be used for\\ \verb+charge_type+ when
+  calling \verb+dpd_potential+.
+%
+\item\verb+USE_USHORT+ is likewise an integer constant ($=1$) which
+  can be used for \verb+use_ushort_flag+ in
+  \verb+urpm_potential+ and \verb+rpm_potential+.
+  %
+\end{itemize}
 
-Note that
-the HNC, MSA and RPA solvers require \emph{only} the long range
-potential in reciprocal space, $\beta{\tilde v}\lr_{\mu\nu}$
+Of these, the potential parts may of course be initialised in the
+driver routine, as may the reference state total correlation function
+in which latter case \verb+oz_solve2+ acts as a general OZ solver.
+
+Note that the HNC, MSA and RPA solvers require \emph{only} the long
+range potential in reciprocal space, $\beta{\tilde v}\lr_{\mu\nu}$
 (\verb+ulongk+), and the exponentiated short range potential,
 $\exp(-\beta v'_{\mu\nu})$ (\verb+expnegus+), thus a very minimalist
-approach can be taken.  The EXP solver uses in addition the long range
-potential in real space, $\beta v\lr_{\mu\nu}$ (\verb+ulong+).  The
-thermodynamics calculations require all the remaining potential
-functions.
+approach can be taken to specifying the potential.  The EXP solver
+uses in addition the long range potential in real space, $\beta
+v\lr_{\mu\nu}$ (\verb+ulong+).  The full suite of thermodynamics
+calculations do require all the remaining potential functions though.
 
 \section{Examples}
 %
@@ -1869,6 +1884,12 @@ Sections \ref{sec:vrp}--\ref{sec:feng} have been coded up as
   DPD is so good at representing fluid mixtures which fit
   Flory-Huggins (regular solution) theory.
 %
+\item\verb+hm_fig4-2_compare.py+ solves for the virial and
+  compressibility route pressure for the MSA and the HNC for hard
+  spheres, and compares with the accurate Carnahan-Starling equation of
+  state, as in Fig 4.2 of \Refcite{HM06}.  See comments in file for
+  more details.
+%
 \item\verb+hm_fig10-2_compare.py+ solves the MSA and the HNC for the
   RPM and compares with Monte-Carlo data, as in Fig 10.2 of
   \Refcite{HM06}.  See comments in file for more details.
@@ -1889,6 +1910,9 @@ Sections \ref{sec:vrp}--\ref{sec:feng} have been coded up as
 %
 \item\verb+rpm_oneoff.py+ is a similar driver routine for exploring
   the RPM.
+%
+\item\verb+hs_oneoff.py+ is a similar driver routine for exploring
+  hard spheres.
 %
 \item\verb+urpm_press.py+ and \verb+urpm_targp.py+ are auxiliary
   scripts targetted at the high density URPM phase boundary where HNC
@@ -1911,6 +1935,7 @@ Sections \ref{sec:vrp}--\ref{sec:feng} have been coded up as
 %
 \end{itemize}
 
+\vspace{36pt}
 \appendix
 %
 \section{Appendix}

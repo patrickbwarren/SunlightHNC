@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 
 # This file is part of SunlightDPD - a home for open source software
 # related to the dissipative particle dynamics (DPD) simulation
@@ -68,7 +68,7 @@ w.lb = 0.71 / 0.425
 w.sigma = 1.0
 w.kappa = -1.0
 
-w.soft_rpm_potential()
+w.rpm_potential()
 
 w.write_params();
 

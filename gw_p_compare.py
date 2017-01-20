@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 
 # This file is part of SunlightDPD - a home for open source software
 # related to the dissipative particle dynamics (DPD) simulation

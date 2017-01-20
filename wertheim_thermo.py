@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 
 # This file is part of SunlightDPD - a home for open source software
 # related to the dissipative particle dynamics (DPD) simulation
@@ -37,7 +37,7 @@ def fnex1(nlb):
     w.cold_start = 1
     for i in range(n):
         w.lb = dlb * (i + 1.0)
-        w.soft_urpm_potential()
+        w.urpm_potential()
         w.hnc_solve()
         curr = w.un_xc / w.lb
         fnex_xc = fnex_xc + 0.5*dlb*(prev + curr)
@@ -95,8 +95,8 @@ w.lb = args.lb
 w.sigma = args.sigma
 w.sigmap = args.sigmap
 
-if (args.ushort): w.soft_urpm_potential(w.use_ushort)
-else: w.soft_urpm_potential()
+if (args.ushort): w.urpm_potential(w.use_ushort)
+else: w.urpm_potential()
 
 w.rho[0] = args.rhoz / 2.0
 w.rho[1] = w.rho[0]

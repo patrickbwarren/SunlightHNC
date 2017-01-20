@@ -477,7 +477,7 @@ contains
 ! will set z(1) = 1, z(2) = -1.  The parameter (0 or 1) controls
 ! whether ushort is used or not.
 
-  subroutine soft_urpm_potential(use_ushort_flag)
+  subroutine urpm_potential(use_ushort_flag)
     implicit none
     integer, intent(in), optional :: use_ushort_flag
     integer :: uuflag = 0
@@ -490,7 +490,7 @@ contains
     rootpi = sqrt(pi)
 
     if (ncomp.ne.2) then
-       print *, 'oz_mod.f90: soft_urpm_potential: ncomp = ', ncomp, &
+       print *, 'oz_mod.f90: urpm_potential: ncomp = ', ncomp, &
             & '(should be ncomp = 2)'
        stop
     end if
@@ -556,7 +556,7 @@ contains
 
     model_type = 10 + uuflag
 
-  end subroutine soft_urpm_potential
+  end subroutine urpm_potential
 
 ! Build the potential arrays for the softened RPM (charged hard
 ! spheres) with parameters lb, sigma and kappa.  This expects ncomp =
@@ -564,7 +564,7 @@ contains
 ! sigma.  The parameter (0 or 1) controls whether ushort is used or
 ! not.  Using kappa < 0 implies the pure RPM case (kappa -> infinity).
 
-  subroutine soft_rpm_potential(use_ushort_flag)
+  subroutine rpm_potential(use_ushort_flag)
     implicit none
     integer, intent(in), optional :: use_ushort_flag
     integer :: uuflag = 0
@@ -578,7 +578,7 @@ contains
     rootpi = sqrt(pi)
 
     if (ncomp.ne.2) then
-       print *, 'oz_mod.f90: soft_urpm_potential: ncomp = ', ncomp, &
+       print *, 'oz_mod.f90: rpm_potential: ncomp = ', ncomp, &
             & '(should be ncomp = 2)'
        stop
     end if
@@ -647,7 +647,46 @@ contains
 
     model_type = 20 + uuflag
 
-  end subroutine soft_rpm_potential
+  end subroutine rpm_potential
+
+! Build the potential arrays for hard spheres with diameter sigma.
+! This expects ncomp = 1.
+
+  subroutine hs_potential
+    implicit none
+    integer :: irc
+
+    if (ncomp.ne.1) then
+       print *, 'oz_mod.f90: hs_potential: ncomp = ', ncomp, &
+            & '(should be ncomp = 1)'
+       stop
+    end if
+
+    diam = sigma
+
+    ulong = 0.0d0
+    ulongk = 0.0d0
+    dulong = 0.0d0
+    ushort = 0.0d0
+    dushort = 0.0d0
+
+    ! This is the only place the hard sphere diameter enters
+
+    irc = nint(sigma / deltar)
+    expnegus(1:irc, 1) = 0.0d0
+    expnegus(irc+1:ng-1, 1) = 1.0d0
+
+    ! These are the analytic contributions to the thermodynamics.
+
+    tp = 0.0d0
+    tu = 0.0d0
+    tl = 0.0d0
+    
+    ! Record the model type
+
+    model_type = 30
+
+  end subroutine hs_potential
 
 ! The next routine solves the Ornstein-Zernicke equation to determine
 ! e = h - c, given c.  We re-partition the long range part of the

@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 
 # This file is part of SunlightDPD - a home for open source software
 # related to the dissipative particle dynamics (DPD) simulation
@@ -38,7 +38,7 @@ parser.add_argument('--lb', action='store', default=1.0, type=float, help='Bjerr
 parser.add_argument('--sigma', action='store', default=1.0, type=float, help='hard core diameter (default 1.0)')
 parser.add_argument('--kappa', action='store', default=-1.0, type=float, help='softening parameter (default off)')
 
-parser.add_argument('--rhoz', action='store', default=0.1, type=float, help='total charge density (default 0.1)')
+parser.add_argument('--rho', action='store', default=0.1, type=float, help='total charge density (default 0.1)')
 parser.add_argument('--grcut', action='store', default=15.0, type=float, help='r cut off for g(r) plots (default 15.0)')
 parser.add_argument('--skcut', action='store', default=15.0, type=float, help='k cut off for S(k) plots (default 15.0)')
 
@@ -66,10 +66,10 @@ w.lb = args.lb
 w.sigma = args.sigma
 w.kappa = args.kappa
 
-w.soft_rpm_potential()
+w.rpm_potential()
 
-w.rho[0] = args.rhoz / 2.0
-w.rho[1] = args.rhoz / 2.0
+w.rho[0] = 0.5 * args.rho
+w.rho[1] = w.rho[0]
 
 eps = 1e-20
 
@@ -81,11 +81,11 @@ if args.msa:
     w.msa_solve()
 elif args.exp:
     w.lb = 0.0
-    w.soft_rpm_potential()
+    w.rpm_potential()
     w.msa_solve()
     w.save_reference()
     w.lb = args.lb
-    w.soft_rpm_potential()
+    w.rpm_potential()
     w.msa_solve()
     w.exp_refine()
 else:
@@ -95,7 +95,7 @@ else:
         for i in range(args.npt):
             w.lb = (i + 1.0) / args.npt * args.lb
             print('lb = ', w.lb)
-            w.soft_rpm_potential()
+            w.rpm_potential()
             w.hnc_solve()
             if args.verbose:
                 print('HNC error = ', w.error)

@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 
 # The code writes lb, density, pressure, chemical potential.
 # The chemical potential only makes sense for the HNC solution.
