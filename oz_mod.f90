@@ -104,6 +104,13 @@ module wizard
 
   include "fftw3.f"
 
+  integer, parameter :: &
+       & DPD_GAUSSIAN = 1, &
+       & DPD_BESSEL = 2, &
+       & DPD_LINEAR = 3, &
+       & DPD_SLATER_EXACT = 4, &
+       & DPD_SLATER_APPROX = 5
+
   double precision, parameter :: &
        & pi = 3.141592653589793d0, &
        & twopi = 2.0d0 * pi, &
@@ -251,22 +258,22 @@ contains
        end do
        print *, ' valencies, z = ', z
        print *, ' rc = ', rc, ' lb = ', lb
-       if (model_type.eq.1) then
+       if (model_type.eq.DPD_GAUSSIAN) then
           print *, ' Gaussian smearing, sigma = ', sigma
        end if
-       if (model_type.eq.2) then
+       if (model_type.eq.DPD_BESSEL) then
           print *, ' Bessel smearing, sigma = ', sigma
        end if
-       if (model_type.eq.3) then
+       if (model_type.eq.DPD_LINEAR) then
           print *, ' linear (Groot) smearing, R = ', rgroot
           print *, ' equivalent Gaussian sigma = ', &
                & sqrt(2.0d0/15.0d0) * rgroot
        end if
-       if (model_type.eq.4) then
+       if (model_type.eq.DPD_SLATER_EXACT) then
           print *, ' Slater smearing (exact), lambda = ', lbda
           print *, ' equivalent Gaussian sigma = ', lbda
        end if
-       if (model_type.eq.5) then
+       if (model_type.eq.DPD_SLATER_APPROX) then
           print *, ' Slater smearing (approx), beta = ', beta
           print *, ' 1 / beta = ', 1.0d0 / beta, ', &
                & 5 / (8 beta) = ', 0.625d0 / beta
@@ -347,7 +354,7 @@ contains
 
     ! Gaussian charges
 
-    if (charge_type .eq. 1) then
+    if (charge_type .eq. DPD_GAUSSIAN) then
 
        ulong(:,nfnc) = (lb / r) * erf(0.5d0*r/sigma)
 
@@ -361,7 +368,7 @@ contains
 
     ! Bessel charges
 
-    if (charge_type .eq. 2) then
+    if (charge_type .eq. DPD_BESSEL) then
 
        ulong(:,nfnc) = (lb / r) * (1.0d0 - exp(-r/sigma))
 
@@ -377,7 +384,7 @@ contains
     ! Note we do not give the real space part here hence the
     ! thermodynamic calculations will be wrong.
 
-    if (charge_type .eq. 3) then
+    if (charge_type .eq. DPD_LINEAR) then
 
        ulong(:,nfnc) = 0.0d0
 
@@ -393,7 +400,7 @@ contains
     ! Slater charge smearing as in Gonzales-Melchor et al, [JCP v125,
     ! 224107 (2006)] but here with exact expression for interaction.
 
-    if (charge_type .eq. 4) then
+    if (charge_type .eq. DPD_SLATER_EXACT) then
 
        ulong(:,nfnc) = (lb / r) * (1.0d0 - exp(-2.0d0*r/lbda) &
             & * (1.0d0 + 1.375d0*r/lbda + 0.75d0*r**2/lbda**2 &
@@ -412,7 +419,7 @@ contains
     ! 224107 (2006)] with original approximate expression (here
     ! translated into reciprocal space).
 
-    if (charge_type .eq. 5) then
+    if (charge_type .eq. DPD_SLATER_APPROX) then
 
        ulong(:,nfnc) = (lb / r) * (1.0d0 - exp(-2*beta*r) * &
             & (1.0d0 + beta*r) )
@@ -495,7 +502,7 @@ contains
     ushort(:,:) = 0.0d0
     dushort(:,:) = 0.0d0
 
-    if (use_ushort.ne.0) then
+    if (use_ushort.eq.1) then
        ushort(:,2) = ulong(:,2) + ulong(:,1)
        dushort(:,2) = dulong(:,2) + dulong(:,1)
        ulong(:,2) = - ulong(:,1)
@@ -586,7 +593,7 @@ contains
     ushort(:,:) = 0.0d0
     dushort(:,:) = 0.0d0
 
-    if (use_ushort.ne.0) then
+    if (use_ushort.eq.1) then
        ushort(:,2) = ulong(:,2) + ulong(:,1)
        dushort(:,2) = dulong(:,2) + dulong(:,1)
        ulong(:,2) = - ulong(:,1)
@@ -610,7 +617,7 @@ contains
             & + (1/(2.0d0*kappa**2) - sigma**2/3.0d0) * erfc(kappa*sigma) )
        tu(2) = pi*lb * ( sigma * exp(-kappa**2*sigma**2) / (kappa*rootpi) &
             & + (1/(2.0d0*kappa**2) - sigma**2) * erfc(kappa*sigma) )
-       if (use_ushort.eq.0) then
+       if (use_ushort.eq.0) then ! off SYM condition
           tl(2) = pi*lb / kappa**2
        end if
     end if
@@ -735,8 +742,8 @@ contains
 ! This routine solves an alternate version of the Ornstein-Zernicke
 ! equation to determine c and e from the reference h0.  In practice as
 ! always we actually calculate c' = c + Ulong and e' = e - Ulong.
-! Note h = e + c = e' + c'.  The result is saved to first place in the
-! history trajectory.
+! Note h = e + c = e' + c'.  The result is saved to position 1 in the
+! history trajectory.  Note that the offset ulongk in 
 
   subroutine oz_solve2
     implicit none
@@ -746,7 +753,6 @@ contains
          & a(ncomp, ncomp), b(ncomp, ncomp), &
          & hmat(ncomp, ncomp), rhomat(ncomp, ncomp), &
          & unita(ncomp, ncomp), hk(ng-1, nfnc)
-
 
     do i=1, nfnc
        fftwx(1:ng-1) = r(1:ng-1) * h0(1:ng-1, i)
@@ -758,8 +764,7 @@ contains
 
        ! In the one component case the OZ solution is trivial.
 
-       ck(:, 1) = hk(:, 1) / (1.0d0 + rho(1) * hk(:, 1)) &
-            & + ulongk(:, 1)
+       ck(:, 1) = hk(:, 1) / (1.0d0 + rho(1)*hk(:, 1)) + ulongk(:, 1)
 
     else ! Multicomponent OZ solution
 
@@ -800,11 +805,12 @@ contains
 
           ! Now compute C = (I + H.R)^(-1) . H + beta UL
           ! (map back to functions, and unravel the pivoting)
+          ! The + beta UL is done afterwards.
 
           do j = 1, ncomp
              do i = 1, j
                 ij = i + j*(j-1)/2
-                ck(ik, ij) = b(perm(i), j) + ulong(ik, ij)
+                ck(ik, ij) = b(perm(i), j)
              end do
           end do
 
@@ -812,10 +818,7 @@ contains
 
     end if
 
-    ! Do the Fourier back transforms and calculate e = h - c.  This
-    ! means the results can be used in the structure and
-    ! thermodynamics routines as though they had come from the
-    ! HNC/MSA/RPA solution.
+    ! Do the Fourier back transforms.
 
     do i = 1, nfnc
 
@@ -823,10 +826,24 @@ contains
        call dfftw_execute(plan)
        c(1:ng-1, i, 1) =  (deltak / twopi**2) * fftwy(1:ng-1) / r(1:ng-1)
 
-       ek(:, i) = hk(:, i) - ck(:, i)
-       e(:, i, 1) = h0(:, i) - c(:, i, 1)
-
     end do
+ 
+    ! Add + beta UL (since we have the exact real and reciprocal space
+    ! functions we don't need to pass this through the DDFT).
+    ! Strictly speaking this is a flourish that isn't necessary for
+    ! the structural features (pair functions and structure factors)
+    ! since it cancels out again.  However several of the
+    ! thermodynamic calculations assume this offset is present.
+
+    ck = ck + ulongk
+    c(:,:,1) = c(:,:,1) + ulong
+
+    ! Recover the indirect correlation functions.  This means the
+    ! results can be used in the structure and thermodynamics routines
+    ! as though they had come from the HNC/MSA/RPA solution.
+
+    ek = hk - ck
+    e(:, :, 1) = h0(:, :) - c(:, :, 1)
 
   end subroutine oz_solve2
 
@@ -923,10 +940,10 @@ contains
 ! of these should do in principle, but the initial convergence may be
 ! different.  Note from above that c is actually defined c' = c +
 ! Ulong, ie with the long-range part of the potential added.  Note
-! that we always start from first place in the history trajectory, and
+! that we always start from position 1 in the history trajectory, and
 ! the history trajectory is pump-primed by Picard steps before
 ! attempting the Ng accelerator.  At the end, the final solution is
-! copied back to first place in the history trajectory.
+! copied back to position 1 in the history trajectory.
 
   subroutine hnc_solve
     implicit none
@@ -969,7 +986,7 @@ contains
        print *, "oz_mod.f90: hnc_solve: **WARNING*** error > tol"
     end if
     i1 = mod(istep-1, nps) + 1
-    if (i1.ne.1) then ! copy solution to first place
+    if (i1.ne.1) then ! copy solution to position 1
        c(:, :, 1) = c(:, :, i1)
        e(:, :, 1) = e(:, :, i1)
     end if
@@ -1086,9 +1103,9 @@ contains
 ! the direct correlation function inside the hard core is c' = -1.
 ! Irrespective of this, we need to make sure c' is correctly
 ! initialised outwith the hard core.  Note that we always start from
-! first place in the history trajectory, and the history trajectory is
+! position 1 in the history trajectory, and the history trajectory is
 ! pump-primed by Picard steps before attempting the Ng accelerator.
-! At the end, the final solution is copied back to first place in the
+! At the end, the final solution is copied back to position 1 in the
 ! history trajectory.
 
   subroutine msa_solve
@@ -1137,7 +1154,7 @@ contains
        print *, "oz_mod.f90: msa_solve: **WARNING*** error > tol"
     end if
     i1 = mod(istep-1, nps) + 1
-    if (i1.ne.1) then ! copy solution to first place
+    if (i1.ne.1) then ! copy solution to position 1
        c(:, :, 1) = c(:, :, i1)
        e(:, :, 1) = e(:, :, i1)
     end if
@@ -1154,7 +1171,8 @@ contains
 ! Given the HNC machinery, the implementation of the RPA is almost
 ! completely trivial and corresponds to one iteration through the
 ! Ornstein-Zernike solver given the choice c = - Ushort.  We save the
-! result to first place in the history trajectory.
+! result to position 1 in the history trajectory.
+  
   subroutine rpa_solve
     implicit none
     istep = 1
@@ -1171,30 +1189,30 @@ contains
   end subroutine rpa_solve
 
 ! Save the reference state, assuming the c and e functions are those
-! in the first place in the history trajectory.  The corresponding c
+! in the position 1 in the history trajectory.  The corresponding c
 ! and e functions can be restored by a call to oz_solve2.
 
   subroutine save_reference
     implicit none
-    integer :: i
-    do i = 1, nfnc
-       h0(:, i) = c(:, i, 1) + e(:, i, 1)
-    end do
+    h0(:, :) = c(:, :, 1) + e(:, :, 1)
+    if (verbose.eq.1) then
+       print *, "Saved reference state"
+    end if
   end subroutine save_reference
 
 ! The EXP approximation refines the current RPA/MSA solution by using
 ! the current solution (h = c + e) and a reference solution (h0) to
 ! send h0 --> (1 + h0) exp(h - h0) - 1.  A round trip through the
-! alternate version of the Ornstein-Zernike relation re-populates the
+! alternate version of the Ornstein-Zernike relation re-calculates the
 ! direct and indirect correlation functions.  We assume the current
-! solution is in first place in the history trajectory.  The reference
+! solution is in position 1 in the history trajectory.  The reference
 ! state is reset to h0 = 0 after a call to this function, for safety!
   
   subroutine exp_refine
     implicit none
-    h0 = (1.0d0 + h0) * exp(c(:,:,1) + e(:,:,1) - h0) - 1.0d0
+    h0 = (1.0 + h0) * exp(c(:,:,1) + e(:,:,1) - h0) - 1.0
     call oz_solve2
-    h0 = 0.0d0
+    h0 = 0.0
     if (auto_fns.eq.1) then
        call make_pair_functions
        call make_structure_factors
@@ -1233,7 +1251,7 @@ contains
 ! part of the potential, but h = g - 1 = e + c = e' + c'.  The pair
 ! correlation functions are g = 1 + h - the addition of '1' is left
 ! for the user to implement.  We assume the c and e functions are
-! those in the first place in the history trajectory.
+! those in the position 1 in the history trajectory.
 
   subroutine make_pair_functions
     implicit none
@@ -1256,13 +1274,12 @@ contains
 ! where Ulong is the long-range part of the potential, so we have h =
 ! g - 1 = e + c = e' + c'.  See also Vrbka et al, J. Chem. Phys. 131,
 ! 154109 (2009).  We assume the c and e functions are those in the
-! first place in the history trajectory.
+! position 1 in the history trajectory.
 !
 ! The mean-field thermodynamic expressions can often be obtained
 ! analytically from the potential. In this routine they are calculated
 ! from species pair contributions, which are themselves calculated in
-! the potential routines (which does not have access to the
-! densities).
+! the potential routines (which do not have access to the densities).
 
   subroutine make_thermodynamics
     implicit none

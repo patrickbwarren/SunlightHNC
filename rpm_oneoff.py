@@ -61,7 +61,7 @@ w.npic = args.npic
 
 w.initialise()
 
-print(w.c.shape)
+# print(w.c.shape)
 
 w.lb = args.lb
 w.sigma = args.sigma
@@ -78,10 +78,17 @@ if args.verbose:
     w.write_params()
     w.verbose = 1
 
-if args.exp: args.msa = args.exp
-
 if args.msa:
     w.msa_solve()
+elif args.exp:
+    w.lb = 0.0
+    w.soft_rpm_potential(0)
+    w.msa_solve()
+    w.save_reference()
+    w.lb = args.lb
+    w.soft_rpm_potential(0)
+    w.msa_solve()
+    w.exp_refine()
 else:
     if args.npt == 1:
         w.hnc_solve()
@@ -94,14 +101,10 @@ else:
             if args.verbose:
                 print('HNC error = ', w.error)
 
-if args.exp: w.exp_refine()
-
 if not args.dump:
-    if args.msa:
-        print('*** MSA solved, error = ', w.error)
-    else:
-        print('*** HNC solved, error = ', w.error)
-    if args.exp: print('*** EXP refinement applied')
+    if args.msa: print('*** MSA solved, error = ', w.error)
+    elif args.exp: print('*** MSA + EXP solved, error = ', w.error)
+    else: print('*** HNC solved, error = ', w.error)
     w.write_thermodynamics()
 
 # density-density and charge-charge structure factor (notice how
@@ -114,24 +117,11 @@ if args.show:
 
     plt.figure(1)
 
-    if (args.msa):
-        if args.exp: plt.title('MSA+EXP solution, error = %0.1g' % w.error)
-        else: plt.title('MSA solution, error = %0.1g' % w.error)
-    else: plt.title('HNC solution, error = %0.1g' % w.error)
-
-    plt.plot(w.r[:], 
-             list(map(lambda x, y: m.log10(eps + m.fabs(x*y)), w.hr[:, 0, 0], w.r[:])), 
-             label="$+\!+$")
-
-    plt.plot(w.r[:], 
-             list(map(lambda x, y: m.log10(eps + m.fabs(x*y)), w.hr[:, 0, 1], w.r[:])), 
-             label="$+ -$")
-
-    plt.legend(loc='upper right')
-    plt.xlabel('$r$')
-    plt.ylabel('$\log_{10}|rh|$')
-
     plt.subplot(2, 2, 1)
+
+    if (args.msa): plt.title('MSA solution, error = %0.1g' % w.error)
+    elif args.exp: plt.title('EXP solution, error = %0.1g' % w.error)
+    else: plt.title('HNC solution, error = %0.1g' % w.error)
 
     imax = int(args.grcut / w.deltar)
     plt.plot(w.r[0:imax], 1.0 + w.hr[0:imax, 0, 0], label="$g_{11}$")
@@ -148,20 +138,28 @@ if args.show:
     plt.xlabel('$k$')
 
     plt.subplot(2, 2, 3)
-
+    
+    imax = w.ng - 1
     plt.plot(w.r[0:imax],
              w.c[0:imax, 0, 0]-w.ulong[0:imax, 0]+w.c[0:imax, 1, 0]-w.ulong[0:imax, 1],
              label="$c_{11}+c_{12}$")
     plt.plot(w.r[0:imax],
              w.c[0:imax, 0, 0]-w.ulong[0:imax, 0]-w.c[0:imax, 1, 0]+w.ulong[0:imax, 1],
              label="$c_{11}-c_{12}$")
-    plt.legend(loc='upper right')
+    plt.legend(loc='lower right')
     plt.xlabel('$r$')
     
     plt.subplot(2, 2, 4)
 
-    plt.plot(w.k[0:jmax],w.ck[0:jmax, 0],label="$ck'_{11}$")
-    plt.plot(w.k[0:jmax],w.ck[0:jmax, 1],label="$ck'_{12}$")
+    jmax = int(50.0 / w.deltak)
+    plt.plot(w.k[0:jmax],w.ek[0:jmax, 0]+w.ck[0:jmax, 0],label="$hk_{11}$")
+    plt.plot(w.k[0:jmax],w.ek[0:jmax, 1]+w.ck[0:jmax, 1],label="$hk_{12}$")
+#    plt.plot(w.k[0:jmax],
+#             1.0 + w.rho[0]*(w.ek[0:jmax, 0]+w.ck[0:jmax, 0]-w.ek[0:jmax, 1]-w.ck[0:jmax, 1]),
+#             label="$1+\\rho/2(hk_{11}+hk_{12})$")
+#    plt.plot(w.k[0:jmax],w.ek[0:jmax, 2]+w.ck[0:jmax, 2],label="$hk_{22}$")
+#    plt.plot(w.k[0:jmax],w.ck[0:jmax, 0],label="$ck_{11}$")
+#    plt.plot(w.k[0:jmax],w.ck[0:jmax, 1],label="$ck_{12}$")
     plt.legend(loc='lower right')
     plt.xlabel('$k$')
     
@@ -171,14 +169,14 @@ if args.show:
 if args.dump:
 
     for i in range(w.ng-1):
-        print("L\t%g\t%g\t%g\t%g" % (w.r[i], w.ulong[i, 0], w.ulong[i, 1], w.ulong[i, 2]))
+        print("%g\t%g\t%g\t%g\tL" % (w.r[i], w.ulong[i, 0], w.ulong[i, 1], w.ulong[i, 2]))
 
     for i in range(w.ng-1):
-        print("C\t%g\t%g\t%g\t%g" % (w.r[i], w.c[i, 0, 0], w.c[i, 1, 0], w.c[i, 2, 0]))
+        print("%g\t%g\t%g\t%g\tC" % (w.r[i], w.c[i, 0, 0], w.c[i, 1, 0], w.c[i, 2, 0]))
 
     for i in range(w.ng-1):
-        print("H\t%g\t%g\t%g\t%g" % (w.r[i], w.hr[i, 0, 0], w.hr[i, 0, 1], w.hr[i, 1, 1]))
+        print("%g\t%g\t%g\t%g\tH" % (w.r[i], w.hr[i, 0, 0], w.hr[i, 0, 1], w.hr[i, 1, 1]))
 
     for i in range(w.ng-1):
-        print("S\t%g\t%g\t%g" % (w.k[i], snn[i], szz[i]))
+        print("%g\t%g\t%g\tS" % (w.k[i], snn[i], szz[i]))
 

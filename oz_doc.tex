@@ -88,9 +88,9 @@
 
 \begin{document}
 
-\noindent{\bf\large FORTRAN 90 Ornstein-Zernike solver --- version 1.7.1}\\[6pt]
-\noindent{\it Patrick B Warren, Unilever R\&D Port Sunlight (July
-  2016)}\\[18pt]
+\noindent{\bf\large FORTRAN 90 Ornstein-Zernike solver --- version 1.8.1}\\[6pt]
+\noindent{\it Patrick B Warren, Unilever R\&D Port Sunlight (January
+  2017)}\\[18pt]
 
 \noindent The code and this accompanying documentation is released
 under the GPL.  You are welcome to use and modify it for your own
@@ -104,16 +104,22 @@ projects. If you end up publishing results based on this, please cite\\
 \end{center}
 
 \vspace{0.25in}
-\noindent Features of version 1.7:
+\noindent Features of version 1.8.1:
 \begin{itemize}
 \item FORTRAN 90 based, with example python driver scripts ;
+\item HNC, MSA, RPA, and EXP closures ;
 \item fast Ng solver, and Ng decomposition for electrostatics ;
 \item multicomponent (arbitrary number of components) ;
-\item hard and soft core (DPD) potentials ;
+\item hard core (RPM-like) and soft core (DPD-like) potentials ;
 \item full structural thermodynamics ;
 \item fully open source.
 \end{itemize}
 
+
+\noindent Added in version 1.8 and 1.8.1:
+\begin{itemize}
+\item MSA closure and EXP for hard cores (in version 1.8.1)
+\end{itemize}
 
 \noindent Added in version 1.7.1:
 \begin{itemize}
@@ -457,8 +463,8 @@ This is almost a drop-in replacement for the HNC closure in
 \Eqref{eq:hncnd}.  For a cold start we can initialise $c'_{\mu\nu}=-1$
 for $r\le d_{\mu\nu}$.  In practice we can leave $c'_{\mu\nu}=-\beta
 v'_{\mu\nu}$ untouched for $r>d_{\mu\nu}$ during the iterative
-solution.  However, we make sure $c'_{\mu\nu}$ is correctly reset for
-$r>d_{\mu\nu}$ whenever the potential is changed.
+solution.  However, we make sure that whenever the potential is
+changed $c'_{\mu\nu}$ is correctly reset.
 
 \subsection{Multicomponent RPA}\label{sec:RPA}
 %
@@ -479,7 +485,7 @@ in which the  total correlation functions are replaced by
   \label{eq:exp}
 \end{equation}
 %
-in which $\href_{\mu\nu}$ will be a hard sphere reference fluid, in
+in which $\href_{\mu\nu}$ will be a hard sphere reference fluid in
 the case of MSA, and $\href_{\mu\nu}=0$ in the case of RPA (no hard
 cores).  The EXP breaks unwarranted symmetries such as
 $h_{++}=-h_{+-}$ and ensures that $h_{\mu\nu}(r)>-1$ which is not
@@ -494,13 +500,12 @@ correlation functions.  To do this we rewrite the OZ relation in
 \Eqref{eq:oz2a} as
 %
 \begin{equation}
-{\tilde C}' = (I+{\tilde H}\cdot R)^{-1}\cdot{\tilde H}
- + \beta{\tilde U}\lr\,.
+{\tilde C} = (I+{\tilde H}\cdot R)^{-1}\cdot{\tilde H}\,.
 \label{eq:ozndb}
 \end{equation}
 %
-Once this has been implemented, $e'_{\mu\nu}= h_{\mu\nu} -
-c'_{\mu\nu}$ follows by subtraction.
+With this implemented, $c'_{\mu\nu}=c_{\mu\nu}+\beta
+v\lr_{\mu\nu}$ and $e'_{\mu\nu}= h_{\mu\nu} - c'_{\mu\nu}$ follow.
 
 \subsection{Thermodynamics}
 \label{sec:thermo}
@@ -968,80 +973,81 @@ v'_{12}=4\pi\lB(\sigmap^2-\sigma^2)\,.
 %
 These should not be included if we follow the second route.
 
-Finally if we use the softened URPM as a reference fluid in the Wertheim
-approach we need to evaluate the integral
-%
-\begin{equation}
-\Delta_{12}={4\pi}\int_0^\infty\!\!dr\,r^2\,g_{12}(r)\,
-[\exp(-\beta \Delta v_{12})-1]
-\label{eq:wert}
-\end{equation}
-%
-where the pair distribution function is that of the reference fluid.
-A related integral is in the first order perturbation theory
-$F=F_0+\myav{\Delta U}_0$ where
-%
-\begin{equation}
-\frac{\beta\myav{\Delta U}_0}{V}=
-\frac{\pi\rho^2}{2}
-\int_0^\infty\!\!dr\,r^2\,g_{12}(r)\,
-\beta \Delta v_{12}\,.
-\label{eq:fopt}
-\end{equation}
-%
-As of version 1.7 these integrals have been moved out of the
-\FORTRAN\ module and into the \python\ scripts.
-
-\subsection{Softened RPM potential}
+\subsection{RPM and softened RPM potential}
 \label{sec:softRPM}
 %
-Another potential provided by the code at present is for the RPM in
-which the unlike pair potential is artificially softened.  The
-standard RPM is an equimolar mixture of charged hard spheres.  The
-interaction potential $v'_{\mu\nu}(r)=\infty$ for $r<\sigma$ where
-$\sigma$ is the hard core diameter.  This is regarded as belonging to
-the short range interaction potential, for which we are always careful
-to use the exponentiated version.  Thus hard cores are actually
-implemented by calculating $\exp[-\beta v'_{\mu\nu}]$ using one of the
-choices below, and setting this to zero for $r<\sigma$.  The valencies are
-$z_\mu=\pm1$.
+Another potential which can be solved in the code is for charged hard
+spheres: both the `vanilla' RPM, and a version in which the unlike
+pair potential is artificially softened, are provided.  For charged
+hard spheres the interaction potential $v'_{\mu\nu}(r)=\infty$ for
+$r<\sigma$ where $\sigma$ is the hard core diameter.  This is regarded
+as belonging to the short range interaction potential, for which we
+are always careful to use the exponentiated version.  Thus hard cores
+are actually implemented by calculating $\exp[-\beta v'_{\mu\nu}]$
+using one of the choices below, and setting this to zero for
+$r<\sigma$.
 
-Use truncated long range for numerical stability FIX THIS
+Given this, we might na\"\i{}vely think of using $\lB/r$ as the long
+range part of the potential.  Although the divergence at $r\to0$ is
+hidden inside the hard core, this choice forces the discretised offset
+functions $c'_{\mu\nu}$ and $e'_{\mu\nu}$ to try to compensate, giving
+rise to numerical artefacts (note that the actual direct and indirect
+correlation functions, $c_{\mu\nu}$ and $e_{\mu\nu}$, are
+non-vanishing and finite inside the hard core region, thus the
+divergence in $\beta v\lr$ unavoidably contaminates the offset
+functions).  Numerically much better is to chose the long range
+potential such that it is bounded inside the hard cores.  By far
+the simplest choice is a truncated Coulomb law,
+%
+\begin{equation}
+  v\lr=\Bigl\{\begin{array}{ll}
+  \lB/\sigma & r\le\sigma\,,\\
+  \lB/r & r > \sigma\,.
+  \end{array}
+\end{equation}
+%
+This does least damage to the potential outside the hard core.  With
+this choice, the Fourier transform is easily shown to be
+%
+\begin{equation}
+  {\tilde v}\lr=\frac{4\pi\lB}{k^2}\times\frac{\sin k\sigma}{k\sigma}\,.
+\end{equation}
+%
+The RPM potential in the code is implemented using these choices.
 
 As in the softened URPM, there are two ways the softened RPM can be
 implemented.  The first way is to work purely in reciprocal space
 which takes the model away from the SYM condition expressed in
-\Eqref{eq:sp}.  In this approach the short range part $v'_{\mu\nu}=0$
+\Eqref{eq:sp}.  In this approach the short range part $v'_{12}=0$
 (outside the hard cores), and the long range part is
 %
 \begin{equation}
-v_{11}\lr=v_{22}\lr=\frac{\lB\kT}{r}\quad
 v_{12}\lr=-\frac{\lB\kT}{r} \erf(\kappa r)\,.
 \end{equation}
 %
 The potential in reciprocal space and the derivatives follow
 \mutmut\ from the softened URPM case (\ie\ URPM $\sigma\to0$ and
-$\sigma'\to1/(2\kappa)$).  We note that the pure RPM case obtains in
-the limit $\kappa\to\infty$.
+$\sigma'\to1/(2\kappa)$).  Unlike the na\"\i{}ve $\lB/r$ choice for
+the RPM, this softened potential is well-behaved inside the hard core.
+Thus the softened RPM is implemented with the truncated repulsive
+Coulomb interaction between like charges, and the softened attractive
+Coulomb interaction between unlike charges.
   
 In the alternative approach we retain the SYM condition so that the
-long range part is given by
+long range part is given by the vanilla RPM above, and the short range
+part is
 %
 \begin{equation}
-v_{\mu\nu}\lr=z_\mu z_\nu \frac{\lB\kT}{r}\quad
-\end{equation}
-%
-and the short range part is
-%
-\begin{equation}
-v'_{12}\equiv-\Delta v_{12}=\frac{\lB\kT}{r}\erfc(\kappa r)
+  v'_{12}\equiv-\Delta v_{12}=\frac{\lB\kT}{r}\erfc(\kappa r)
+  +\Bigl(\frac{\lB\kT}{\sigma}-\frac{\lB\kT}{r}\Bigr)\Theta(\sigma-r)
 \label{eq:dv12a}
 \end{equation}
 %
-(obviously, $v'_{11}=v'_{22}=0$).  As in the URPM, we define $\Delta
-v_{12}$ as the potential that should be \emph{added} to the softened
-RPM, to recover the standard RPM.  This is so that we can use the
-softened version as a reference fluid.
+where $\Theta(\sigma-r)$ is the Heaviside function (and obviously,
+$v'_{11}=v'_{22}=0$).  As in the URPM, we define $\Delta v_{12}$ as
+the potential that should be \emph{added} to the softened RPM, to
+recover the standard RPM.  This is so that we can use the softened
+version as a reference fluid.
 
 For both routes the mean field contributions to the virial route
 pressure and energy are non-zero only for the unlike pairs.  We can
@@ -1171,7 +1177,8 @@ The Ng acceleration scheme is implemented by keeping track of a number
 of previous iterations (typically 6), recycling the storage.  Thus the
 main functions $c_{\mu\nu}'$ and $e_{\mu\nu}'$ are multidimensional:
 the first axis is the spatial discretisation, the second axis is the
-species pair index, and the third axis is the Ng trajectory index.
+species pair index, and the third axis is the Ng trajectory index
+(cyclical history array).
 
 The thermodynamic quantities in section \ref{sec:thermo} are all
 evaluated by standard trapezium rules, applied to the integrals given
@@ -1217,7 +1224,7 @@ equation problem as fast and robust as possible.
   (\verb+charge_type = 1+), Bessel charges (\verb+charge_type = 2+),
   linear (Groot) charges (\verb+charge_type = 3+), Slater charges with
   exact interaction (\verb+charge_type = 4+), or Slater charges with
-  approximate interaction (\verb+charge_type = 4+).  The linear
+  approximate interaction (\verb+charge_type = 5+).  The linear
   (Groot) case (\verb+charge_type = 3+) is incomplete in the sense
   that the thermodynamics is not calculated correctly.
 %
@@ -1231,12 +1238,12 @@ equation problem as fast and robust as possible.
   reciprocal space part which satisfies \Eqref{eq:sp} plus a short
   range real space correction (\verb+use_ushort = 1+).
 %
-\item\verb+soft_rpm_potential(use_ushort)+ -- Sets up the softened RPM
-  potential described in section \ref{sec:softRPM}.  This routine can
-  be called multiple times.  It checks that \verb+ncomp = 2+ and
-  forces $z_1=1$ and $z_2=-1$.  The control parameter
-  \verb+use_ushort+ works the same way as described for the softened
-  URPM potential.
+\item\verb+soft_rpm_potential(use_ushort)+ -- Sets up the vanilla RPM
+  or softened RPM potential described in section \ref{sec:softRPM}.
+  This routine can be called multiple times.  It checks that
+  \verb+ncomp = 2+ and forces $z_1=1$ and $z_2=-1$.  The control
+  parameter \verb+use_ushort+ works the same way as described for the
+  softened URPM potential.
 %
 \item\verb+hnc_solve+ -- Calculate the HNC solution.  Specifically,
   initialise $c'_{\mu\nu}$ if the flag \verb+cold_start+ is set, take
@@ -1267,8 +1274,8 @@ equation problem as fast and robust as possible.
   potential, or the potential can be reset between calls.  In these
   subsequent calls, the existing $c'_{\mu\nu}$ within the hard core
   regions is used as a starting point unless the flag
-  \verb+cold_start+ is reset. In the case of a warm start, outwith the
-  hard core regions $c'_{\mu\nu}$ is set equal to $-\beta
+  \verb+cold_start+ is reset. In the case of a warm start,
+  $c'_{\mu\nu}$ outwith the hard core regions is set equal to $-\beta
   v'_{\mu\nu}$ for the current potential. Note that the MSA is the
   same as the RPA if there are no hard cores (therefore, use
   \verb+rpa_solve+ in that case!).
@@ -1285,26 +1292,21 @@ equation problem as fast and robust as possible.
 %
 \item\verb+save_reference+ -- In the presence of hard cores, the EXP
   requires a reference state $\href_{\mu\nu}$, and this routine saves
-  the current $h_{\mu\nu}$ as said reference state.  Usually, this
-  reference state will be the MSA solution to hard sphere problem
-  without the tail potential, however this is not enforced. 
-  See below for a note on the usage.
+  the current $h_{\mu\nu}$ solution.  Usually, this reference state
+  will be the MSA solution to hard sphere problem without the tail
+  potential, however this is not enforced.  See next entry for a note on
+  the usage.
 %
 \item\verb+exp_refine+ -- Implement the EXP refinement.  Use
   \Eqref{eq:exp} to compute a refined $h_{\mu\nu}$ from the current
   solution and the reference $\href_{\mu\nu}$, then call
   \verb+oz_solve2+ to rebuild the complete solution according to
-  \Eqref{eq:ozndb}.  The reference state is initialised (and
-  maintained) with $\href_{\mu\nu}=0$, thus \verb+exp_refine+ is
+  \Eqref{eq:ozndb}.  Provided the flag \verb+auto_fns+ is set, the
+  three \verb+make_*+ functions are also called.  A call to
+  \verb+initialise+ sets $\href_{\mu\nu}=0$, thus \verb+exp_refine+ is
   suitable for immediate use with soft potentials without hard cores.
-  Provided the flag \verb+auto_fns+ is set, the three \verb+make_*+
-  functions are also called.
-  %
-\end{itemize}
-  
-\noindent Note: to use \verb+exp_refine+ for potentials with hard
-cores we need to calculate and save the reference state, thus (in
-\FORTRAN):
+  To use \verb+exp_refine+ for potentials with hard cores we need to
+  calculate and save the reference state, thus (in \FORTRAN):
 %
 \begin{verbatim}
   [ .. remove tail, eg lb = 0.0 ]
@@ -1315,11 +1317,10 @@ cores we need to calculate and save the reference state, thus (in
   call exp_refine
 \end{verbatim}
 %
-We need to recalculate $\href_{\mu\nu}$ each time we do this
-calculation since \verb+exp_refine+ sets $\href_{\mu\nu}=0$ for ease
-of use with soft potentials.
-
-\begin{itemize}
+For hard core potentials we need to recalculate $\href_{\mu\nu}$ every
+time we call \verb+exp_refine+, since \verb+exp_refine+ sets
+$\href_{\mu\nu}=0$ before exiting (for ease of use with soft
+potentials).
 %
 \item\verb+oz_solve+ -- Solve the OZ relation in the form of
   \Eqref{eq:oznd} to find $e'_{\mu\nu}$ from $c'_{\mu\nu}$.  As a
@@ -1385,8 +1386,8 @@ called in any order.
 \item\verb+ng+ -- The real space grid size, $n$, usually a power of 2
   (default 4096).
 %
-\item\verb+nps+ -- The length of the Ng trajectory (usually safe to
-  leave at the default 6).
+\item\verb+nps+ -- The length of the Ng trajectory (cyclical history
+  array) (usually safe to leave at the default 6).
 %
 \item\verb+npic+ -- The number of Picard steps to pump-prime the Ng
   acceleration scheme (usually safe to leave at the default 6, but
@@ -1433,7 +1434,7 @@ convergence (usually safe to leave at default 100).
 %
 \item\verb+kappa+ -- parameter $\kappa$ (default $-$1.0) in the
   softened RPM potential.  A negative value is interpreted as
-  $\kappa\to\infty$ and generates the pure RPM.
+  $\kappa\to\infty$ and generates the vanilla RPM.
 %
 \item\verb+sigmap+ -- charge size $\sigma'$ (default 1.0), used for
   the softened URPM potential.
@@ -1605,7 +1606,7 @@ The following internal variables may be useful.
   r$.
 %
 \item\verb+ulongk(:, :)+ -- Array containing the Fourier transform of
-  the long range part of the potential, such that \verb+ulong(j, n)+
+  the long range part of the potential, such that \verb+ulongk(j, n)+
   contains $\beta{\tilde v}\lr_{\mu\nu}(k_j)$, where \verb+n+ is the
   species index.
 %
@@ -1614,6 +1615,16 @@ The following internal variables may be useful.
 Of these, the potential parts may of course be initialised outside the
 code, as may the reference state total correlation function in which
 latter case \verb+oz_solve2+ acts as a general OZ solver.
+
+Note that
+the HNC, MSA and RPA solvers require \emph{only} the long range
+potential in reciprocal space, $\beta{\tilde v}\lr_{\mu\nu}$
+(\verb+ulongk+), and the exponentiated short range potential,
+$\exp(-\beta v'_{\mu\nu})$ (\verb+expnegus+), thus a very minimalist
+approach can be taken.  The EXP solver uses in addition the long range
+potential in real space, $\beta v\lr_{\mu\nu}$ (\verb+ulong+).  The
+thermodynamics calculations require all the remaining potential
+functions.
 
 \section{Examples}
 %

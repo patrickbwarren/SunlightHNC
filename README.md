@@ -12,10 +12,10 @@ components (rather than a maximum of three, as for previous versions).
 #### Features
 
 * FORTRAN 90 based, with example python driver scripts ;
-* HNC, MSA, RPA closures; and EXP refinement ;
-* fast Ng solver, and Ng decomposition for electrostatics ;
+* HNC, MSA, RPA, and EXP closures ;
+* fast Ng solver, and Ng decomposition for long range potentials ;
 * multicomponent (arbitrary number of components) ;
-* hard and soft core (DPD) potentials ;
+* hard core (RPM-like) and soft core (DPD-like) potentials ;
 * full structural thermodynamics ;
 * fully open source.
 
