@@ -25,8 +25,8 @@ program driver
   use wizard
   implicit none
   integer :: j
-  double precision :: rhotot, mfcharge
-  double precision, allocatable :: ccsf(:), ddsf(:)
+  real(kind=dp) :: rhotot, mfcharge
+  real(kind=dp), allocatable :: ccsf(:), ddsf(:)
 
   verbose = 1
 
@@ -35,28 +35,28 @@ program driver
 
   call initialise
 
-  lb = 200.0
-  arep = 25.0
-  arep(1, 2) = 30.0
-  arep(1, 3) = 35.0
-  arep(2, 3) = 20.0
-  z(1) = 1
-  z(2) = -1
+  lb = 200.0_dp
+  arep = 25.0_dp
+  arep(1, 2) = 30.0_dp
+  arep(1, 3) = 35.0_dp
+  arep(2, 3) = 20.0_dp
+  z(1) = 1.0_dp
+  z(2) = -1.0_dp
 
   call dpd_potential
 
-  rhotot = 3.0d0
-  mfcharge = 0.2d0
+  rhotot = 3.0_dp
+  mfcharge = 0.2_dp
 
-  rho(1) = 0.5d0 * rhotot * mfcharge
+  rho(1) = 0.5_dp * rhotot * mfcharge
   rho(2) = rho(1)
-  rho(3) = rhotot * (1.0d0 - mfcharge)
+  rho(3) = rhotot * (1.0_dp - mfcharge)
 
   call write_params
 
   call hnc_solve
 
-  if (error .gt. 1.0d-10) &
+  if (error .gt. 1.0E-10_dp) &
        & print *, 'Warning, did not converge to 1e-10'
 
   allocate(ccsf(ng-1))

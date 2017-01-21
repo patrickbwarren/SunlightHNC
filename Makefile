@@ -35,7 +35,8 @@ all : $(DRIVERS) urpm fftw_test oz.so
 drivers : $(DRIVERS)
 
 oz.so : oz_mod.f90
-	f2py3 -c $< -m oz $(INCFLAGS) $(LIBFLAGS)
+	f2py3 --overwrite-signature $< -m oz -h oz.pyf
+	f2py3 -c $< oz.pyf $(INCFLAGS) $(LIBFLAGS)
 
 driver2 : driver2.o oz_mod.o
 	$(F90) -o $@ $^ $(LIBFLAGS)

@@ -24,31 +24,32 @@
 program fftw_test
 implicit none
 include "fftw3.f"
+integer, parameter :: dp = kind(1.0d0)
 integer, parameter :: n = 47
 integer :: i, j, k
 integer*8 :: planA, planB
-double precision :: a(n), b(n), c(n), d(n)
-double precision, parameter :: pi=3.141592653589793d0
+real(kind=dp) :: a(n), b(n), c(n), d(n)
+real(kind=dp), parameter :: pi = 4.0_dp * atan(1.0_dp)
 
 do i=1,n-1
-   a(i) = 1.0d0 / sqrt(dble(i))
+   a(i) = 1.0_dp / sqrt(dble(i))
 end do
 
 call dfftw_plan_r2r_1d(planA, n-1, a, b, FFTW_RODFT00, FFTW_ESTIMATE)
 call dfftw_plan_r2r_1d(planB, n-1, b, c, FFTW_RODFT00, FFTW_ESTIMATE)
 
 call dfftw_execute(planA)
-b = b / sqrt(2.0d0*n)
+b = b / sqrt(2.0_dp*n)
 
 call dfftw_execute(planB)
-c = c / sqrt(2.0d0*n)
+c = c / sqrt(2.0_dp*n)
 
 do k = 1, n-1
-   d(k) = 0.0d0
+   d(k) = 0.0_dp
    do j = 1, n-1
       d(k) = d(k) + a(j) * sin(j*k*pi/n)
    enddo
-   d(k) = d(k) * sqrt(2.0d0/n)
+   d(k) = d(k) * sqrt(2.0_dp/n)
 enddo
 
 print *, "n = ", n

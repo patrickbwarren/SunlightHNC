@@ -103,6 +103,8 @@ module wizard
   implicit none
 
   include "fftw3.f"
+  
+  integer, parameter :: dp = kind(1.0d0)
 
   integer, parameter :: &
        & USE_GAUSSIAN = 1, &
@@ -113,10 +115,11 @@ module wizard
 
   integer, parameter :: USE_USHORT = 1
 
-  double precision, parameter :: &
-       & pi = 3.141592653589793d0, &
-       & twopi = 2.0d0 * pi, &
-       & fourpi = 4.0d0 * pi
+  real(kind=dp), parameter :: &
+       & pi = 4.0_dp * atan(1.0_dp), &
+       & twopi = 2.0_dp * pi, &
+       & fourpi = 4.0_dp * pi, &
+       & rootpi = sqrt(pi)
 
   integer :: &
        & verbose = 0,     & ! how much info to generate
@@ -134,31 +137,31 @@ module wizard
   
   integer*8 :: plan  ! FFTW plan for fast discrete sine transforms
 
-  double precision :: &
-       & deltar = 0.01,   & ! real space grid spacing
-       & deltak,          & ! reciprocal space grid spacing (computed)
-       & error,           & ! difference between current and previous solns
-       & alpha = 0.2,     & ! Picard method, fraction of new solution
-       & tol = 1.0d-12,   & ! Error tolerance for claiming convergence
-       & rc = 1.0,        & ! short-range DPD repulsion range
-       & lb = 0.0,        & ! long-range Coulomb coupling length
-       & sigma = 1.0,     & ! see below (*)
-       & sigmap = 1.0,    & ! +- long-range Coulomb smearing length (URPM)
-       & kappa = -1.0,    & ! +- long-range Coulomb smoothing parameter (RPM)
-       & rgroot = 1.0,    & ! linear charge smearing range (Groot)
-       & lbda = 1.0,      & ! Slater charge smearing range (exact)
-       & beta = 1.0,      & ! Slater charge smearing range (approx)
-       & cf_mf, cf_xc,    & ! the virial route pressure contributions ..
-       & cf_gc, press,    & ! .. and the virial route pressure
-       & comp, comp_xc,   & ! compressibility, and excess
-       & fvex, fnex,      & ! excess free energy, density and per particle
-       & un_mf, un_xc,    & ! energy per particle contributions
-       & un, uv             ! energy per particle and density
+  real(kind=dp) :: &
+       & deltar = 0.01_dp,  & ! real space grid spacing
+       & deltak,            & ! reciprocal space grid spacing (computed)
+       & error,             & ! difference between current and previous solns
+       & alpha = 0.2_dp,    & ! Picard method, fraction of new solution
+       & tol = 1.0E-12_dp,  & ! Error tolerance for claiming convergence
+       & rc = 1.0_dp,       & ! short-range DPD repulsion range
+       & lb = 0.0_dp,       & ! long-range Coulomb coupling length
+       & sigma = 1.0_dp,    & ! see below (*)
+       & sigmap = 1.0_dp,   & ! +- long-range Coulomb smearing length (URPM)
+       & kappa = -1.0_dp,   & ! +- long-range Coulomb smoothing parameter (RPM)
+       & rgroot = 1.0_dp,   & ! linear charge smearing range (Groot)
+       & lbda = 1.0_dp,     & ! Slater charge smearing range (exact)
+       & beta = 1.0_dp,     & ! Slater charge smearing range (approx)
+       & cf_mf, cf_xc,      & ! the virial route pressure contributions ..
+       & cf_gc, press,      & ! .. and the virial route pressure
+       & comp, comp_xc,     & ! compressibility, and excess
+       & fvex, fnex,        & ! excess free energy, density and per particle
+       & un_mf, un_xc,      & ! energy per particle contributions
+       & un, uv               ! energy per particle and density
 
   ! (*) sigma is used both for the long-range Coulomb smearing length
   ! for the soft potentials, and for hard core diameter for RPM models
   
-  double precision, allocatable :: &
+  real(kind=dp), allocatable :: &
        & rho(:),            & ! density array
        & z(:),              & ! valence array
        & arep(:, :),        & ! repulsion amplitude array
@@ -219,11 +222,11 @@ contains
 
     ! Default values
 
-    rho = 0.0
-    arep = 0.0
-    z = 0.0
-    diam = 0.0
-    h0 = 0.0
+    rho = 0.0_dp
+    arep = 0.0_dp
+    z = 0.0_dp
+    diam = 0.0_dp
+    h0 = 0.0_dp
 
     ! Make grids
 
@@ -269,7 +272,7 @@ contains
        if (model_type.eq.USE_LINEAR) then
           print *, ' linear (Groot) smearing, R = ', rgroot
           print *, ' equivalent Gaussian sigma = ', &
-               & sqrt(2.0d0/15.0d0) * rgroot
+               & sqrt(2.0_dp/15.0_dp) * rgroot
        end if
        if (model_type.eq.USE_SLATER_EXACT) then
           print *, ' Slater smearing (exact), lambda = ', lbda
@@ -277,9 +280,9 @@ contains
        end if
        if (model_type.eq.USE_SLATER_APPROX) then
           print *, ' Slater smearing (approx), beta = ', beta
-          print *, ' 1 / beta = ', 1.0d0 / beta, ', &
-               & 5 / (8 beta) = ', 0.625d0 / beta
-          print *, ' equivalent Gaussian sigma = ', sqrt(0.5d0) / beta
+          print *, ' 1 / beta = ', 1.0_dp / beta, ', &
+               & 5 / (8 beta) = ', 0.625_dp / beta
+          print *, ' equivalent Gaussian sigma = ', sqrt(0.5_dp) / beta
        end if
     else if (model_type.lt.20) then
        if (model_type.eq.10) then
@@ -294,7 +297,7 @@ contains
        else
           print *, 'softened RPM potential was selected with ushort used'
        end if
-       if (kappa.lt.0) then
+       if (kappa.lt.0.0_dp) then
           print *, ' lb = ', lb, ' sigma = ', sigma, ' kappa -> infinity'
        else
           print *, ' lb = ', lb, ' sigma = ', sigma, ' kappa = ', kappa
@@ -304,7 +307,7 @@ contains
     end if
     print *, 'SYSTEM DETAILS'
     print *, ' rho = ', rho
-    if (sum(rho).gt.0.0) then
+    if (sum(rho).gt.0.0_dp) then
        print *, ' x = ', rho(:) / sum(rho)
     end if
     print *, ' sum(rho) = ', sum(rho)
@@ -327,14 +330,11 @@ contains
     integer, intent(in), optional :: charge_type
     integer :: ctype = USE_GAUSSIAN
     integer :: i, j, ij, irc
-    double precision :: aa(nfnc), zz(nfnc)
-    double precision :: rootpi
+    real(kind=dp) :: aa(nfnc), zz(nfnc)
 
     if (present(charge_type) .and. charge_type.gt.0) then
        ctype = charge_type
     end if
-
-    rootpi = sqrt(pi)
 
     ! Sort out some recoded potential parameters.  Also force the
     ! amplitude matrix to be symmetric, set by upper triangular
@@ -357,23 +357,23 @@ contains
     ! Leave out the amplitude, then the function can be re-used
     ! (see below)
 
-    ushort(:,nfnc) = 0.0d0
-    ushort(1:irc,nfnc) = 0.5d0 * (1.0d0 - r(1:irc)/rc)**2
+    ushort(:,nfnc) = 0.0_dp
+    ushort(1:irc,nfnc) = 0.5_dp * (1.0_dp - r(1:irc)/rc)**2
 
-    dushort(:,nfnc) = 0.0d0
-    dushort(1:irc,nfnc) = - (1.0d0 - r(1:irc)/rc) / rc
+    dushort(:,nfnc) = 0.0_dp
+    dushort(1:irc,nfnc) = - (1.0_dp - r(1:irc)/rc) / rc
 
     ! Gaussian charges
 
     if (ctype .eq. USE_GAUSSIAN) then
 
-       ulong(:,nfnc) = (lb / r) * erf(0.5d0*r/sigma)
+       ulong(:,nfnc) = (lb / r) * erf(0.5_dp*r/sigma)
 
        ulongk(:,nfnc) = (fourpi * lb / k**2) * exp(-k**2*sigma**2)
 
-       dulong(:,nfnc) = lb * exp(-0.25d0*r**2/sigma**2) &
+       dulong(:,nfnc) = lb * exp(-0.25_dp*r**2/sigma**2) &
             & / (rootpi * r * sigma) &
-            & - lb * erf(0.5d0*r/sigma) / r**2
+            & - lb * erf(0.5_dp*r/sigma) / r**2
 
     end if
 
@@ -381,13 +381,13 @@ contains
 
     if (ctype .eq. USE_BESSEL) then
 
-       ulong(:,nfnc) = (lb / r) * (1.0d0 - exp(-r/sigma))
+       ulong(:,nfnc) = (lb / r) * (1.0_dp - exp(-r/sigma))
 
        ulongk(:,nfnc) = (fourpi * lb / k**2) &
-            & * 1.0d0 / (1.0d0 + k**2*sigma**2)
+            & * 1.0_dp / (1.0_dp + k**2*sigma**2)
 
-       dulong(:,nfnc) = - (lb / r**2) * (1.0d0 - exp(-r/sigma) &
-            & * (1.0d0 + r / sigma))
+       dulong(:,nfnc) = - (lb / r**2) * (1.0_dp - exp(-r/sigma) &
+            & * (1.0_dp + r / sigma))
 
     end if
 
@@ -397,14 +397,14 @@ contains
 
     if (ctype .eq. USE_LINEAR) then
 
-       ulong(:,nfnc) = 0.0d0
+       ulong(:,nfnc) = 0.0_dp
 
-       ulongk(:,nfnc) = (fourpi * lb / k**2) * 144.0d0 &
-            & * (2.0d0 - 2.0d0*cos(k*rgroot) &
+       ulongk(:,nfnc) = (fourpi * lb / k**2) * 144.0_dp &
+            & * (2.0_dp - 2.0_dp*cos(k*rgroot) &
             &      - k*rgroot*sin(k*rgroot))**2 &
             &                  / (k**8 * rgroot**8)
 
-       dulong(:,nfnc) = 0.0d0
+       dulong(:,nfnc) = 0.0_dp
 
     end if
 
@@ -413,16 +413,16 @@ contains
 
     if (ctype .eq. USE_SLATER_EXACT) then
 
-       ulong(:,nfnc) = (lb / r) * (1.0d0 - exp(-2.0d0*r/lbda) &
-            & * (1.0d0 + 1.375d0*r/lbda + 0.75d0*r**2/lbda**2 &
-            &   + r**3/(6.0d0*lbda**3)) )
+       ulong(:,nfnc) = (lb / r) * (1.0_dp - exp(-2.0_dp*r/lbda) &
+            & * (1.0_dp + 1.375_dp*r/lbda + 0.75_dp*r**2/lbda**2 &
+            &   + r**3/(6.0_dp*lbda**3)) )
 
        ulongk(:,nfnc) = (fourpi * lb / k**2) * &
-            & 1.0d0 / (1.0d0 + k**2*lbda**2/4.0d0)**4
+            & 1.0_dp / (1.0_dp + k**2*lbda**2/4.0_dp)**4
 
-       dulong(:,nfnc) = - (lb / r**2) * (1.0d0 - exp(-2.0d0*r/sigma) &
-            & * (1.0d0 + 2.0d0*r/lbda + 2.0d0*r**2/lbda**2 &
-            &     + 7.0d0*r**3/(6.0d0*lbda**3) + r**4/(3.0d0*lbda**4)) )
+       dulong(:,nfnc) = - (lb / r**2) * (1.0_dp - exp(-2.0_dp*r/sigma) &
+            & * (1.0_dp + 2.0_dp*r/lbda + 2.0_dp*r**2/lbda**2 &
+            &     + 7.0_dp*r**3/(6.0_dp*lbda**3) + r**4/(3.0_dp*lbda**4)) )
 
     end if
 
@@ -432,14 +432,14 @@ contains
 
     if (ctype .eq. USE_SLATER_APPROX) then
 
-       ulong(:,nfnc) = (lb / r) * (1.0d0 - exp(-2*beta*r) * &
-            & (1.0d0 + beta*r) )
+       ulong(:,nfnc) = (lb / r) * (1.0_dp - exp(-2*beta*r) * &
+            & (1.0_dp + beta*r) )
 
        ulongk(:,nfnc) = (fourpi * lb / k**2) * &
-            & 1.0d0 / (1.0d0 + k**2/(4.0d0*beta**2))**2
+            & 1.0_dp / (1.0_dp + k**2/(4.0_dp*beta**2))**2
 
-       dulong(:,nfnc) = - (lb / r**2) * (1.0d0 - exp(-2.0d0*beta*r) &
-            & * (1.0d0 + 2.0d0*beta*r*(1.0d0 + beta*r)) )
+       dulong(:,nfnc) = - (lb / r**2) * (1.0_dp - exp(-2.0_dp*beta*r) &
+            & * (1.0_dp + 2.0_dp*beta*r*(1.0_dp + beta*r)) )
 
     end if
 
@@ -458,9 +458,9 @@ contains
     ! compressibility factor and the mean-field internal energy per
     ! particle can be calculated analytically for the DPD potential.
 
-    tp = pi * rc**3 * aa / 30.0
+    tp = pi * rc**3 * aa / 30.0_dp
     tu = tp
-    tl = 0.0d0
+    tl = 0.0_dp
 
     ! Generate auxiliary function
 
@@ -481,13 +481,10 @@ contains
     implicit none
     integer, intent(in), optional :: use_ushort_flag
     integer :: uuflag = 0
-    double precision :: rootpi
 
     if (present(use_ushort_flag) .and. use_ushort_flag.ne.0) then
        uuflag = 1
     end if
-
-    rootpi = sqrt(pi)
 
     if (ncomp.ne.2) then
        print *, 'oz_mod.f90: urpm_potential: ncomp = ', ncomp, &
@@ -495,28 +492,29 @@ contains
        stop
     end if
 
-    z(1) = 1; z(2) = -1;
+    z(1) = 1.0_dp
+    z(2) = -1.0_dp
 
-    ulong(:,1) = lb * erf(0.5d0*r/sigma) / r
+    ulong(:,1) = lb * erf(0.5_dp*r/sigma) / r
 
     ulongk(:,1) = fourpi * lb * exp(-k**2*sigma**2) / k**2
 
-    dulong(:,1) = lb * exp(-0.25d0*r**2/sigma**2) / (rootpi * r * sigma) &
-         & - lb * erf(0.5d0*r/sigma) / r**2
+    dulong(:,1) = lb * exp(-0.25_dp*r**2/sigma**2) / (rootpi * r * sigma) &
+         & - lb * erf(0.5_dp*r/sigma) / r**2
 
-    ulong(:,2) = - lb * erf(0.5d0*r/sigmap) / r
+    ulong(:,2) = - lb * erf(0.5_dp*r/sigmap) / r
 
     ulongk(:,2) = - fourpi * lb * exp(-k**2*sigmap**2) / k**2
 
-    dulong(:,2) = - lb * exp(-0.25d0*r**2/sigmap**2) / (rootpi * r * sigmap) &
-         & + lb * erf(0.5d0*r/sigmap) / r**2
+    dulong(:,2) = - lb * exp(-0.25_dp*r**2/sigmap**2) / (rootpi * r * sigmap) &
+         & + lb * erf(0.5_dp*r/sigmap) / r**2
 
     ulong(:,3) = ulong(:,1)
     ulongk(:,3) = ulongk(:,1)
     dulong(:,3) = dulong(:,1)
 
-    ushort(:,:) = 0.0d0
-    dushort(:,:) = 0.0d0
+    ushort(:,:) = 0.0_dp
+    dushort(:,:) = 0.0_dp
 
     if (uuflag.eq.1) then
        ushort(:,2) = ulong(:,2) + ulong(:,1)
@@ -532,9 +530,9 @@ contains
     ! These are the same whether using ushort or not, as they are
     ! defined in terms of the total potential.
 
-    tp(1) = 0.0d0
-    tp(2) = 2*pi*lb*(sigmap**2 - sigma**2)
-    tp(3) = 0.0d0
+    tp(1) = 0.0_dp
+    tp(2) = twopi*lb*(sigmap**2 - sigma**2)
+    tp(3) = 0.0_dp
 
     tu = tp
 
@@ -543,9 +541,9 @@ contains
     ! into the compressibility and chemical potential expressions.
 
     if (uuflag.eq.0) then
-       tl = 2.0*tp
+       tl = 2.0_dp*tp
     else
-       tl = 0.0d0
+       tl = 0.0_dp
     end if
 
     ! Generate auxiliary function
@@ -569,13 +567,10 @@ contains
     integer, intent(in), optional :: use_ushort_flag
     integer :: uuflag = 0
     integer :: irc
-    double precision :: rootpi
 
     if (present(use_ushort_flag) .and. use_ushort_flag.ne.0) then
        uuflag = 1
     end if
-
-    rootpi = sqrt(pi)
 
     if (ncomp.ne.2) then
        print *, 'oz_mod.f90: rpm_potential: ncomp = ', ncomp, &
@@ -583,7 +578,8 @@ contains
        stop
     end if
 
-    z(1) = 1; z(2) = -1;
+    z(1) = 1.0_dp
+    z(2) = -1.0_dp
     diam(1) = sigma
     diam(2) = sigma
     diam(3) = sigma
@@ -594,12 +590,12 @@ contains
     ulong(1:irc,1) = lB / sigma
     ulongk(:,1) = fourpi * lb * sin(k*sigma)  / (sigma * k**3)
     dulong(:,1) = - lb / r**2
-    dulong(1:irc,1) = 0.0d0
+    dulong(1:irc,1) = 0.0_dp
 
-    if (kappa.gt.0.0) then
+    if (kappa.gt.0.0_dp) then
        ulong(:,2) = - lb * erf(kappa*r) / r
-       ulongk(:,2) = - fourpi * lb * exp(-k**2/(4.0d0*kappa**2)) / k**2
-       dulong(:,2) = - 2.0d0*kappa*lb * exp(-kappa**2*r**2) / (rootpi * r) &
+       ulongk(:,2) = - fourpi * lb * exp(-k**2/(4.0_dp*kappa**2)) / k**2
+       dulong(:,2) = - 2.0_dp*kappa*lb * exp(-kappa**2*r**2) / (rootpi * r) &
             & + lb * erf(kappa*r) / r**2
     else
        ulong(:,2) = - ulong(:,1)
@@ -611,8 +607,8 @@ contains
     ulongk(:,3) = ulongk(:,1)
     dulong(:,3) = dulong(:,1)
 
-    ushort(:,:) = 0.0d0
-    dushort(:,:) = 0.0d0
+    ushort(:,:) = 0.0_dp
+    dushort(:,:) = 0.0_dp
 
     if (uuflag.eq.1) then
        ushort(:,2) = ulong(:,2) + ulong(:,1)
@@ -625,19 +621,19 @@ contains
     ! Generate auxiliary function
 
     expnegus = exp(-ushort)
-    expnegus(1:irc, :) = 0.0d0
+    expnegus(1:irc, :) = 0.0_dp
 
     ! These are the analytic contributions to the thermodynamics.
 
-    tp = 0.0d0
-    tu = 0.0d0
-    tl = 0.0d0
+    tp = 0.0_dp
+    tu = 0.0_dp
+    tl = 0.0_dp
 
     if (kappa.gt.0) then
        tp(2) = pi*lb * ( sigma * exp(-kappa**2*sigma**2) / (kappa*rootpi) &
-            & + (1/(2.0d0*kappa**2) - sigma**2/3.0d0) * erfc(kappa*sigma) )
+            & + (1/(2.0_dp*kappa**2) - sigma**2/3.0_dp) * erfc(kappa*sigma) )
        tu(2) = pi*lb * ( sigma * exp(-kappa**2*sigma**2) / (kappa*rootpi) &
-            & + (1/(2.0d0*kappa**2) - sigma**2) * erfc(kappa*sigma) )
+            & + (1/(2.0_dp*kappa**2) - sigma**2) * erfc(kappa*sigma) )
        if (uuflag.eq.0) then ! off SYM condition
           tl(2) = pi*lb / kappa**2
        end if
@@ -664,23 +660,23 @@ contains
 
     diam = sigma
 
-    ulong = 0.0d0
-    ulongk = 0.0d0
-    dulong = 0.0d0
-    ushort = 0.0d0
-    dushort = 0.0d0
+    ulong = 0.0_dp
+    ulongk = 0.0_dp
+    dulong = 0.0_dp
+    ushort = 0.0_dp
+    dushort = 0.0_dp
 
     ! This is the only place the hard sphere diameter enters
 
     irc = nint(sigma / deltar)
-    expnegus(1:irc, 1) = 0.0d0
-    expnegus(irc+1:ng-1, 1) = 1.0d0
+    expnegus(1:irc, 1) = 0.0_dp
+    expnegus(irc+1:ng-1, 1) = 1.0_dp
 
     ! These are the analytic contributions to the thermodynamics.
 
-    tp = 0.0d0
-    tu = 0.0d0
-    tl = 0.0d0
+    tp = 0.0_dp
+    tu = 0.0_dp
+    tl = 0.0_dp
     
     ! Record the model type
 
@@ -698,7 +694,7 @@ contains
     implicit none
     integer :: i1, i, j, ij, ik, irc
     integer :: perm(ncomp)
-    double precision :: &
+    real(kind=dp) :: &
          & a(ncomp, ncomp), b(ncomp, ncomp), &
          & cmat(ncomp, ncomp), umat(ncomp, ncomp), rhomat(ncomp, ncomp), &
          & m0(ncomp, ncomp), unita(ncomp, ncomp)
@@ -720,7 +716,7 @@ contains
        ! Note the implicit indexing on wavevector k.
 
        ek(:, 1) = ( ck(:, 1) - ulongk(:, 1) ) &
-            & / ( 1.0d0 - rho(1) * (ck(:, 1) - ulongk(:, 1)) ) &
+            & / ( 1.0_dp - rho(1) * (ck(:, 1) - ulongk(:, 1)) ) &
             & - ck(:, 1)
 
     else ! Multicomponent OZ inversion
@@ -728,12 +724,12 @@ contains
        ! First set up a unit matrix, and the diagonal R matrix -- see
        ! the documentation for the math here.
 
-       rhomat = 0.0d0
-       unita = 0.0d0
+       rhomat = 0.0_dp
+       unita = 0.0_dp
 
        do i = 1, ncomp
           rhomat(i,i) = rho(i)
-          unita(i,i) = 1.0d0
+          unita(i,i) = 1.0_dp
        end do
 
        ! Do the matrix calculations for each wavevector k.
@@ -809,7 +805,7 @@ contains
     implicit none
     integer :: i, j, ij, ik, irc
     integer :: perm(ncomp)
-    double precision :: &
+    real(kind=dp) :: &
          & a(ncomp, ncomp), b(ncomp, ncomp), &
          & hmat(ncomp, ncomp), rhomat(ncomp, ncomp), &
          & unita(ncomp, ncomp), hk(ng-1, nfnc)
@@ -824,18 +820,18 @@ contains
 
        ! In the one component case the OZ solution is trivial.
 
-       ck(:, 1) = hk(:, 1) / (1.0d0 + rho(1)*hk(:, 1)) + ulongk(:, 1)
+       ck(:, 1) = hk(:, 1) / (1.0_dp + rho(1)*hk(:, 1))
 
     else ! Multicomponent OZ solution
 
        ! As above set up a unit matrix, and the diagonal R matrix
 
-       rhomat = 0.0d0
-       unita = 0.0d0
+       rhomat = 0.0_dp
+       unita = 0.0_dp
 
        do i = 1, ncomp
           rhomat(i,i) = rho(i)
-          unita(i,i) = 1.0d0
+          unita(i,i) = 1.0_dp
        end do
 
        ! Do the matrix calculations for each wavevector k.
@@ -927,8 +923,8 @@ contains
     i0 = i1 - 1; if (i0.eq.0) i0 = nps
     do i = 1, nfnc
        c(:,i,i1) = alpha * ( expnegus(:,i) * exp(e(:,i,i0)) &
-            & - e(:,i,i0) - 1.0d0 ) &
-            & + (1.0d0 - alpha) * c(:,i,i0)
+            & - e(:,i,i0) - 1.0_dp ) &
+            & + (1.0_dp - alpha) * c(:,i,i0)
     end do
   end subroutine hnc_picard
 
@@ -939,10 +935,10 @@ contains
   subroutine hnc_ng
     implicit none
     integer :: i, i1, i0, j, j1, j2, p, nd, icp
-    double precision :: dc(ng-1,nfnc,nps-1), de(ng-1,nfnc,nps-1), &
+    real(kind=dp) :: dc(ng-1,nfnc,nps-1), de(ng-1,nfnc,nps-1), &
          & a(nps-1,nps-1), x(nps-1), y(nps-1), yy, aux
     integer :: ipiv(nps-1), info  ! DSYSV stuff
-    double precision :: work(100) ! DSYSV stuff
+    real(kind=dp) :: work(100) ! DSYSV stuff
     istep = istep + 1
     i1 = mod(istep-1, nps) + 1
     i0 = i1 - 1; if (i0 .eq. 0) i0 = nps
@@ -957,11 +953,11 @@ contains
        dc(:,:,p) = c(:,:,i0) - c(:,:,j1)
        de(:,:,p) = e(:,:,i0) - e(:,:,j1)
     end do
-    a(:,:) = 0.0d0
-    x(:) = 0.0d0
+    a(:,:) = 0.0_dp
+    x(:) = 0.0_dp
     do icp = 1, nfnc
        do j = 1, ng-1
-          aux = expnegus(j,icp) * exp(e(j,icp,i0)) - 1.0d0
+          aux = expnegus(j,icp) * exp(e(j,icp,i0)) - 1.0_dp
           do j1 = 1, nd
              y(j1) = aux * de(j,icp,j1) - dc(j,icp,j1)
           end do
@@ -985,7 +981,7 @@ contains
           do j1 = 1, nd
              aux = aux - de(j,icp,j1) * x(j1)
           end do
-          c(j,icp,i1) = expnegus(j,icp) * exp(aux) - aux - 1.0d0
+          c(j,icp,i1) = expnegus(j,icp) * exp(aux) - aux - 1.0_dp
        end do
     end do
   end subroutine hnc_ng
@@ -1010,9 +1006,9 @@ contains
     integer :: i, i1
     istep = 1
     if (cold_start.eq.1) then
-       if (start_type.eq.1) c(:,:,1) = 0.0
+       if (start_type.eq.1) c(:,:,1) = 0.0_dp
        if (start_type.eq.2) c(:,:,1) = - ushort(:,:)
-       if (start_type.eq.3) c(:,:,1) = expnegus(:,:) - 1.0
+       if (start_type.eq.3) c(:,:,1) = expnegus(:,:) - 1.0_dp
        cold_start = 0
        if (verbose.eq.1) then
           if (start_type.eq.1) print *, "HNC cold start c' = 0"
@@ -1067,7 +1063,7 @@ contains
   subroutine conv_test
     implicit none
     integer i1, i0
-!    double precision norm
+!    real(kind=dp) norm
     i1 = mod(istep-1, nps) + 1
     i0 = i1 - 1; if (i0 .eq. 0) i0 = nps
     error = sqrt(deltar * sum( (c(:, :, i1) - c(:, :, i0))**2 ))
@@ -1089,8 +1085,8 @@ contains
     i0 = i1 - 1; if (i0.eq.0) i0 = nps
     do i = 1, nfnc
        irc = nint(diam(i) / deltar) ! Only work inside the hard core
-       c(1:irc,i,i1) = alpha * (  - e(1:irc,i,i0) - 1.0d0 ) &
-            & + (1.0d0 - alpha) * c(1:irc,i,i0)
+       c(1:irc,i,i1) = alpha * (  - e(1:irc,i,i0) - 1.0_dp ) &
+            & + (1.0_dp - alpha) * c(1:irc,i,i0)
     end do
   end subroutine msa_picard
 
@@ -1102,10 +1098,10 @@ contains
   subroutine msa_ng
     implicit none
     integer :: i, i1, i0, j, j1, j2, p, nd, icp, irc
-    double precision :: dc(ng-1,nfnc,nps-1), de(ng-1,nfnc,nps-1), &
+    real(kind=dp) :: dc(ng-1,nfnc,nps-1), de(ng-1,nfnc,nps-1), &
          & a(nps-1,nps-1), x(nps-1), y(nps-1), yy, aux
     integer :: ipiv(nps-1), info  ! DSYSV stuff
-    double precision :: work(100) ! DSYSV stuff
+    real(kind=dp) :: work(100) ! DSYSV stuff
     istep = istep + 1
     i1 = mod(istep-1, nps) + 1
     i0 = i1 - 1; if (i0 .eq. 0) i0 = nps
@@ -1120,12 +1116,12 @@ contains
        dc(:,:,p) = c(:,:,i0) - c(:,:,j1)
        de(:,:,p) = e(:,:,i0) - e(:,:,j1)
     end do
-    a(:,:) = 0.0d0
-    x(:) = 0.0d0
+    a(:,:) = 0.0_dp
+    x(:) = 0.0_dp
     do icp = 1, nfnc
        irc = nint(diam(icp) / deltar) ! Only work inside the hard core
        do j = 1, irc
-          aux = - 1.0d0
+          aux = - 1.0_dp
           do j1 = 1, nd
              y(j1) = aux * de(j,icp,j1) - dc(j,icp,j1)
           end do
@@ -1150,7 +1146,7 @@ contains
           do j1 = 1, nd
              aux = aux - de(j,icp,j1) * x(j1)
           end do
-          c(j,icp,i1) = - aux - 1.0d0
+          c(j,icp,i1) = - aux - 1.0_dp
        end do
     end do
   end subroutine msa_ng
@@ -1181,7 +1177,7 @@ contains
     if (cold_start.eq.1) then
        do i = 1, nfnc
           irc = nint(diam(i) / deltar) ! Only initialise inside the hard core
-          c(1:irc,i,1) = - 1.0
+          c(1:irc,i,1) = - 1.0_dp
        end do
        cold_start = 0
        if (verbose.eq.1) then
@@ -1270,9 +1266,9 @@ contains
   
   subroutine exp_refine
     implicit none
-    h0 = (1.0 + h0) * exp(c(:,:,1) + e(:,:,1) - h0) - 1.0
+    h0 = (1.0_dp + h0) * exp(c(:,:,1) + e(:,:,1) - h0) - 1.0_dp
     call oz_solve2
-    h0 = 0.0
+    h0 = 0.0_dp
     if (auto_fns.eq.1) then
        call make_pair_functions
        call make_structure_factors
@@ -1290,13 +1286,13 @@ contains
   subroutine make_structure_factors
     implicit none
     integer :: i, j, ij
-    double precision :: hk(ng-1, nfnc)
+    real(kind=dp) :: hk(ng-1, nfnc)
     hk = ck + ek
     do j = 1, ncomp
        do i = 1, j
           ij = i + j*(j-1)/2
           if (i.eq.j) then
-             sk(:, i, i) = rho(i) * (1.0 + rho(i) * hk(:, ij))
+             sk(:, i, i) = rho(i) * (1.0_dp + rho(i) * hk(:, ij))
           else
              sk(:, i, j) = rho(i) * rho(j) * hk(:, ij)
              sk(:, j, i) = sk(:, i, j)
@@ -1344,8 +1340,8 @@ contains
   subroutine make_thermodynamics
     implicit none
     integer :: i, j, ij, irc
-    double precision :: rhotot, r1, r2, g1, g2, gc
-    double precision :: rhoxx(nfnc), t(nfnc)
+    real(kind=dp) :: rhotot, r1, r2, g1, g2, gc
+    real(kind=dp) :: rhoxx(nfnc), t(nfnc)
 
     ! rhoxx is rho x_i x_j, doubled up for the off-diagonal components
 
@@ -1357,7 +1353,7 @@ contains
           if (i.eq.j) then
              rhoxx(ij) = rho(i)**2 / rhotot
           else
-             rhoxx(ij) = 2.0 * rho(i) * rho(j) / rhotot
+             rhoxx(ij) = 2.0_dp * rho(i) * rho(j) / rhotot
           end if
        end do
     end do
@@ -1374,15 +1370,15 @@ contains
     ! contributes half.
 
     do i = 1, nfnc
-       if (diam(i).gt.0.0) then
+       if (diam(i).gt.0.0_dp) then
           irc = nint(diam(i) / deltar)
           t(i) =  - twopi * deltar * sum((dushort(irc+2:,i) + dulong(irc+2:,i)) &
-               & * (c(irc+2:,i,1) + e(irc+2:,i,1)) * r(irc+2:)**3) / 3.0 &
-               & - 0.5 * twopi * deltar * ((dushort(irc+1,i) + dulong(irc+1,i)) &
-               & * (c(irc+1,i,1) + e(irc+1,i,1)) * r(irc+1)**3) / 3.0
+               & * (c(irc+2:,i,1) + e(irc+2:,i,1)) * r(irc+2:)**3) / 3.0_dp &
+               & - 0.5_dp * twopi * deltar * ((dushort(irc+1,i) + dulong(irc+1,i)) &
+               & * (c(irc+1,i,1) + e(irc+1,i,1)) * r(irc+1)**3) / 3.0_dp
        else
           t(i) =  - twopi * deltar * sum((dushort(:,i) + dulong(:,i)) &
-               & * (c(:,i,1) + e(:,i,1)) * r(:)**3) / 3.0
+               & * (c(:,i,1) + e(:,i,1)) * r(:)**3) / 3.0_dp
        end if
     end do
 
@@ -1395,16 +1391,16 @@ contains
     ! from the two nearest outside points.
 
     do i = 1, nfnc
-       if (diam(i).gt.0.0) then
+       if (diam(i).gt.0.0_dp) then
           irc = nint(diam(i) / deltar)
           r1 = r(irc+1)
           r2 = r(irc+2)
-          g1 = 1.0 + c(irc+1,i,1) + e(irc+1,i,1)
-          g2 = 1.0 + c(irc+2,i,1) + e(irc+2,i,1)
+          g1 = 1.0_dp + c(irc+1,i,1) + e(irc+1,i,1)
+          g2 = 1.0_dp + c(irc+2,i,1) + e(irc+2,i,1)
           gc = ( (g1 - g2) * diam(i) + g2 * r1 - g1 * r2 ) / (r1 - r2)
-          t(i) = twopi * diam(i)**3 * gc / 3.0
+          t(i) = twopi * diam(i)**3 * gc / 3.0_dp
        else
-          t(i) = 0.0
+          t(i) = 0.0_dp
        end if
     end do
 
@@ -1412,7 +1408,7 @@ contains
 
     ! This is the final pressure.
 
-    press = rhotot * (1.0 + cf_gc + cf_mf + cf_xc)
+    press = rhotot * (1.0_dp + cf_gc + cf_mf + cf_xc)
 
     ! Now we do the compressibility (not to be confused with the above
     ! compressibility factor).  The long range part is accounted for
@@ -1429,7 +1425,7 @@ contains
     ! The compressibility is 1 - sum_ij rho x_i x_j t_ij
 
     comp_xc = - sum(rhoxx(:) * (t(:) - tl(:)))
-    comp = 1.0 + comp_xc
+    comp = 1.0_dp + comp_xc
 
     ! Now we do the energy per particle.  First the mean-field
     ! contribution (per particle).
@@ -1442,11 +1438,11 @@ contains
     ! contribution from both ends vanishes.
 
     do i = 1, nfnc
-       if (diam(i).gt.0.0) then
+       if (diam(i).gt.0.0_dp) then
           irc = nint(diam(i) / deltar)
           t(i) = twopi * deltar * sum((ushort(irc+2:,i) + ulong(irc+2:,i)) &
                & * (c(irc+2:,i,1) + e(irc+2:,i,1)) * r(irc+2:)**2) & 
-               & + 0.5 * twopi * deltar * ((ushort(irc+1,i) + ulong(irc+1,i)) &
+               & + 0.5_dp * twopi * deltar * ((ushort(irc+1,i) + ulong(irc+1,i)) &
                & * (c(irc+1,i,1) + e(irc+1,i,1)) * r(irc+1)**2)
        else
           t(i) = twopi * deltar * sum((ushort(:,i) + ulong(:,i)) &
@@ -1474,14 +1470,14 @@ contains
     ! for the first term.
 
     do i = 1, nfnc
-       t(i) = fourpi * deltar * sum((0.5*(c(:,i,1) + e(:,i,1)) &
+       t(i) = fourpi * deltar * sum((0.5_dp*(c(:,i,1) + e(:,i,1)) &
             & * (e(:,i,1) + ulong(:,i)) - c(:,i,1)) * r(:)**2)
     end do
 
     ! The excess chemical potential of the ith component is then sum_j
     ! rho_j t_ij
 
-    muex = 0.0
+    muex = 0.0_dp
 
     do i = 1, ncomp
        do j = 1, ncomp
@@ -1513,7 +1509,7 @@ contains
        print *, 'Compressibility factor: mean field contribution = ', cf_mf
        print *, 'Compressibility factor: contact contribution = ', cf_gc
        print *, 'Compressibility factor: correlation contribution = ', cf_xc
-       print *, 'Compressibility factor: total = ', 1.0 + cf_mf + cf_gc + cf_xc
+       print *, 'Compressibility factor: total = ', 1.0_dp + cf_mf + cf_gc + cf_xc
        print *, 'Pressure (virial route) = ', press
        print *, 'Excess pressure (virial route) = ', sum(rho) * (cf_mf + cf_gc + cf_xc)
        print *, 'Compressibility: correlation contribution = ', comp_xc
@@ -1521,7 +1517,7 @@ contains
        print *, 'Internal energy: mean field contribution = ', un_mf
        print *, 'Internal energy: correlation contribution = ', un_xc
        print *, 'Internal energy: un (per particle) = ', un
-       print *, 'Internal energy: un / 3 = ', un / 3.0
+       print *, 'Internal energy: un / 3 = ', un / 3.0_dp
        print *, 'Internal energy: uv (per unit volume) = ', uv
        do i = 1, ncomp
           print *, 'Chemical potential: species ', i, ' = ', muex(i)
@@ -1561,9 +1557,9 @@ contains
     integer :: i, j, ii, jj, p
     integer, intent(in) :: n, m
     integer, intent(out) :: perm(n), irc
-    double precision :: alpha, amax, aa
-    double precision, parameter :: eps = 1D-10
-    double precision, intent(inout) :: a(n, n), b(n, m)
+    real(kind=dp) :: alpha, amax, aa
+    real(kind=dp), parameter :: eps = 1E-10_dp
+    real(kind=dp), intent(inout) :: a(n, n), b(n, m)
     logical :: row(n), col(n)
 
     irc = 0
@@ -1580,7 +1576,7 @@ contains
        ! will have run out of pivots and reduced A to a permutation
        ! matrix.
 
-       amax = 0.0
+       amax = 0.0_dp
        
        do i = 1, n
           do j = 1, n
@@ -1612,7 +1608,7 @@ contains
        ! solution X remains unchanged, but the matrix A is
        ! progressively simplified.
 
-       alpha = 1.0 / a(ii, jj)
+       alpha = 1.0_dp / a(ii, jj)
        a(ii, :) = alpha * a(ii, :)
        b(ii, :) = alpha * b(ii, :)
 

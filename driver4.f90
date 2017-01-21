@@ -24,7 +24,7 @@
 program driver4
   use wizard
   implicit none
-  double precision :: rhotot, mfcharge
+  real(kind=dp) :: rhotot, mfcharge
 
   verbose = 1
 
@@ -33,35 +33,35 @@ program driver4
 
   call initialise
 
-  lb = 200.0
-  arep = 25.0
+  lb = 200.0_dp
+  arep = 25.0_dp
 
-  arep(1, 2) = 32.0
-  arep(1, 3) = 22.0
-  arep(1, 4) = 15.0
-  arep(2, 3) = 30.0
-  arep(2, 4) = 35.0
-  arep(3, 4) = 20.0
+  arep(1, 2) = 32.0_dp
+  arep(1, 3) = 22.0_dp
+  arep(1, 4) = 15.0_dp
+  arep(2, 3) = 30.0_dp
+  arep(2, 4) = 35.0_dp
+  arep(3, 4) = 20.0_dp
   
-  z(2) = 1
-  z(3) = -1
-  z(4) = -1
+  z(2) = 1.0_dp
+  z(3) = -1.0_dp
+  z(4) = -1.0_dp
 
   call dpd_potential
 
-  rhotot = 3.0d0
-  mfcharge = 0.2d0
+  rhotot = 3.0_dp
+  mfcharge = 0.2_dp
 
-  rho(1) = rhotot * (1.0d0 - mfcharge)
-  rho(2) = 0.5d0 * rhotot * mfcharge
-  rho(3) = rho(2) * 0.2
+  rho(1) = rhotot * (1.0_dp - mfcharge)
+  rho(2) = 0.5_dp * rhotot * mfcharge
+  rho(3) = rho(2) * 0.2_dp
   rho(4) = rho(2) - rho(3)
 
   call write_params
 
   call hnc_solve
 
-  if (error .gt. 1.0d-10) &
+  if (error .gt. 1.0E-10_dp) &
        & print *, 'Warning, did not converge to 1e-10'
 
   call write_thermodynamics

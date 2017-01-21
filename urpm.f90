@@ -21,11 +21,11 @@
 ! You should have received a copy of the GNU General Public License
 ! along with SunlightDPD.  If not, see <http://www.gnu.org/licenses/>.
 
-program driver
+program urpm
   use wizard
   implicit none
   integer :: j
-  double precision :: rhotot
+  real(kind=dp) :: rhotot
 
   verbose = 1
 
@@ -34,24 +34,24 @@ program driver
 
   call initialise
 
-  lb = 20
-  sigma = 0.5
-  arep = 25.0
-  z(1) = 1
-  z(2) = -1
+  lb = 20.0_dp
+  sigma = 0.5_dp
+  arep = 25.0_dp
+  z(1) = 1.0_dp
+  z(2) = -1.0_dp
 
   call dpd_potential(1)
 
-  rhotot = 3.0d0
+  rhotot = 3.0_dp
 
-  rho(1) = 0.5d0 * rhotot
+  rho(1) = 0.5_dp * rhotot
   rho(2) = rho(1)
 
   call write_params
 
   call hnc_solve
 
-  if (error .gt. 1.0d-10) &
+  if (error .gt. 1.0E-10_dp) &
        & print *, 'Warning, did not converge to 1e-10'
 
   open (unit=11, file='urpm_hij.dat')
@@ -63,4 +63,4 @@ program driver
 
   call write_thermodynamics
 
-end program driver
+end program urpm

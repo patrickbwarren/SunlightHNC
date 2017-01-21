@@ -71,8 +71,6 @@ w.rpm_potential()
 w.rho[0] = 0.5 * args.rho
 w.rho[1] = w.rho[0]
 
-eps = 1e-20
-
 if args.verbose:
     w.write_params()
     w.verbose = 1
@@ -139,18 +137,16 @@ else:
     else: plt.title('HNC solution, error = %0.1g' % w.error)
 
     imax = int(args.grcut / w.deltar)
-    plt.plot(w.r[0:imax], 1.0 + w.hr[0:imax, 0, 0], label="$g_{11}$")
-    plt.plot(w.r[0:imax], 1.0 + w.hr[0:imax, 0, 1], label="$g_{12}$")
+    plt.plot(w.r[0:imax], 1.0 + w.hr[0:imax, 0, 0], label="$g_{11}(r)$")
+    plt.plot(w.r[0:imax], 1.0 + w.hr[0:imax, 0, 1], label="$g_{12}(r)$")
     plt.legend(loc='lower right')
-    plt.xlabel('$r$')
     
     plt.subplot(2, 2, 2)
 
     jmax = int(args.skcut / w.deltak)
-    plt.plot(w.k[:jmax], snn[:jmax], label='$S_{NN}$')
-    plt.plot(w.k[:jmax], szz[:jmax], label='$S_{ZZ}$')
+    plt.plot(w.k[:jmax], snn[:jmax], label='$S_{NN}(k)$')
+    plt.plot(w.k[:jmax], szz[:jmax], label='$S_{ZZ}(k)$')
     plt.legend(loc='lower right')
-    plt.xlabel('$k$')
 
     plt.subplot(2, 2, 3)
     
@@ -161,13 +157,12 @@ else:
              0.5*(w.c[0:imax, 0, 0]-w.ulong[0:imax, 0]-w.c[0:imax, 1, 0]+w.ulong[0:imax, 1]),
              label="$[c_{11}-c_{12}]/2$")
     plt.legend(loc='lower right')
-    plt.xlabel('$r$')
     
     plt.subplot(2, 2, 4)
 
     jmax = int(args.skcut*3 / w.deltak)
-    plt.plot(w.k[0:jmax],w.ek[0:jmax, 0]+w.ck[0:jmax, 0],label="$hk_{11}$")
-    plt.plot(w.k[0:jmax],w.ek[0:jmax, 1]+w.ck[0:jmax, 1],label="$hk_{12}$")
+    plt.plot(w.k[0:jmax],w.ek[0:jmax, 0]+w.ck[0:jmax, 0],label="${\\tilde h}_{11}$")
+    plt.plot(w.k[0:jmax],w.ek[0:jmax, 1]+w.ck[0:jmax, 1],label="${\\tilde h}_{12}$")
 #    plt.plot(w.k[0:jmax],
 #             1.0 + w.rho[0]*(w.ek[0:jmax, 0]+w.ck[0:jmax, 0]-w.ek[0:jmax, 1]-w.ck[0:jmax, 1]),
 #             label="$1+\\rho/2(hk_{11}+hk_{12})$")
@@ -175,7 +170,5 @@ else:
 #    plt.plot(w.k[0:jmax],w.ck[0:jmax, 0],label="$ck_{11}$")
 #    plt.plot(w.k[0:jmax],w.ck[0:jmax, 1],label="$ck_{12}$")
     plt.legend(loc='lower right')
-    plt.xlabel('$k$')
     
     plt.show()
-
