@@ -74,16 +74,12 @@ w.write_params()
 
 if args.exp: args.rpa = args.exp
 
-if args.rpa:
-    w.rpa_solve()
-    print('*** RPA solved')
-else:
-    w.hnc_solve()
-    print('*** HNC solved, error = ', w.error)
+if args.rpa: w.rpa_solve()
+else: w.hnc_solve()
 
-if args.exp:
-    w.exp_refine()
-    print('*** EXP refined')
+if args.exp: w.exp_refine()
+
+print('%s solved, error = %g' % (str(w.closure_name, 'utf-8'), w.error))
 
 w.write_thermodynamics()
 
@@ -93,10 +89,7 @@ plt.figure(1)
 
 plt.subplot(2, 2, 1)
 
-if args.exp: plt.title('RPA solution with EXP refinement')
-else:
-    if args.rpa: plt.title('RPA solution')
-    else: plt.title('HNC solution, error = %0.1g' % w.error)
+plt.title('%s solution, error = %0.1g' % (str(w.closure_name, 'utf-8'), w.error))
 
 plt.plot(w.r[:], 
          list(map(lambda x, y: m.log10(eps + m.fabs(x*y)), w.hr[:, 0, 0], w.r[:])), 

@@ -105,16 +105,16 @@ eps = 1e-20
 
 # w.write_params()
 
-if (args.rpa):
-    w.rpa_solve()
-    print('*** RPA solved')
-else:
-    w.hnc_solve()
-    print('*** HNC solved, error = ', w.error)
+# EXP implies RPA
 
-if args.exp:
-    w.exp_refine()
-    print('*** EXP refinement')
+if args.exp: args.rpa = args.exp
+
+if args.rpa: w.rpa_solve()
+else: w.hnc_solve()
+
+if args.exp: w.exp_refine()
+
+print('%s solved, error = %g' % (str(w.closure_name, 'utf-8'), w.error))
 
 w.write_thermodynamics()
 

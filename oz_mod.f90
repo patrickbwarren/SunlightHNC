@@ -106,14 +106,29 @@ module wizard
   
   integer, parameter :: dp = kind(1.0d0)
 
-  integer, parameter :: &
-       & USE_GAUSSIAN = 1, &
-       & USE_BESSEL = 2, &
-       & USE_LINEAR = 3, &
-       & USE_SLATER_EXACT = 4, &
-       & USE_SLATER_APPROX = 5
+  integer, parameter :: & ! Enumeration of current potential models
+       & NO_MODEL_TYPE = 0, &
+       & DPD_GAUSSIAN_CHARGES = 1, &
+       & DPD_BESSEL_CHARGES = 2, &
+       & DPD_LINEAR_CHARGES = 3, &
+       & DPD_SLATER_APPROX_CHARGES = 4, &
+       & DPD_SLATER_EXACT_CHARGES = 5, &
+       & URPM_WITHOUT_USHORT = 6, &
+       & URPM_WITH_USHORT = 7, &
+       & RPM_WITHOUT_USHORT = 8, &
+       & RPM_WITH_USHORT = 9, &
+       & HARD_SPHERES = 10
 
-  integer, parameter :: USE_USHORT = 1
+  integer, parameter :: & ! Enumeration of error codes
+       & NO_ERROR = 0, &
+       & NON_CONVERGENCE_ERROR = 1, &
+       & OTHER_ERROR = 2
+
+  integer, parameter :: USE_USHORT = 1 ! syntactic sugar for function calls
+
+  character (len=3)  :: closure_name = '' ! 3-letter acronym for the last-used closure 
+  character (len=32) :: model_name = ''   ! Model name
+  character (len=20) :: error_msg = ''    ! Error message
 
   real(kind=dp), parameter :: &
        & pi = 4.0_dp * atan(1.0_dp), &
@@ -133,8 +148,9 @@ module wizard
        & nfnc = 0,        & ! number of functions, = ncomp (ncomp + 1) / 2
        & nps = 6,         & ! number of previous states used in Ng method
        & npic = 6,        & ! number of Picard steps
-       & maxsteps = 100     ! max number of steps to take for convergence
-  
+       & maxsteps = 100,  & ! max number of steps to take for convergence
+       & error_code = 0     ! error code (see above)
+
   integer*8 :: plan  ! FFTW plan for fast discrete sine transforms
 
   real(kind=dp) :: &
@@ -253,55 +269,57 @@ contains
     print *, ' deltar = ', deltar, ' deltak = ', deltak
     print *, ' deltar*deltak*ng/pi = ', deltar*deltak/pi*dble(ng)
     print *, ' r(ng-1) = ', r(ng-1), ' k(ng-1) = ', k(ng-1)
-    print *, 'POTENTIAL DETAILS (model type', model_type, ')'
-    if (model_type.eq.0) then
+    print *, 'POTENTIAL DETAILS :: model type =', model_type, model_name
+    if (model_type.eq.NO_MODEL_TYPE) then
        print *, 'No potential has been selected'
-    else if (model_type.lt.10) then
+    else if (model_type.le.DPD_SLATER_EXACT_CHARGES) then
        print *, 'DPD potential was selected, matrix A = '
        do i = 1, ncomp
           print *, ' ', arep(i, :)
        end do
        print *, ' valencies, z = ', z
        print *, ' rc = ', rc, ' lb = ', lb
-       if (model_type.eq.USE_GAUSSIAN) then
+       if (model_type.eq.DPD_GAUSSIAN_CHARGES) then
           print *, ' Gaussian smearing, sigma = ', sigma
        end if
-       if (model_type.eq.USE_BESSEL) then
+       if (model_type.eq.DPD_BESSEL_CHARGES) then
           print *, ' Bessel smearing, sigma = ', sigma
        end if
-       if (model_type.eq.USE_LINEAR) then
+       if (model_type.eq.DPD_LINEAR_CHARGES) then
           print *, ' linear (Groot) smearing, R = ', rgroot
           print *, ' equivalent Gaussian sigma = ', &
                & sqrt(2.0_dp/15.0_dp) * rgroot
        end if
-       if (model_type.eq.USE_SLATER_EXACT) then
+       if (model_type.eq.DPD_SLATER_EXACT_CHARGES) then
           print *, ' Slater smearing (exact), lambda = ', lbda
           print *, ' equivalent Gaussian sigma = ', lbda
        end if
-       if (model_type.eq.USE_SLATER_APPROX) then
+       if (model_type.eq.DPD_SLATER_APPROX_CHARGES) then
           print *, ' Slater smearing (approx), beta = ', beta
           print *, ' 1 / beta = ', 1.0_dp / beta, ', &
                & 5 / (8 beta) = ', 0.625_dp / beta
           print *, ' equivalent Gaussian sigma = ', sqrt(0.5_dp) / beta
        end if
-    else if (model_type.lt.20) then
-       if (model_type.eq.10) then
-          print *, 'softened URPM potential was selected with ushort unused'
+    else if (model_type.le.URPM_WITH_USHORT) then
+       if (model_type.eq.URPM_WITHOUT_USHORT) then
+          print *, 'URPM potential was selected with ushort unused'
        else
-          print *, 'softened URPM potential was selected with ushort used'
+          print *, 'URPM potential was selected with ushort used'
        end if
        print *, ' lb = ', lb, ' sigma = ', sigma, ' sigmap = ', sigmap
-    else if (model_type.lt.30) then
-       if (model_type.eq.20) then
-          print *, 'softened RPM potential was selected with ushort unused'
+    else if (model_type.le.RPM_WITH_USHORT) then
+       if (model_type.eq.RPM_WITHOUT_USHORT) then
+          print *, 'RPM potential was selected with ushort unused'
        else
-          print *, 'softened RPM potential was selected with ushort used'
+          print *, 'RPM potential was selected with ushort used'
        end if
        if (kappa.lt.0.0_dp) then
           print *, ' lb = ', lb, ' sigma = ', sigma, ' kappa -> infinity'
        else
           print *, ' lb = ', lb, ' sigma = ', sigma, ' kappa = ', kappa
        end if
+    else if (model_type.eq.HARD_SPHERES) then
+       print *, 'Hard sphere potential with sigma = ', sigma
     else
        print *, 'Undefined potential'
     end if
@@ -321,14 +339,13 @@ contains
 ! these definitions.  The parameter charge_type is Gaussian (1 -
 ! default), Bessel (2), Groot (3), Slater (exact) (4), Slater
 ! (approximate) (5).  These can be selected agnostically of the number
-! scheme by using the defined integer constants USE_GAUSSIAN,
-! USE_BESSEL, USE_LINEAR, USE_SLATER_EXACT or USE_SLATER_APPROX.
+! scheme by using the defined integer constants DPD_GAUSSIAN_CHARGES
+! etc.
   
-
   subroutine dpd_potential(charge_type)
     implicit none
     integer, intent(in), optional :: charge_type
-    integer :: ctype = USE_GAUSSIAN
+    integer :: ctype = DPD_GAUSSIAN_CHARGES
     integer :: i, j, ij, irc
     real(kind=dp) :: aa(nfnc), zz(nfnc)
 
@@ -365,7 +382,7 @@ contains
 
     ! Gaussian charges
 
-    if (ctype .eq. USE_GAUSSIAN) then
+    if (ctype .eq. DPD_GAUSSIAN_CHARGES) then
 
        ulong(:,nfnc) = (lb / r) * erf(0.5_dp*r/sigma)
 
@@ -375,11 +392,14 @@ contains
             & / (rootpi * r * sigma) &
             & - lb * erf(0.5_dp*r/sigma) / r**2
 
+       model_type = DPD_GAUSSIAN_CHARGES
+       model_name = "DPD with Gaussian charges"
+       
     end if
 
     ! Bessel charges
 
-    if (ctype .eq. USE_BESSEL) then
+    if (ctype .eq. DPD_BESSEL_CHARGES) then
 
        ulong(:,nfnc) = (lb / r) * (1.0_dp - exp(-r/sigma))
 
@@ -388,14 +408,19 @@ contains
 
        dulong(:,nfnc) = - (lb / r**2) * (1.0_dp - exp(-r/sigma) &
             & * (1.0_dp + r / sigma))
+       
+       model_type = DPD_BESSEL_CHARGES
+       model_name = "DPD with Bessel charges"
 
     end if
 
     ! Linear charge smearing as in Groot [JCP v118, 11265 (2003)].
     ! Note we do not give the real space part here hence the
-    ! thermodynamic calculations will be wrong.
+    ! thermodynamic calculations will be wrong.  This could be fixed
+    ! up by doing a numerical FFT of the potential.  Best would be to
+    ! separate off the long range 4 pi lb / k^2 first.  TO BE DONE!
 
-    if (ctype .eq. USE_LINEAR) then
+    if (ctype .eq. DPD_LINEAR_CHARGES) then
 
        ulong(:,nfnc) = 0.0_dp
 
@@ -405,13 +430,16 @@ contains
             &                  / (k**8 * rgroot**8)
 
        dulong(:,nfnc) = 0.0_dp
+   
+       model_type = DPD_LINEAR_CHARGES
+       model_name = "DPD with linear charges"
 
     end if
 
     ! Slater charge smearing as in Gonzales-Melchor et al, [JCP v125,
     ! 224107 (2006)] but here with exact expression for interaction.
 
-    if (ctype .eq. USE_SLATER_EXACT) then
+    if (ctype .eq. DPD_SLATER_EXACT_CHARGES) then
 
        ulong(:,nfnc) = (lb / r) * (1.0_dp - exp(-2.0_dp*r/lbda) &
             & * (1.0_dp + 1.375_dp*r/lbda + 0.75_dp*r**2/lbda**2 &
@@ -424,13 +452,16 @@ contains
             & * (1.0_dp + 2.0_dp*r/lbda + 2.0_dp*r**2/lbda**2 &
             &     + 7.0_dp*r**3/(6.0_dp*lbda**3) + r**4/(3.0_dp*lbda**4)) )
 
+       model_type = DPD_SLATER_EXACT_CHARGES
+       model_name = "DPD with Slater (exact) charges"
+
     end if
 
     ! Slater charge smearing as in Gonzales-Melchor et al, [JCP v125,
     ! 224107 (2006)] with original approximate expression (here
     ! translated into reciprocal space).
 
-    if (ctype .eq. USE_SLATER_APPROX) then
+    if (ctype .eq. DPD_SLATER_APPROX_CHARGES) then
 
        ulong(:,nfnc) = (lb / r) * (1.0_dp - exp(-2*beta*r) * &
             & (1.0_dp + beta*r) )
@@ -440,6 +471,9 @@ contains
 
        dulong(:,nfnc) = - (lb / r**2) * (1.0_dp - exp(-2.0_dp*beta*r) &
             & * (1.0_dp + 2.0_dp*beta*r*(1.0_dp + beta*r)) )
+
+       model_type = DPD_SLATER_APPROX_CHARGES
+       model_name = "DPD with Slater (approx) charges"
 
     end if
 
@@ -465,10 +499,6 @@ contains
     ! Generate auxiliary function
 
     expnegus = exp(-ushort)
-
-    ! Record the model type
-
-    model_type = ctype
 
   end subroutine dpd_potential
 
@@ -550,9 +580,13 @@ contains
 
     expnegus = exp(-ushort)
 
-    ! Record the model type
-
-    model_type = 10 + uuflag
+    if (uuflag.eq.0) then
+       model_type = URPM_WITHOUT_USHORT
+       model_name = 'URPM without U_short'
+    else
+       model_type = URPM_WITH_USHORT
+       model_name = 'URPM with U_short'
+    endif
 
   end subroutine urpm_potential
 
@@ -639,9 +673,13 @@ contains
        end if
     end if
 
-    ! Record the model type
-
-    model_type = 20 + uuflag
+    if (uuflag.eq.0) then
+       model_type = RPM_WITHOUT_USHORT
+       model_name = 'RPM without U_short'
+    else
+       model_type = RPM_WITH_USHORT
+       model_name = 'RPM with U_short'
+    endif
 
   end subroutine rpm_potential
 
@@ -678,9 +716,8 @@ contains
     tu = 0.0_dp
     tl = 0.0_dp
     
-    ! Record the model type
-
-    model_type = 30
+    model_type = HARD_SPHERES
+    model_name = 'hard spheres'
 
   end subroutine hs_potential
 
@@ -1054,6 +1091,7 @@ contains
     if (verbose.eq.1) then
        print *, "HNC solved"
     end if
+    closure_name = 'HNC'
   end subroutine hnc_solve
 
 ! Calculate the difference between the direct correlation functions
@@ -1222,6 +1260,7 @@ contains
     if (verbose.eq.1) then
        print *, "MSA solved"
     end if
+    closure_name = 'MSA'
   end subroutine msa_solve
 
 ! Given the HNC machinery, the implementation of the RPA is almost
@@ -1242,6 +1281,8 @@ contains
     if (verbose.eq.1) then
        print *, "RPA solve"
     end if
+    error = 0.0_dp
+    closure_name = 'RPA'
   end subroutine rpa_solve
 
 ! Save the reference state, assuming the c and e functions are those
@@ -1277,6 +1318,7 @@ contains
     if (verbose.eq.1) then
        print *, "EXP refined"
     end if
+    closure_name = 'EXP'
   end subroutine exp_refine
 
 ! Construct the structure factors out of the transform of the total

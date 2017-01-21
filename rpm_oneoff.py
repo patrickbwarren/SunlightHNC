@@ -99,9 +99,9 @@ else:
                 print('HNC error = ', w.error)
 
 if not args.dump:
-    if args.msa: print('*** MSA solved, error = ', w.error)
-    elif args.exp: print('*** MSA + EXP solved, error = ', w.error)
-    else: print('*** HNC solved, error = ', w.error)
+    print('%s: %s solved, error = %g' % (str(w.model_name, 'utf-8').strip(),
+                                         str(w.closure_name, 'utf-8'),
+                                         w.error))
     w.write_thermodynamics()
 
 # density-density and charge-charge structure factor (notice how
@@ -113,15 +113,19 @@ szz = np.dot(np.dot(w.z, w.sk), w.z) / np.sum(w.rho)
 if args.dump:
 
     for i in range(w.ng-1):
-        print("%g\t%g\t%g\t%g\tL" % (w.r[i], w.ulong[i, 0], w.ulong[i, 1], w.ulong[i, 2]))
+        print("%g\t%g\t%g\t%g\tL" % (w.r[i], w.ulong[i, 0],
+                                     w.ulong[i, 1], w.ulong[i, 2]))
 
     for i in range(w.ng-1):
         print("%g\t%g\t%g\tC" % (w.r[i],
-                                     0.5*(w.c[i, 0, 0]-w.ulong[i, 0]+w.c[i, 1, 0]-w.ulong[i, 1]),
-                                     0.5*(w.c[i, 0, 0]-w.ulong[i, 0]-w.c[i, 1, 0]+w.ulong[i, 1])))
+                                     0.5*(w.c[i, 0, 0]-w.ulong[i, 0]
+                                          +w.c[i, 1, 0]-w.ulong[i, 1]),
+                                     0.5*(w.c[i, 0, 0]-w.ulong[i, 0]
+                                          -w.c[i, 1, 0]+w.ulong[i, 1])))
 
     for i in range(w.ng-1):
-        print("%g\t%g\t%g\t%g\tH" % (w.r[i], w.hr[i, 0, 0], w.hr[i, 0, 1], w.hr[i, 1, 1]))
+        print("%g\t%g\t%g\t%g\tH" % (w.r[i], w.hr[i, 0, 0],
+                                     w.hr[i, 0, 1], w.hr[i, 1, 1]))
 
     for i in range(w.ng-1):
         print("%g\t%g\t%g\tS" % (w.k[i], snn[i], szz[i]))
@@ -132,9 +136,8 @@ else:
 
     plt.subplot(2, 2, 1)
 
-    if (args.msa): plt.title('MSA solution, error = %0.1g' % w.error)
-    elif args.exp: plt.title('EXP solution, error = %0.1g' % w.error)
-    else: plt.title('HNC solution, error = %0.1g' % w.error)
+    plt.title('%s solution, error = %0.1g' % (str(w.closure_name, 'utf-8'),
+                                              w.error))
 
     imax = int(args.grcut / w.deltar)
     plt.plot(w.r[0:imax], 1.0 + w.hr[0:imax, 0, 0], label="$g_{11}(r)$")
@@ -151,10 +154,12 @@ else:
     plt.subplot(2, 2, 3)
     
     plt.plot(w.r[0:imax],
-             0.5*(w.c[0:imax, 0, 0]-w.ulong[0:imax, 0]+w.c[0:imax, 1, 0]-w.ulong[0:imax, 1]),
+             0.5*(w.c[0:imax, 0, 0]-w.ulong[0:imax, 0]+w.c[0:imax, 1, 0]
+                  -w.ulong[0:imax, 1]),
              label="$[c_{11}+c_{12}]/2$")
     plt.plot(w.r[0:imax],
-             0.5*(w.c[0:imax, 0, 0]-w.ulong[0:imax, 0]-w.c[0:imax, 1, 0]+w.ulong[0:imax, 1]),
+             0.5*(w.c[0:imax, 0, 0]-w.ulong[0:imax, 0]-w.c[0:imax, 1, 0]
+                  +w.ulong[0:imax, 1]),
              label="$[c_{11}-c_{12}]/2$")
     plt.legend(loc='lower right')
     
@@ -164,7 +169,8 @@ else:
     plt.plot(w.k[0:jmax],w.ek[0:jmax, 0]+w.ck[0:jmax, 0],label="${\\tilde h}_{11}$")
     plt.plot(w.k[0:jmax],w.ek[0:jmax, 1]+w.ck[0:jmax, 1],label="${\\tilde h}_{12}$")
 #    plt.plot(w.k[0:jmax],
-#             1.0 + w.rho[0]*(w.ek[0:jmax, 0]+w.ck[0:jmax, 0]-w.ek[0:jmax, 1]-w.ck[0:jmax, 1]),
+#             1.0 + w.rho[0]*(w.ek[0:jmax, 0]+w.ck[0:jmax, 0]
+#                             -w.ek[0:jmax, 1]-w.ck[0:jmax, 1]),
 #             label="$1+\\rho/2(hk_{11}+hk_{12})$")
 #    plt.plot(w.k[0:jmax],w.ek[0:jmax, 2]+w.ck[0:jmax, 2],label="$hk_{22}$")
 #    plt.plot(w.k[0:jmax],w.ck[0:jmax, 0],label="$ck_{11}$")

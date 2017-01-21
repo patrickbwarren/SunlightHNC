@@ -74,8 +74,7 @@ if args.msa: w.msa_solve()
 else: w.hnc_solve()
 
 if not args.dump:
-    if args.msa: print('*** MSA solved, error = ', w.error)
-    else: print('*** HNC solved, error = ', w.error)
+    print('%s solved, error = %g' % (str(w.closure_name, 'utf-8'), w.error))
     w.write_thermodynamics()
 
 if args.dump:
@@ -95,8 +94,7 @@ else:
 
     plt.subplot(2, 2, 1)
 
-    if (args.msa): plt.title('MSA solution, error = %0.1g' % w.error)
-    else: plt.title('HNC solution, error = %0.1g' % w.error)
+    plt.title('%s solution, error = %0.1g' % (str(w.closure_name, 'utf-8'), w.error))
 
     imax = int(args.grcut / w.deltar)
     plt.plot(w.r[0:imax], 1.0 + w.hr[0:imax, 0, 0], label="$g(r)$")

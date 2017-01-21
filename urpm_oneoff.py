@@ -80,11 +80,11 @@ if args.type < 4:
     w.dpd_potential(args.type)
 else:
     if args.case == 1:
-        w.dpd_potential(w.use_slater_exact)
+        w.dpd_potential(w.dpd_slater_exact_charges)
     else:
         if args.case == 2: w.beta = 5 / (8*w.lbda)
         else: w.beta = 1 / w.lbda
-        w.dpd_potential(w.use_slater_approx)
+        w.dpd_potential(w.dpd_slater_approx_charges)
 
 # The calculation here solves rhoz = z1^2*rho1 + z2^2*rho2, z1*rho1 + z2*rho2 = 0
 
@@ -101,16 +101,12 @@ w.write_params()
 
 if args.exp: args.rpa = args.exp
 
-if args.rpa:
-    w.rpa_solve()
-    print('*** RPA solved')
-else:
-    w.hnc_solve()
-    print('*** HNC solved, error = ', w.error)
+if args.rpa: w.rpa_solve()
+else: w.hnc_solve()
 
-if args.exp:
-    w.exp_refine()
-    print('*** EXP refined')
+if args.exp: w.exp_refine()
+
+print('%s solved, error = %g' % (str(w.closure_name, 'utf-8'), w.error))
 
 w.write_thermodynamics()
 
@@ -122,10 +118,7 @@ plt.figure(1)
 
 plt.subplot(2, 2, 1)
 
-if args.exp: plt.title('RPA solution with EXP refinement')
-else:
-    if args.rpa: plt.title('RPA solution')
-    else: plt.title('HNC solution, error = %0.1g' % w.error)
+plt.title('%s solution, error = %0.1g' % (str(w.closure_name, 'utf-8'), w.error))
 
 plt.plot(w.r[:], 
          list(map(lambda x, y: m.log10(eps + m.fabs(x*y)), w.hr[:, 0, 0], w.r[:])), 

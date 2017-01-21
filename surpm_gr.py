@@ -76,10 +76,7 @@ if args.show:
 
     w.write_params()
 
-    if args.rpa: print("RPA solved")
-    else: print("HNC solved, error = ", w.error)
-    
-    if args.exp: print("EXP refined")
+    print('%s solved, error = %g' % (str(w.closure_name, 'utf-8'), w.error))
 
     w.write_thermodynamics()
 
