@@ -57,18 +57,21 @@ def solve_wertheim(lb, rhoz, sigma, sigmap):
     w.sigma = sigma
     w.sigmap = sigmap
     w.urpm_potential()
-    w.rho[0] = rhoz / 2.0
-    w.rho[1] = w.rho[0]
+    w.rho[0] = 0.5 * rhoz
+    w.rho[1] = 0.5 * rhoz
     w.hnc_solve()
+    if w.return_code: exit()
 
     if (sigmap == sigma):
+
         x = 1.0
         rhomon = rhoz
         rhodim = 0.0
         fvass = 0.0
+
     else:
 
-        # Calculate the Wertheim integral (this is no longer done in oz mod)
+        # Calculate the Wertheim integral
 
         d12 = 0.0
 

@@ -26,7 +26,7 @@ import math as m
 import numpy as np
 from oz import wizard as w
 
-parser = argparse.ArgumentParser(description='softened URPM one off calculator for g(r)')
+parser = argparse.ArgumentParser(description='URPM g(r) calculator')
 
 parser.add_argument('--ng', action='store', default=4096, type=int, help='number of grid points (default 4096)')
 parser.add_argument('--deltar', action='store', default=0.01, type=float, help='grid spacing (default 0.01)')
@@ -59,24 +59,23 @@ w.lb = args.lb
 w.sigma = args.sigma
 w.sigmap = args.sigmap
 
-if (args.ushort): w.urpm_potential(w.use_ushort)
-else: w.urpm_potential()
+w.urpm_potential(args.ushort)
 
-w.rho[0] = args.rhoz / 2.0
-w.rho[1] = args.rhoz / 2.0
+w.rho[0] = 0.5 * args.rhoz
+w.rho[1] = 0.5 * args.rhoz
 
 eps = 1e-20
 
-if args.rpa: w.rpa_solve()
+if (args.rpa or args.exp): w.rpa_solve()
 else: w.hnc_solve()
 
 if args.exp: w.exp_refine()
 
+if w.return_code: exit()
+
 if args.show:
 
     w.write_params()
-
-    print('%s solved, error = %g' % (str(w.closure_name, 'utf-8'), w.error))
 
     w.write_thermodynamics()
 
@@ -90,30 +89,28 @@ if args.show:
 
     plt.plot(w.r[:], 
              list(map(lambda x, y: m.log10(eps + m.fabs(x*y)), w.hr[:, 0, 0], w.r[:])), 
-             label="$h_{++}$")
+             label="$h_{++}(r)$")
 
     plt.plot(w.r[:], 
              list(map(lambda x, y: m.log10(eps + m.fabs(x*y)), w.hr[:, 1, 1], w.r[:])), 
-             label="$h_{--}$")
+             label="$h_{--}(r)$")
 
     plt.plot(w.r[:], 
              list(map(lambda x, y: m.log10(eps + m.fabs(x*y)), w.hr[:, 0, 1], w.r[:])), 
-             label="$h_{+-}$")
+             label="$h_{+-}(r)$")
 
     plt.legend(loc='upper right')
-    plt.xlabel('$r$')
     plt.ylabel('$\log_{10} r\,h$')
 
     plt.subplot(2, 1, 2)
 
     imax = int(args.grcut / w.deltar)
 
-    plt.plot(w.r[0:imax], 1.0 + w.hr[0:imax, 0, 0], label="$g_{++}$")
-    plt.plot(w.r[0:imax], 1.0 + w.hr[0:imax, 0, 1], label="$g_{+-}$")
-    plt.plot(w.r[0:imax], 1.0 + w.hr[0:imax, 1, 1], label="$g_{--}$")
+    plt.plot(w.r[0:imax], 1.0 + w.hr[0:imax, 0, 0], label="$g_{++}(r)$")
+    plt.plot(w.r[0:imax], 1.0 + w.hr[0:imax, 0, 1], label="$g_{+-}(r)$")
+    plt.plot(w.r[0:imax], 1.0 + w.hr[0:imax, 1, 1], label="$g_{--}(r)$")
 
     plt.legend(loc='upper right')
-    plt.xlabel('$r$')
     plt.ylabel('$g(r)$')
 
     plt.show()

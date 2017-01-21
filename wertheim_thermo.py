@@ -37,8 +37,9 @@ def fnex1(nlb):
     w.cold_start = 1
     for i in range(n):
         w.lb = dlb * (i + 1.0)
-        w.urpm_potential()
+        w.urpm_potential(args.ushort)
         w.hnc_solve()
+        if w.return_code: exit()
         curr = w.un_xc / w.lb
         fnex_xc = fnex_xc + 0.5*dlb*(prev + curr)
         prev = curr
@@ -58,6 +59,7 @@ def fnex2(nrho):
         w.rho[0] = drho * (i + 1.0) / 2.0
         w.rho[1] = w.rho[0]
         w.hnc_solve()
+        if w.return_code: exit()
         curr = w.muex[0]
         fvex = fvex + 0.5*drho*(prev + curr)
         prev = curr
@@ -95,26 +97,17 @@ w.lb = args.lb
 w.sigma = args.sigma
 w.sigmap = args.sigmap
 
-if (args.ushort): w.urpm_potential(w.use_ushort)
-else: w.urpm_potential()
+w.urpm_potential(args.ushort)
 
-w.rho[0] = args.rhoz / 2.0
-w.rho[1] = w.rho[0]
-
-eps = 1e-20
+w.rho[0] = 0.5 * args.rhoz
+w.rho[1] = 0.5 * args.rhoz
 
 # w.write_params()
 
-# EXP implies RPA
-
-if args.exp: args.rpa = args.exp
-
-if args.rpa: w.rpa_solve()
+if (args.rpa or args.exp): w.rpa_solve()
 else: w.hnc_solve()
 
 if args.exp: w.exp_refine()
-
-print('%s solved, error = %g' % (str(w.closure_name, 'utf-8'), w.error))
 
 w.write_thermodynamics()
 
@@ -123,7 +116,7 @@ if (args.test == 1):
     print('fnex (energy route) =', fnex1(100))
     print('fnex (mu route)     =', fnex2(100))
 
-# Calculate the Wertheim integral (this is no longer done in oz mod)
+# Calculate the Wertheim integral
 
 d12 = 0.0
 

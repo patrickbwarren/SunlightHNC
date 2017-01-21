@@ -28,9 +28,9 @@
 # numbers are -log10(rho_z).  Then the interval which contains
 # the Kirkwood crossover between pure exponential and oscillatory
 # decay can be narrowed by a factor 10 each time.  For example :
-#   python urpm_scan.py --lo=1.0 --hi=2.0
-#   python urpm_scan.py --lo=1.5 --hi=1.6
-#   python urpm_scan.py --lo=1.52 --hi=1.53
+#   ./urpm_scan.py --lo=-2.0 --hi=-1.0
+#   ./urpm_scan.py --lo=-1.6 --hi=-1.5
+#   ./urpm_scan.py --lo=-1.53 --hi=-1.52
 # Inspecting the output of the last narrows the interval to (1.524,
 # 1.526) - this for the default parameters.
 
@@ -55,6 +55,7 @@ parser.add_argument('--A', action='store', default=0.0, type=float, help='DPD re
 parser.add_argument('--z1', action='store', default=1, type=int, help='valency of positive ions (default +1)')
 parser.add_argument('--z2', action='store', default=-1, type=int, help='valency of negative ions (default -1)')
 parser.add_argument('--type', action='store', default=1, type=int, help='charge type (1=Gaussian, 2=Bessel, 3=Groot, 4=Slater)')
+parser.add_argument('--case', action='store', default=1, type=int, help='Slater method (1=exact, 2=good, 3=bad)')
 
 parser.add_argument('--rho', action='store', default=3.0, type=float, help='total density if ncomp = 3 (default 3.0)')
 parser.add_argument('--npt', action='store', default=11, type=int, help='number of rho points (default 11)')
@@ -82,7 +83,19 @@ w.arep[:,:] = args.A
 w.z[0] = args.z1
 w.z[1] = args.z2
 
-w.dpd_potential(args.type)
+
+# potential type = 4 (exact), or potential type = 5 (approximate) with
+# beta = 1/lambda, or beta=5/(8lambda)
+
+if args.type < 4:
+    w.dpd_potential(args.type)
+else:
+    if args.case == 1:
+        w.dpd_potential(w.dpd_slater_exact_charges)
+    else:
+        if args.case == 2: w.beta = 5 / (8*w.lbda)
+        else: w.beta = 1 / w.lbda
+        w.dpd_potential(w.dpd_slater_approx_charges)
 
 n = args.npt
 
@@ -102,6 +115,8 @@ for i in range(n):
     if (i == 0): w.write_params()
 
     w.hnc_solve()
+    
+    if w.return_code: exit()
 
     if (w.ncomp == 2): print('%i\t%g\t%g\t%g' % (i, log10rho, rhoz, w.error))
     else: print('%i\t%g\t%g\t%g\t%g' % (i, log10rho, rhoz, args.rho, w.error))

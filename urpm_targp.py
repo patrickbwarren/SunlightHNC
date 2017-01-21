@@ -40,9 +40,10 @@ from oz import wizard as w
 def urpm_press(rhoz):
     w.rho[0] = rhoz / 2.0
     w.rho[1] = w.rho[0]
-    if args.rpa: w.rpa_solve()
+    if (args.rpa or args.exp): w.rpa_solve()
     else: w.hnc_solve()
     if args.exp: w.exp_refine()
+    if w.return_code: exit()
     if (args.verbose):
         w.write_params()
         w.write_thermodynamics()

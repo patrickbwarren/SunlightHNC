@@ -22,7 +22,6 @@
 # along with SunlightDPD.  If not, see <http://www.gnu.org/licenses/>.
 
 import argparse
-import math as m
 import numpy as np
 import matplotlib.pyplot as plt
 from oz import wizard as w
@@ -44,7 +43,8 @@ parser.add_argument('--skcut', action='store', default=15.0, type=float, help='k
 
 parser.add_argument('--msa', action='store_true', help='use MSA (default HNC)')
 parser.add_argument('--exp', action='store_true', help='use EXP refinement')
-parser.add_argument('--npt', action='store', default=1, type=int, help='number of intermediate warm-up steps')
+parser.add_argument('--npt', action='store', default=1, type=int, help='number of intermediate HNC warm-up steps')
+parser.add_argument('--ushort', action='store_true', help='use U_short in potential')
 
 parser.add_argument('--dump', action='store_true', help='write out g(r)')
 
@@ -66,24 +66,24 @@ w.lb = args.lb
 w.sigma = args.sigma
 w.kappa = args.kappa
 
-w.rpm_potential()
+w.rpm_potential(args.ushort)
 
 w.rho[0] = 0.5 * args.rho
 w.rho[1] = w.rho[0]
 
 if args.verbose:
     w.write_params()
-    w.verbose = 1
+    w.verbose = True
 
 if args.msa:
     w.msa_solve()
 elif args.exp:
     w.lb = 0.0
-    w.rpm_potential()
+    w.rpm_potential(args.ushort)
     w.msa_solve()
     w.save_reference()
     w.lb = args.lb
-    w.rpm_potential()
+    w.rpm_potential(args.ushort)
     w.msa_solve()
     w.exp_refine()
 else:
@@ -93,21 +93,16 @@ else:
         for i in range(args.npt):
             w.lb = (i + 1.0) / args.npt * args.lb
             print('lb = ', w.lb)
-            w.rpm_potential()
+            w.rpm_potential(args.ushort)
             w.hnc_solve()
-            if args.verbose:
-                print('HNC error = ', w.error)
+            if args.verbose: print('HNC error = ', w.error)
 
 if w.return_code: exit()
 
-if not args.dump:
-    print('%s: %s solved, error = %g' % (str(w.model_name, 'utf-8').strip(),
-                                         str(w.closure_name, 'utf-8'),
-                                         w.error))
-    w.write_thermodynamics()
+if not args.dump: w.write_thermodynamics()
 
-# density-density and charge-charge structure factor (notice how
-# elegant this is :-)
+# density-density and charge-charge structure factor
+# (notice how elegant this is :-)
 
 snn = np.sum(np.sum(w.sk, axis=2), axis=1) / np.sum(w.rho)
 szz = np.dot(np.dot(w.z, w.sk), w.z) / np.sum(w.rho)

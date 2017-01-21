@@ -31,7 +31,6 @@
 # Percus-Yevick which is solvable, so a comparison is also given with
 # the exact results in that case.
 
-import math as m
 from oz import wizard as w
 
 # High resolution calculations are required for this to be accurate!
@@ -92,7 +91,7 @@ for i in range(npt):
 
 import matplotlib.pyplot as plt
 
-plt.plot(x, y, 'k-', label='Carn.-Star.')
+plt.plot(x, y, 'k-', label='Carnahan-Starling')
 plt.plot(x, yy, 'k--', label='PY(v) exact')
 plt.plot(x, yyy, 'k-.', label='PY(c) exact')
 plt.plot(x, y1, 'b-', label='HNC(v)')

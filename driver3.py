@@ -51,7 +51,7 @@ w.rho[2] = rho * (1 - xc)
 
 w.write_params()
 
-w.verbose = 1
+w.verbose = True
 w.hnc_solve()
 w.write_thermodynamics()
 

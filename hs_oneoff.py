@@ -22,12 +22,10 @@
 # along with SunlightDPD.  If not, see <http://www.gnu.org/licenses/>.
 
 import argparse
-import math as m
-import numpy as np
 import matplotlib.pyplot as plt
 from oz import wizard as w
 
-parser = argparse.ArgumentParser(description='RPM one off calculator')
+parser = argparse.ArgumentParser(description='hard spheres one off calculator')
 
 parser.add_argument('--ng', action='store', default=65536, type=int, help='number of grid points (default 4096)')
 parser.add_argument('--deltar', action='store', default=0.001, type=float, help='grid spacing (default 0.01)')
@@ -68,14 +66,14 @@ eps = 1e-20
 
 if args.verbose:
     w.write_params()
-    w.verbose = 1
+    w.verbose = True
 
 if args.msa: w.msa_solve()
 else: w.hnc_solve()
 
-if not args.dump:
-    print('%s solved, error = %g' % (str(w.closure_name, 'utf-8'), w.error))
-    w.write_thermodynamics()
+if w.return_code: exit()
+
+if not args.dump: w.write_thermodynamics()
 
 if args.dump:
 
