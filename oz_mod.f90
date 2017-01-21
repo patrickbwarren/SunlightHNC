@@ -121,14 +121,18 @@ module wizard
 
   integer, parameter :: & ! Enumeration of error codes
        & NO_ERROR = 0, &
-       & NON_CONVERGENCE_ERROR = 1, &
-       & OTHER_ERROR = 2
+       & CONVERGENCE_ERROR = 1, &
+       & AXEQB_ERROR = 2, &
+       & DSYSV_ERROR = 3, &
+       & OTHER_ERROR = 4
 
   integer, parameter :: USE_USHORT = 1 ! syntactic sugar for function calls
 
   character (len=3)  :: closure_name = '' ! 3-letter acronym for the last-used closure 
   character (len=32) :: model_name = ''   ! Model name
-  character (len=20) :: error_msg = ''    ! Error message
+  character (len=47) :: error_msg = ''    ! Error message
+
+  logical :: no_more_error_msgs = .false. ! Set in case of severe numerical instability
 
   real(kind=dp), parameter :: &
        & pi = 4.0_dp * atan(1.0_dp), &
@@ -803,8 +807,14 @@ contains
           call axeqb_reduce(a, ncomp, b, ncomp, perm, irc)
 
           if (irc.gt.0) then
-             print *, 'oz_solve(oz_mod): axeqb_reduce returned irc = ', irc
-             stop
+             error_code = AXEQB_ERROR
+             error_msg = 'axeqb encountered singular problem in oz_solve'
+             if (.not.no_more_error_msgs) then
+                print *, error_msg
+                print *, 'fatal: no more error messages will be printed'
+                no_more_error_msgs = .true.
+             end if
+             return
           end if
 
           ! Now X(I, :) = B(PERM(I), :) is the new estimate for the
@@ -895,6 +905,17 @@ contains
           ! Solve A.X = B so that X = (I + H.R)^(-1) . H.
 
           call axeqb_reduce(a, ncomp, b, ncomp, perm, irc)
+
+          if (irc.gt.0) then
+             error_code = AXEQB_ERROR
+             error_msg = 'axeqb encountered singular problem in oz_solve2'
+             if (.not.no_more_error_msgs) then
+                print *, error_msg
+                print *, 'fatal: no more error messages will be printed'
+                no_more_error_msgs = .true.
+             end if
+             return
+          end if
 
           ! Now compute C = (I + H.R)^(-1) . H + beta UL
           ! (map back to functions, and unravel the pivoting)
@@ -1041,6 +1062,7 @@ contains
   subroutine hnc_solve
     implicit none
     integer :: i, i1
+    error_code = NO_ERROR
     istep = 1
     if (cold_start.eq.1) then
        if (start_type.eq.1) c(:,:,1) = 0.0_dp
@@ -1058,6 +1080,7 @@ contains
        end if
     end if
     call oz_solve
+    if (error_code.gt.NO_ERROR) return
     do i = 1, maxsteps
        if (i .le. npic) then
           call hnc_picard
@@ -1065,6 +1088,7 @@ contains
           call hnc_ng
        end if
        call oz_solve
+       if (error_code.gt.NO_ERROR) return
        call conv_test
        if (verbose.eq.1) then
           if (i .le. npic) then
@@ -1077,6 +1101,7 @@ contains
     end do
     if (error .gt. tol) then
        print *, "oz_mod.f90: hnc_solve: **WARNING*** error > tol"
+       error_code = CONVERGENCE_ERROR
     end if
     i1 = mod(istep-1, nps) + 1
     if (i1.ne.1) then ! copy solution to position 1
@@ -1205,6 +1230,7 @@ contains
   subroutine msa_solve
     implicit none
     integer :: i, i1, p, irc
+    error_code = NO_ERROR
     do i = 1, nfnc
        irc = nint(diam(i) / deltar) ! Reset everywhere outwith hard core
        do p = 1, nps
@@ -1227,6 +1253,7 @@ contains
        end if
     end if
     call oz_solve
+    if (error_code.gt.NO_ERROR) return
     do i = 1, maxsteps
        if (i .le. npic) then
           call msa_picard
@@ -1234,6 +1261,7 @@ contains
           call msa_ng
        end if
        call oz_solve
+       if (error_code.gt.NO_ERROR) return
        call conv_test
        if (verbose.eq.1) then
           if (i .le. npic) then
@@ -1246,6 +1274,7 @@ contains
     end do
     if (error .gt. tol) then
        print *, "oz_mod.f90: msa_solve: **WARNING*** error > tol"
+       error_code = CONVERGENCE_ERROR
     end if
     i1 = mod(istep-1, nps) + 1
     if (i1.ne.1) then ! copy solution to position 1
@@ -1270,9 +1299,11 @@ contains
   
   subroutine rpa_solve
     implicit none
+    error_code = NO_ERROR
     istep = 1
     c(:,:,1) = - ushort(:,:)
     call oz_solve
+    if (error_code.gt.NO_ERROR) return
     if (auto_fns.eq.1) then
        call make_pair_functions
        call make_structure_factors
@@ -1309,6 +1340,7 @@ contains
     implicit none
     h0 = (1.0_dp + h0) * exp(c(:,:,1) + e(:,:,1) - h0) - 1.0_dp
     call oz_solve2
+    if (error_code.gt.NO_ERROR) return
     h0 = 0.0_dp
     if (auto_fns.eq.1) then
        call make_pair_functions
@@ -1544,10 +1576,11 @@ contains
   subroutine write_thermodynamics
     integer :: i
 
-    if (model_type.eq.3) then
-       print *, 'No thermodynamics for this potential type'
+    if (model_type.eq.DPD_LINEAR_CHARGES) then
+       print *, 'No thermodynamics for ', model_name
     else
-       print *, 'Total density = ', sum(rho)
+       print *, 'Thermodynamics for ', model_name
+       print *, 'Closure ', closure_name, ', convergence error = ', error
        print *, 'Compressibility factor: mean field contribution = ', cf_mf
        print *, 'Compressibility factor: contact contribution = ', cf_gc
        print *, 'Compressibility factor: correlation contribution = ', cf_xc
