@@ -21,82 +21,7 @@
 ! You should have received a copy of the GNU General Public License
 ! along with SunlightDPD.  If not, see <http://www.gnu.org/licenses/>.
 
-! ===================================================================
-
-! The main purpose of this module is to provide integral equation
-! closures for the multicomponent Ornstein-Zernike equations.  The
-! closures currently provided are HNC, MSA, RPA and EXP.
-
-! Better documentation (which reproduces the below) is found in the
-! accompanying LaTeX document.
-
-! Note on Fourier transforms, based on "A fast solver for the
-! Ornstein–Zernike equations",  C. T. Kelley and B. Montgomery Pettitt,
-! Journal of Computational Physics, Volume 197, Issue 2, 1 July 2004,
-! Pages 491-501 [K&M-P] (check for typos in the paper!).
-
-! Let h(k) be the 3d Fourier transform of h(r), with
-!   h(k) = int d^3r exp(-ik.r) h(r)
-! then one can show
-!   h(k) = (4 pi / k) int_0^infty dr sin(kr) r h(r)
-! which defines the forward Fourier-Bessel transform.  Likewise, if
-!   h(r) = int d^3k/(2pi)^3 exp(ik.r) h(k)
-! then one can show
-!   h(r) = (1 / 2 pi^2 r) int_0^infty dk sin(kr) k h(k)
-! which defines the backward Fourier-Bessel transform.
-! The Ornstein-Zernike eqn in these terms is h(k) = c(k) + rho h(k) c(k)
-! where rho is the density (with suitable generalisation to multicomponent
-! systems).  This confirms the relevance of the standard choice of
-! normalisation of the 3d Fourier transform pair which puts 1/(2 pi)^3 into
-! the back transform.
-
-! The discrete version of the forward Fourier-Bessel transform is
-!   h_j = (2 pi delta / k_j)  *  2 sum_i=1^(n-1) r_i h_i sin(pi i j / n)
-! where j = 1..n-1.  In this delta = L / n is the spacing in r, and
-! r_i = i*delta.  The spacing in k is delta_k = pi / L = pi / (n delta),
-! and k_j = j*delta_k.  The quantity 2 sum_i=1^(n-1) r_i h_i sin(pi i j / n)
-! is computed by calling the FFTW routine RODFT00 on r_i h_i, with
-! length n-1 -- see fftw_test.f90.
-! Note that both the arrays in real and reciprocal space are of length n-1.
-
-! The discrete version of the backward Fourier-Bessel transform
-!   h(r) = (1 / 2 pi^2 r) int_0^infty dk sin(kr) k h(k)
-! is
-!   h_i = (delta_k / (2 pi)^2 r_i)  *  2 sum_j=1^(n-1) k_j h_j sin(pi i j / n)
-! The second factor is computed by calling RODFT00 on k_j h_j, with length n-1.
-! With reference to K&M-P, i and j here are i-1 and j-1 in this paper,
-! and n = N-1.  K&M-P also suggest that c and e at r = 0 are evaluated by
-! simple linear extrapolation,
-!   c_0 = 2 c_1 - c_2,  e_0 = 2 e_1 - e_2
-! and c and e at r = L corresponding to i = n are zero,
-!   c_n = e_n = 0.
-! Note that the indirect correlation function 'e' is called gamma by
-! Vrbka et al [JCP v131, 154109 (2009)], and 'b' in Hansen and McDonald.
-
-! Species pair index (i, j) is mapped to function index ij using the
-! following rule:
-!
-!  if (i <= j) then ij = i + j*(j-1)/2
-!  else ij = j + i*(i-1)/2
-!
-! This effectively labels the upper triangular entries in a symmetric
-! matrix as (i labels the row, j labels the columm)
-!
-!     | 1  2  3  4 ...
-!  ---------------------
-!   1 | 1  2  4  7 ...
-!   2 |    3  5  8 ...
-!   3 |       6  9 ...
-!   4 |         10 ...
-!  ...|            ...
-!
-! A common idiom used below to walk through the function index is
-!
-!  do j = 1, ncomp
-!    do i = 1, j
-!      ij = i + j*(j-1)/2
-!      .....
-!
+! Full documentation is found in the accompanying LaTeX document.
 
 module wizard
 
@@ -125,8 +50,6 @@ module wizard
        & AXEQB_ERROR = 2, &
        & DSYSV_ERROR = 3, &
        & MISMATCH_ERROR = 4
-
-  integer, parameter :: USE_USHORT = 1 ! syntactic sugar for function calls
 
   character (len=3)  :: closure_name = '' ! 3-letter acronym for the last-used closure 
   character (len=32) :: model_name = ''   ! Model name
@@ -509,17 +432,15 @@ contains
 
 ! Build the potential arrays for the softened URPM (Gaussian charges),
 ! with parameters lb, sigma and sigmap.  This expects ncomp = 2, and
-! will set z(1) = 1, z(2) = -1.  The parameter (0 or 1) controls
+! will set z(1) = 1, z(2) = -1.  The logical parameter controls
 ! whether ushort is used or not.
 
-  subroutine urpm_potential(use_ushort_flag)
+  subroutine urpm_potential(use_ushort)
     implicit none
-    integer, intent(in), optional :: use_ushort_flag
-    integer :: uuflag = 0
+    logical, intent(in), optional :: use_ushort
+    logical :: uuflag = .false.
 
-    if (present(use_ushort_flag) .and. use_ushort_flag.ne.0) then
-       uuflag = 1
-    end if
+    if (present(use_ushort)) uuflag = use_ushort
 
     if (ncomp.ne.2) then
        error_msg = 'mismatch ncomp <> 2 in urpm_potential'
@@ -551,7 +472,7 @@ contains
     ushort(:,:) = 0.0_dp
     dushort(:,:) = 0.0_dp
 
-    if (uuflag.eq.1) then
+    if (uuflag) then
        ushort(:,2) = ulong(:,2) + ulong(:,1)
        dushort(:,2) = dulong(:,2) + dulong(:,1)
        ulong(:,2) = - ulong(:,1)
@@ -575,7 +496,7 @@ contains
     ! the contribution of the long range part should be incorporated
     ! into the compressibility and chemical potential expressions.
 
-    if (uuflag.eq.0) then
+    if (.not.uuflag) then
        tl = 2.0_dp*tp
     else
        tl = 0.0_dp
@@ -585,7 +506,7 @@ contains
 
     expnegus = exp(-ushort)
 
-    if (uuflag.eq.0) then
+    if (.not.uuflag) then
        model_type = URPM_WITHOUT_USHORT
        model_name = 'URPM without U_short'
     else
@@ -601,15 +522,13 @@ contains
 ! sigma.  The parameter (0 or 1) controls whether ushort is used or
 ! not.  Using kappa < 0 implies the pure RPM case (kappa -> infinity).
 
-  subroutine rpm_potential(use_ushort_flag)
+  subroutine rpm_potential(use_ushort)
     implicit none
-    integer, intent(in), optional :: use_ushort_flag
-    integer :: uuflag = 0
     integer :: irc
+    logical, intent(in), optional :: use_ushort
+    logical :: uuflag = .false.
 
-    if (present(use_ushort_flag) .and. use_ushort_flag.ne.0) then
-       uuflag = 1
-    end if
+    if (present(use_ushort)) uuflag = use_ushort
 
     if (ncomp.ne.2) then
        error_msg = 'mismatch ncomp <> 2 in rpm_potential'
@@ -649,7 +568,7 @@ contains
     ushort(:,:) = 0.0_dp
     dushort(:,:) = 0.0_dp
 
-    if (uuflag.eq.1) then
+    if (uuflag) then
        ushort(:,2) = ulong(:,2) + ulong(:,1)
        dushort(:,2) = dulong(:,2) + dulong(:,1)
        ulong(:,2) = - ulong(:,1)
@@ -673,12 +592,12 @@ contains
             & + (1/(2.0_dp*kappa**2) - sigma**2/3.0_dp) * erfc(kappa*sigma) )
        tu(2) = pi*lb * ( sigma * exp(-kappa**2*sigma**2) / (kappa*rootpi) &
             & + (1/(2.0_dp*kappa**2) - sigma**2) * erfc(kappa*sigma) )
-       if (uuflag.eq.0) then ! off SYM condition
+       if (.not.uuflag) then ! off SYM condition
           tl(2) = pi*lb / kappa**2
        end if
     end if
 
-    if (uuflag.eq.0) then
+    if (.not.uuflag) then
        model_type = RPM_WITHOUT_USHORT
        model_name = 'RPM without U_short'
     else
