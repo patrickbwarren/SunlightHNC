@@ -124,7 +124,7 @@ module wizard
        & CONVERGENCE_ERROR = 1, &
        & AXEQB_ERROR = 2, &
        & DSYSV_ERROR = 3, &
-       & OTHER_ERROR = 4
+       & MISMATCH_ERROR = 4
 
   integer, parameter :: USE_USHORT = 1 ! syntactic sugar for function calls
 
@@ -132,7 +132,11 @@ module wizard
   character (len=32) :: model_name = ''   ! Model name
   character (len=47) :: error_msg = ''    ! Error message
 
-  logical :: no_more_error_msgs = .false. ! Set in case of severe numerical instability
+  logical :: more_err_msgs = .true. ! Set in case of severe numerical instability
+  logical :: silent = .false.       ! Set to prevent all error messages
+  logical :: verbose = .false.      ! Set to print more information
+  logical :: cold_start = .true.    ! Set to force a cold start
+  logical :: auto_fns = .true.      ! Set to calculate things at end
 
   real(kind=dp), parameter :: &
        & pi = 4.0_dp * atan(1.0_dp), &
@@ -141,10 +145,7 @@ module wizard
        & rootpi = sqrt(pi)
 
   integer :: &
-       & verbose = 0,     & ! how much info to generate
-       & cold_start = 1,  & ! if the solver needs initialising
        & start_type = 3,  & ! how to initialise in a cold start
-       & auto_fns = 1,    & ! whether to calculate things at end
        & model_type = 0,  & ! which potential was (last) chosen
        & istep,           & ! current position in iterative solver
        & ng = 4096,       & ! grid size
@@ -153,7 +154,7 @@ module wizard
        & nps = 6,         & ! number of previous states used in Ng method
        & npic = 6,        & ! number of Picard steps
        & maxsteps = 100,  & ! max number of steps to take for convergence
-       & error_code = 0     ! error code (see above)
+       & return_code = 0    ! error code (see above)
 
   integer*8 :: plan  ! FFTW plan for fast discrete sine transforms
 
@@ -521,9 +522,9 @@ contains
     end if
 
     if (ncomp.ne.2) then
-       print *, 'oz_mod.f90: urpm_potential: ncomp = ', ncomp, &
-            & '(should be ncomp = 2)'
-       stop
+       error_msg = 'mismatch ncomp <> 2 in urpm_potential'
+       if (.not.silent) print *, '** error: ', error_msg
+       return
     end if
 
     z(1) = 1.0_dp
@@ -590,7 +591,7 @@ contains
     else
        model_type = URPM_WITH_USHORT
        model_name = 'URPM with U_short'
-    endif
+    end if
 
   end subroutine urpm_potential
 
@@ -611,9 +612,9 @@ contains
     end if
 
     if (ncomp.ne.2) then
-       print *, 'oz_mod.f90: rpm_potential: ncomp = ', ncomp, &
-            & '(should be ncomp = 2)'
-       stop
+       error_msg = 'mismatch ncomp <> 2 in rpm_potential'
+       if (.not.silent) print *, '** error: ', error_msg
+       return
     end if
 
     z(1) = 1.0_dp
@@ -683,7 +684,7 @@ contains
     else
        model_type = RPM_WITH_USHORT
        model_name = 'RPM with U_short'
-    endif
+    end if
 
   end subroutine rpm_potential
 
@@ -695,9 +696,9 @@ contains
     integer :: irc
 
     if (ncomp.ne.1) then
-       print *, 'oz_mod.f90: hs_potential: ncomp = ', ncomp, &
-            & '(should be ncomp = 1)'
-       stop
+       error_msg = 'mismatch ncomp <> 1 in hs_potential'
+       if (.not.silent) print *, '** error: ', error_msg
+       return
     end if
 
     diam = sigma
@@ -807,12 +808,12 @@ contains
           call axeqb_reduce(a, ncomp, b, ncomp, perm, irc)
 
           if (irc.gt.0) then
-             error_code = AXEQB_ERROR
+             return_code = AXEQB_ERROR
              error_msg = 'axeqb encountered singular problem in oz_solve'
-             if (.not.no_more_error_msgs) then
-                print *, error_msg
-                print *, 'fatal: no more error messages will be printed'
-                no_more_error_msgs = .true.
+             if (more_err_msgs .and. .not.silent) then
+                print *, '** error: ', error_msg
+                print *, '** further error messages of this kind will be suppressed'
+                more_err_msgs = .false.
              end if
              return
           end if
@@ -907,12 +908,12 @@ contains
           call axeqb_reduce(a, ncomp, b, ncomp, perm, irc)
 
           if (irc.gt.0) then
-             error_code = AXEQB_ERROR
+             return_code = AXEQB_ERROR
              error_msg = 'axeqb encountered singular problem in oz_solve2'
-             if (.not.no_more_error_msgs) then
-                print *, error_msg
-                print *, 'fatal: no more error messages will be printed'
-                no_more_error_msgs = .true.
+             if (more_err_msgs .and. .not.silent) then
+                print *, '** error: ', error_msg
+                print *, '** further error messages of this kind will be suppressed'
+                more_err_msgs = .false.
              end if
              return
           end if
@@ -992,11 +993,12 @@ contains
 
   subroutine hnc_ng
     implicit none
-    integer :: i, i1, i0, j, j1, j2, p, nd, icp
+    integer :: i1, i0, j, j1, j2, p, nd, icp
     real(kind=dp) :: dc(ng-1,nfnc,nps-1), de(ng-1,nfnc,nps-1), &
          & a(nps-1,nps-1), x(nps-1), y(nps-1), yy, aux
-    integer :: ipiv(nps-1), info  ! DSYSV stuff
-    real(kind=dp) :: work(100) ! DSYSV stuff
+    integer :: ipiv(nps-1), info
+    integer, parameter :: lwork = 100
+    real(kind=dp) :: work(lwork)
     istep = istep + 1
     i1 = mod(istep-1, nps) + 1
     i0 = i1 - 1; if (i0 .eq. 0) i0 = nps
@@ -1029,10 +1031,17 @@ contains
        end do
     end do
     call DSYSV( 'U', nd, 1, a, nps-1, ipiv, x, nps-1, work, &
-         & 100, info)
-    if (info .gt. 0) then
-       print *, 'det=0', (x(i),i=1,nd)
-    endif
+         & lwork, info)
+    if (info.gt.0) then
+       return_code = DSYSV_ERROR
+       error_msg = 'DSYSV encountered singular problem in hnc_ng'
+       if (more_err_msgs .and. .not.silent) then
+          print *, '** error: ', error_msg
+          print *, '** further error messages of this kind will be suppressed'
+          more_err_msgs = .false.
+       end if
+       return
+    end if
     do icp = 1, nfnc
        do j = 1, ng-1
           aux = e(j,icp,i0)
@@ -1062,25 +1071,25 @@ contains
   subroutine hnc_solve
     implicit none
     integer :: i, i1
-    error_code = NO_ERROR
+    return_code = NO_ERROR
     istep = 1
-    if (cold_start.eq.1) then
+    if (cold_start) then
        if (start_type.eq.1) c(:,:,1) = 0.0_dp
        if (start_type.eq.2) c(:,:,1) = - ushort(:,:)
        if (start_type.eq.3) c(:,:,1) = expnegus(:,:) - 1.0_dp
-       cold_start = 0
-       if (verbose.eq.1) then
+       cold_start = .false.
+       if (verbose) then
           if (start_type.eq.1) print *, "HNC cold start c' = 0"
           if (start_type.eq.2) print *, "HNC cold start c' = -v'"
           if (start_type.eq.3) print *, "HNC cold start c' = e^(-v')-1"
        end if
     else
-       if (verbose.eq.1) then
+       if (verbose) then
           print *, "HNC warm start c' = previous c'"
        end if
     end if
     call oz_solve
-    if (error_code.gt.NO_ERROR) return
+    if (return_code.gt.NO_ERROR) return
     do i = 1, maxsteps
        if (i .le. npic) then
           call hnc_picard
@@ -1088,9 +1097,9 @@ contains
           call hnc_ng
        end if
        call oz_solve
-       if (error_code.gt.NO_ERROR) return
+       if (return_code.gt.NO_ERROR) return
        call conv_test
-       if (verbose.eq.1) then
+       if (verbose) then
           if (i .le. npic) then
              print *, i, "HNC Picard, error = ", error
           else
@@ -1100,21 +1109,20 @@ contains
        if (error .lt. tol) exit
     end do
     if (error .gt. tol) then
-       print *, "oz_mod.f90: hnc_solve: **WARNING*** error > tol"
-       error_code = CONVERGENCE_ERROR
+       return_code = CONVERGENCE_ERROR
+       error_msg = 'error > tol in hnc_solve'
+       if (.not.silent) print *, '** warning: ', error_msg
+       return
     end if
     i1 = mod(istep-1, nps) + 1
     if (i1.ne.1) then ! copy solution to position 1
        c(:, :, 1) = c(:, :, i1)
        e(:, :, 1) = e(:, :, i1)
     end if
-    if (auto_fns.eq.1) then
+    if (auto_fns) then
        call make_pair_functions
        call make_structure_factors
        call make_thermodynamics
-    end if
-    if (verbose.eq.1) then
-       print *, "HNC solved"
     end if
     closure_name = 'HNC'
   end subroutine hnc_solve
@@ -1160,11 +1168,12 @@ contains
   
   subroutine msa_ng
     implicit none
-    integer :: i, i1, i0, j, j1, j2, p, nd, icp, irc
+    integer :: i1, i0, j, j1, j2, p, nd, icp, irc
     real(kind=dp) :: dc(ng-1,nfnc,nps-1), de(ng-1,nfnc,nps-1), &
          & a(nps-1,nps-1), x(nps-1), y(nps-1), yy, aux
-    integer :: ipiv(nps-1), info  ! DSYSV stuff
-    real(kind=dp) :: work(100) ! DSYSV stuff
+    integer :: ipiv(nps-1), info
+    integer, parameter :: lwork = 100
+    real(kind=dp) :: work(lwork)
     istep = istep + 1
     i1 = mod(istep-1, nps) + 1
     i0 = i1 - 1; if (i0 .eq. 0) i0 = nps
@@ -1198,10 +1207,17 @@ contains
        end do
     end do
     call DSYSV( 'U', nd, 1, a, nps-1, ipiv, x, nps-1, work, &
-         & 100, info)
-    if (info .gt. 0) then
-       print *, 'det=0', (x(i),i=1,nd)
-    endif
+         & lwork, info)
+    if (info.gt.0) then
+       return_code = DSYSV_ERROR
+       error_msg = 'DSYSV encountered singular problem in msa_ng'
+       if (more_err_msgs .and. .not.silent) then
+          print *, '** error: ', error_msg
+          print *, '** further error messages of this kind will be suppressed'
+          more_err_msgs = .false.
+       end if
+       return
+    end if
     do icp = 1, nfnc
        irc = nint(diam(icp) / deltar) ! Only work inside the hard core
        do j = 1, irc
@@ -1230,7 +1246,7 @@ contains
   subroutine msa_solve
     implicit none
     integer :: i, i1, p, irc
-    error_code = NO_ERROR
+    return_code = NO_ERROR
     do i = 1, nfnc
        irc = nint(diam(i) / deltar) ! Reset everywhere outwith hard core
        do p = 1, nps
@@ -1238,22 +1254,22 @@ contains
        end do
     end do
     istep = 1
-    if (cold_start.eq.1) then
+    if (cold_start) then
        do i = 1, nfnc
           irc = nint(diam(i) / deltar) ! Only initialise inside the hard core
           c(1:irc,i,1) = - 1.0_dp
        end do
-       cold_start = 0
-       if (verbose.eq.1) then
+       cold_start = .false.
+       if (verbose) then
           print *, "MSA cold start c' = -1 (inside hard core)"
        end if
     else
-       if (verbose.eq.1) then
+       if (verbose) then
           print *, "MSA warm start c' = previous c' (inside hard core)"
        end if
     end if
     call oz_solve
-    if (error_code.gt.NO_ERROR) return
+    if (return_code.gt.NO_ERROR) return
     do i = 1, maxsteps
        if (i .le. npic) then
           call msa_picard
@@ -1261,9 +1277,9 @@ contains
           call msa_ng
        end if
        call oz_solve
-       if (error_code.gt.NO_ERROR) return
+       if (return_code.gt.NO_ERROR) return
        call conv_test
-       if (verbose.eq.1) then
+       if (verbose) then
           if (i .le. npic) then
              print *, i, "MSA Picard, error = ", error
           else
@@ -1273,21 +1289,20 @@ contains
        if (error .lt. tol) exit
     end do
     if (error .gt. tol) then
-       print *, "oz_mod.f90: msa_solve: **WARNING*** error > tol"
-       error_code = CONVERGENCE_ERROR
+       return_code = CONVERGENCE_ERROR
+       error_msg = 'error > tol in msa_solve'
+       if (.not.silent) print *, '** warning: ', error_msg
+       return
     end if
     i1 = mod(istep-1, nps) + 1
     if (i1.ne.1) then ! copy solution to position 1
        c(:, :, 1) = c(:, :, i1)
        e(:, :, 1) = e(:, :, i1)
     end if
-    if (auto_fns.eq.1) then
+    if (auto_fns) then
        call make_pair_functions
        call make_structure_factors
        call make_thermodynamics
-    end if
-    if (verbose.eq.1) then
-       print *, "MSA solved"
     end if
     closure_name = 'MSA'
   end subroutine msa_solve
@@ -1299,18 +1314,15 @@ contains
   
   subroutine rpa_solve
     implicit none
-    error_code = NO_ERROR
+    return_code = NO_ERROR
     istep = 1
     c(:,:,1) = - ushort(:,:)
     call oz_solve
-    if (error_code.gt.NO_ERROR) return
-    if (auto_fns.eq.1) then
+    if (return_code.gt.NO_ERROR) return
+    if (auto_fns) then
        call make_pair_functions
        call make_structure_factors
        call make_thermodynamics
-    end if
-    if (verbose.eq.1) then
-       print *, "RPA solve"
     end if
     error = 0.0_dp
     closure_name = 'RPA'
@@ -1323,9 +1335,6 @@ contains
   subroutine save_reference
     implicit none
     h0(:, :) = c(:, :, 1) + e(:, :, 1)
-    if (verbose.eq.1) then
-       print *, "Saved reference state"
-    end if
   end subroutine save_reference
 
 ! The EXP approximation refines the current RPA/MSA solution by using
@@ -1340,15 +1349,12 @@ contains
     implicit none
     h0 = (1.0_dp + h0) * exp(c(:,:,1) + e(:,:,1) - h0) - 1.0_dp
     call oz_solve2
-    if (error_code.gt.NO_ERROR) return
+    if (return_code.gt.NO_ERROR) return
     h0 = 0.0_dp
-    if (auto_fns.eq.1) then
+    if (auto_fns) then
        call make_pair_functions
        call make_structure_factors
        call make_thermodynamics
-    end if
-    if (verbose.eq.1) then
-       print *, "EXP refined"
     end if
     closure_name = 'EXP'
   end subroutine exp_refine
@@ -1580,7 +1586,7 @@ contains
        print *, 'No thermodynamics for ', model_name
     else
        print *, 'Thermodynamics for ', model_name
-       print *, 'Closure ', closure_name, ', convergence error = ', error
+       print *, closure_name, ' closure, convergence = ', error
        print *, 'Compressibility factor: mean field contribution = ', cf_mf
        print *, 'Compressibility factor: contact contribution = ', cf_gc
        print *, 'Compressibility factor: correlation contribution = ', cf_xc

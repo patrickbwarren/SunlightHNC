@@ -48,9 +48,9 @@ do k = 1, n-1
    d(k) = 0.0_dp
    do j = 1, n-1
       d(k) = d(k) + a(j) * sin(j*k*pi/n)
-   enddo
+   end do
    d(k) = d(k) * sqrt(2.0_dp/n)
-enddo
+end do
 
 print *, "n = ", n
 

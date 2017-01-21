@@ -28,7 +28,7 @@ program driver2
   real(kind=dp) :: rhotot
   real(kind=dp), allocatable :: ccsf(:), ddsf(:)
 
-  verbose = 1
+  verbose = .true.
 
   ng = 4096
   ncomp = 2

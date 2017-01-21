@@ -26,7 +26,7 @@ program driver4
   implicit none
   real(kind=dp) :: rhotot, mfcharge
 
-  verbose = 1
+  verbose = .true.
 
   ng = 4096
   ncomp = 4

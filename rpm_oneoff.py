@@ -98,6 +98,8 @@ else:
             if args.verbose:
                 print('HNC error = ', w.error)
 
+if w.return_code: exit()
+
 if not args.dump:
     print('%s: %s solved, error = %g' % (str(w.model_name, 'utf-8').strip(),
                                          str(w.closure_name, 'utf-8'),

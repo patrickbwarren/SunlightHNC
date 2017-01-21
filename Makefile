@@ -64,6 +64,6 @@ urpm.o : urpm.f90 oz_mod.o
 
 clean:
 	rm -f *~
-	rm -f *.mod *.o *.so
+	rm -f *.pyf *.mod *.o *.so
 	rm -f oz_doc.aux oz_doc.toc oz_doc.log
 	rm -f $(DRIVERS) urpm fftw_test
