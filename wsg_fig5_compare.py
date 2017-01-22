@@ -6,7 +6,7 @@
 
 # Based on an original code copyright (c) 2007 Lucian Anton.
 # Modifications copyright (c) 2008, 2009 Andrey Vlasov.  
-# Additional modifications copyright (c) 2009-2016 Unilever UK Central
+# Additional modifications copyright (c) 2009-2017 Unilever UK Central
 # Resources Ltd (Registered in England & Wales, Company No 29140;
 # Registered Office: Unilever House, Blackfriars, London, EC4P 4BQ,
 # UK).

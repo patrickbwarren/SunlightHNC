@@ -1,9 +1,8 @@
 ## General purpose HNC code
 
-The current stable release is version 1.8
+The current release is version 1.9 (beta)
 
-<i>Bug alert : EXP + MSA is incorrectly implemented in v1.8, will be fixed very soon in v1.8.1</i>
-
+Version 1.9 brings the source code up to modern FORTRAN standards and corrects a problem with EXP in v1.8  
 Version 1.8 includes the MSA closure and various potentials for Slater
 smeared charges.  
 Version 1.7 handles an arbitrary number of
