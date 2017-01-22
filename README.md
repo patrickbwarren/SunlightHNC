@@ -23,7 +23,7 @@ See [PDF documentation](oz_doc.pdf "oz_doc.pdf") for details.
 #### Citation
 
 You are of course expected to use and modify this code for your own
-projects.  
+projects!  
 If you end up publishing results based on this code, or a
 derived version, please cite :
 
