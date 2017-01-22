@@ -47,6 +47,7 @@ parser.add_argument('--npt', action='store', default=1, type=int, help='number o
 parser.add_argument('--ushort', action='store_true', help='use U_short in potential')
 
 parser.add_argument('--dump', action='store_true', help='write out g(r)')
+parser.add_argument('--show', action='store_true', help='plot results')
 
 parser.add_argument('--verbose', action='store_true', help='more output')
 
@@ -127,7 +128,7 @@ if args.dump:
     for i in range(w.ng-1):
         print("%g\t%g\t%g\tS" % (w.k[i], snn[i], szz[i]))
 
-else:
+elif args.show:
 
     plt.figure(1)
 
@@ -163,15 +164,15 @@ else:
     plt.subplot(2, 2, 4)
 
     jmax = int(args.skcut*3 / w.deltak)
-    plt.plot(w.k[0:jmax],w.ek[0:jmax, 0]+w.ck[0:jmax, 0],label="${\\tilde h}_{11}$")
-    plt.plot(w.k[0:jmax],w.ek[0:jmax, 1]+w.ck[0:jmax, 1],label="${\\tilde h}_{12}$")
-#    plt.plot(w.k[0:jmax],
-#             1.0 + w.rho[0]*(w.ek[0:jmax, 0]+w.ck[0:jmax, 0]
-#                             -w.ek[0:jmax, 1]-w.ck[0:jmax, 1]),
-#             label="$1+\\rho/2(hk_{11}+hk_{12})$")
-#    plt.plot(w.k[0:jmax],w.ek[0:jmax, 2]+w.ck[0:jmax, 2],label="$hk_{22}$")
-#    plt.plot(w.k[0:jmax],w.ck[0:jmax, 0],label="$ck_{11}$")
-#    plt.plot(w.k[0:jmax],w.ck[0:jmax, 1],label="$ck_{12}$")
+    plt.plot(w.k[0:jmax],w.ek[0:jmax, 0]+w.ck[0:jmax, 0],
+             label="${\\tilde h}_{11}$")
+    plt.plot(w.k[0:jmax],w.ek[0:jmax, 1]+w.ck[0:jmax, 1],
+             label="${\\tilde h}_{12}$")
+    plt.plot(w.k[0:jmax],
+             1.0 + w.rho[0]*(w.ek[0:jmax, 0]+w.ck[0:jmax, 0]
+                             -w.ek[0:jmax, 1]-w.ck[0:jmax, 1]))
+#    plt.plot(w.k[0:jmax],w.ck[0:jmax, 0],label="${\\tilde c}_{11}$")
+#    plt.plot(w.k[0:jmax],w.ck[0:jmax, 1],label="${\\tilde c}_{12}$")
     plt.legend(loc='lower right')
     
     plt.show()

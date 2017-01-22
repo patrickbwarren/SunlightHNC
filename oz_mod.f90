@@ -55,11 +55,11 @@ module wizard
   character (len=32) :: model_name = ''   ! Model name
   character (len=47) :: error_msg = ''    ! Error message
 
-  logical :: more_err_msgs = .true. ! In case of severe numerical instability
-  logical :: silent = .false.       ! Prevent printing warning/error messages
-  logical :: verbose = .false.      ! Print solver diagnostics
-  logical :: cold_start = .true.    ! Force a cold start
-  logical :: auto_fns = .true.      ! Calculate stuff at end
+  logical :: suppress_msgs = .false. ! In case of severe numerical instability
+  logical :: silent = .false.        ! Prevent printing warning/error messages
+  logical :: verbose = .false.       ! Print solver diagnostics
+  logical :: cold_start = .true.     ! Force a cold start
+  logical :: auto_fns = .true.       ! Calculate stuff at end
 
   real(kind=dp), parameter :: &
        & pi = 4.0_dp * atan(1.0_dp), &
@@ -218,15 +218,15 @@ contains
           print *, ' equivalent Gaussian sigma = ', &
                & sqrt(2.0_dp/15.0_dp) * rgroot
        end if
-       if (model_type.eq.DPD_SLATER_EXACT_CHARGES) then
-          print *, ' Slater smearing (exact), lambda = ', lbda
-          print *, ' equivalent Gaussian sigma = ', lbda
-       end if
        if (model_type.eq.DPD_SLATER_APPROX_CHARGES) then
           print *, ' Slater smearing (approx), beta = ', beta
           print *, ' 1 / beta = ', 1.0_dp / beta, ', &
                & 5 / (8 beta) = ', 0.625_dp / beta
           print *, ' equivalent Gaussian sigma = ', sqrt(0.5_dp) / beta
+       end if
+       if (model_type.eq.DPD_SLATER_EXACT_CHARGES) then
+          print *, ' Slater smearing (exact), lambda = ', lbda
+          print *, ' equivalent Gaussian sigma = ', lbda
        end if
     else if (model_type.le.URPM_WITH_USHORT) then
        if (model_type.eq.URPM_WITHOUT_USHORT) then
@@ -253,9 +253,7 @@ contains
     end if
     print *, 'SYSTEM DETAILS'
     print *, ' rho = ', rho
-    if (sum(rho).gt.0.0_dp) then
-       print *, ' x = ', rho(:) / sum(rho)
-    end if
+    if (sum(rho).gt.0.0_dp) print *, ' x = ', rho(:) / sum(rho)
     print *, ' sum(rho) = ', sum(rho)
     print *, ' sum(rho*z) = ', sum(rho(:)*z(:))
     print *, '====================================================='
@@ -277,9 +275,9 @@ contains
     integer :: i, j, ij, irc
     real(kind=dp) :: aa(nfnc), zz(nfnc)
 
-    if (present(charge_type) .and. charge_type.gt.0) then
-       ctype = charge_type
-    end if
+    if (present(charge_type) .and. charge_type.gt.0) ctype = charge_type
+
+    model_type = ctype
 
     ! Sort out some recoded potential parameters.  Also force the
     ! amplitude matrix to be symmetric, set by upper triangular
@@ -291,9 +289,7 @@ contains
           ij = i + j*(j-1)/2
           aa(ij) = arep(i, j)
           zz(ij) = z(i) * z(j)
-          if (i.lt.j) then
-             arep(j, i) = arep(i, j)
-          end if
+          if (i.lt.j) arep(j, i) = arep(i, j)
        end do
     end do
 
@@ -320,7 +316,6 @@ contains
             & / (rootpi * r * sigma) &
             & - lb * erf(0.5_dp*r/sigma) / r**2
 
-       model_type = DPD_GAUSSIAN_CHARGES
        model_name = "DPD with Gaussian charges"
        
     end if
@@ -337,7 +332,6 @@ contains
        dulong(:,nfnc) = - (lb / r**2) * (1.0_dp - exp(-r/sigma) &
             & * (1.0_dp + r / sigma))
        
-       model_type = DPD_BESSEL_CHARGES
        model_name = "DPD with Bessel charges"
 
     end if
@@ -359,7 +353,6 @@ contains
 
        dulong(:,nfnc) = 0.0_dp
    
-       model_type = DPD_LINEAR_CHARGES
        model_name = "DPD with linear charges"
 
     end if
@@ -380,7 +373,6 @@ contains
             & * (1.0_dp + 2.0_dp*r/lbda + 2.0_dp*r**2/lbda**2 &
             &     + 7.0_dp*r**3/(6.0_dp*lbda**3) + r**4/(3.0_dp*lbda**4)) )
 
-       model_type = DPD_SLATER_EXACT_CHARGES
        model_name = "DPD with Slater (exact) charges"
 
     end if
@@ -400,7 +392,6 @@ contains
        dulong(:,nfnc) = - (lb / r**2) * (1.0_dp - exp(-2.0_dp*beta*r) &
             & * (1.0_dp + 2.0_dp*beta*r*(1.0_dp + beta*r)) )
 
-       model_type = DPD_SLATER_APPROX_CHARGES
        model_name = "DPD with Slater (approx) charges"
 
     end if
@@ -443,6 +434,7 @@ contains
     if (present(use_ushort)) uuflag = use_ushort
 
     if (ncomp.ne.2) then
+       return_code = MISMATCH_ERROR
        error_msg = 'mismatch ncomp <> 2 in urpm_potential'
        if (.not.silent) print *, '** error: ', error_msg
        return
@@ -531,6 +523,7 @@ contains
     if (present(use_ushort)) uuflag = use_ushort
 
     if (ncomp.ne.2) then
+       return_code = MISMATCH_ERROR
        error_msg = 'mismatch ncomp <> 2 in rpm_potential'
        if (.not.silent) print *, '** error: ', error_msg
        return
@@ -538,9 +531,8 @@ contains
 
     z(1) = 1.0_dp
     z(2) = -1.0_dp
-    diam(1) = sigma
-    diam(2) = sigma
-    diam(3) = sigma
+
+    diam = sigma
 
     irc = nint(sigma / deltar)
 
@@ -608,17 +600,10 @@ contains
   end subroutine rpm_potential
 
 ! Build the potential arrays for hard spheres with diameter sigma.
-! This expects ncomp = 1.
 
   subroutine hs_potential
     implicit none
     integer :: irc
-
-    if (ncomp.ne.1) then
-       error_msg = 'mismatch ncomp <> 1 in hs_potential'
-       if (.not.silent) print *, '** error: ', error_msg
-       return
-    end if
 
     diam = sigma
 
@@ -631,8 +616,8 @@ contains
     ! This is the only place the hard sphere diameter enters
 
     irc = nint(sigma / deltar)
-    expnegus(1:irc, 1) = 0.0_dp
-    expnegus(irc+1:ng-1, 1) = 1.0_dp
+    expnegus(1:irc, :) = 0.0_dp
+    expnegus(irc+1:ng-1, :) = 1.0_dp
 
     ! These are the analytic contributions to the thermodynamics.
 
@@ -729,10 +714,10 @@ contains
           if (irc.gt.0) then
              return_code = AXEQB_ERROR
              error_msg = 'axeqb encountered singular problem in oz_solve'
-             if (more_err_msgs .and. .not.silent) then
+             if (.not.suppress_msgs .and. .not.silent) then
                 print *, '** error: ', error_msg
-                print *, '** further error messages of this kind will be suppressed'
-                more_err_msgs = .false.
+                print *, '** further messages of this kind will be suppressed'
+                suppress_msgs = .true.
              end if
              return
           end if
@@ -811,9 +796,7 @@ contains
              do i = 1, j
                 ij = i + j*(j-1)/2
                 hmat(i, j) = hk(ik, ij)
-                if (i.lt.j) then
-                   hmat(j, i) = hmat(i, j)
-                end if
+                if (i.lt.j) hmat(j, i) = hmat(i, j)
              end do
           end do
 
@@ -829,10 +812,10 @@ contains
           if (irc.gt.0) then
              return_code = AXEQB_ERROR
              error_msg = 'axeqb encountered singular problem in oz_solve2'
-             if (more_err_msgs .and. .not.silent) then
+             if (.not.suppress_msgs .and. .not.silent) then
                 print *, '** error: ', error_msg
-                print *, '** further error messages of this kind will be suppressed'
-                more_err_msgs = .false.
+                print *, '** further messages of this kind will be suppressed'
+                suppress_msgs = .true.
              end if
              return
           end if
@@ -954,10 +937,10 @@ contains
     if (info.gt.0) then
        return_code = DSYSV_ERROR
        error_msg = 'DSYSV encountered singular problem in hnc_ng'
-       if (more_err_msgs .and. .not.silent) then
+       if (.not.suppress_msgs .and. .not.silent) then
           print *, '** error: ', error_msg
-          print *, '** further error messages of this kind will be suppressed'
-          more_err_msgs = .false.
+          print *, '** further messages of this kind will be suppressed'
+          suppress_msgs = .true.
        end if
        return
     end if
@@ -1003,9 +986,7 @@ contains
           if (start_type.eq.3) print *, "HNC cold start c' = e^(-v')-1"
        end if
     else
-       if (verbose) then
-          print *, "HNC warm start c' = previous c'"
-       end if
+       if (verbose) print *, "HNC warm start c' = previous c'"
     end if
     call oz_solve
     if (return_code.gt.NO_ERROR) return
@@ -1129,10 +1110,10 @@ contains
     if (info.gt.0) then
        return_code = DSYSV_ERROR
        error_msg = 'DSYSV encountered singular problem in msa_ng'
-       if (more_err_msgs .and. .not.silent) then
+       if (.not.suppress_msgs .and. .not.silent) then
           print *, '** error: ', error_msg
-          print *, '** further error messages of this kind will be suppressed'
-          more_err_msgs = .false.
+          print *, '** further messages of this kind will be suppressed'
+          suppress_msgs = .true.
        end if
        return
     end if
@@ -1178,13 +1159,9 @@ contains
           c(1:irc,i,1) = - 1.0_dp
        end do
        cold_start = .false.
-       if (verbose) then
-          print *, "MSA cold start c' = -1 (inside hard core)"
-       end if
+       if (verbose) print *, "MSA cold start c' = -1"
     else
-       if (verbose) then
-          print *, "MSA warm start c' = previous c' (inside hard core)"
-       end if
+       if (verbose) print *, "MSA warm start c' = previous c'"
     end if
     call oz_solve
     if (return_code.gt.NO_ERROR) return

@@ -47,7 +47,11 @@ data = [[0.00911,  0.1029, 0.0013,  0.0044, 0.0007,  0.9701, 0.0008],
 # and a cation).  Thus rho d^3 ranges from about 5e-4 to 0.2 in the
 # above table.
 
-# Calculations are done for both HNC and MSA, but only HNC printed
+# Calculations are done for both HNC, MSA and EXP.  Note that EXP
+# requires hard sphere reference state to be computed.  This in turn
+# appears to require a cold start each time since the EXP solution for
+# the RPM appears to deviate too far from the hard sphere solution to
+# be a good starting point.
 
 import math as m
 
@@ -58,19 +62,19 @@ compdat = list(data[i][5] for i in range(len(data)))
 
 from oz import wizard as w
 
-w.ng = 4096
+w.ng = 8192
 w.ncomp = 2
 w.deltar = 0.01
 
 w.initialise()
 
-w.lb = 0.71 / 0.425
+w.lb = lb = 0.71 / 0.425
 w.sigma = 1.0
 w.kappa = -1.0
 
 w.rpm_potential()
 
-w.write_params();
+w.write_params()
 
 npt = 41
 
@@ -80,37 +84,50 @@ lrlo = m.log(rholo)
 lrhi = m.log(rhohi)
 
 x = []
-y1 = []
-y2 = []
-y3 = []
-y4 = []
+y = [[] for i in range(6)]
 
 for i in range(npt):
     lr = lrlo + (lrhi - lrlo) * i / (npt - 1.0)
     rho = m.exp(lr)
     x.append(m.sqrt(rho))
-    w.rho[0] = rho / 2.0
-    w.rho[1] = rho / 2.0
+    w.rho[0] = 0.5 * rho
+    w.rho[1] = 0.5 * rho
     w.hnc_solve()
-    comp = 1.0 + w.un / 3.0 + w.cf_gc
-    y1.append(-w.un)
-    y2.append(comp)
-    print("%f\t%f\t%f\t%g" % (m.sqrt(rho), w.un, comp, w.error))
+    y[0].append(-w.un)
+    y[1].append(1.0 + w.cf_gc + w.cf_xc)
+    print("%i\t%f\t%f\t%f\t%g\tHNC" % (i, m.sqrt(rho), w.un, w.cf_gc, w.error))
     w.msa_solve()
-    comp = 1.0 + w.un / 3.0 + w.cf_gc
-    y3.append(-w.un)
-    y4.append(comp)
+    y[2].append(-w.un)
+    y[3].append(1.0 + w.cf_gc + w.cf_xc)
+    print("%i\t%f\t%f\t%f\t%g\tMSA" % (i, m.sqrt(rho), w.un, w.cf_gc, w.error))
+
+for i in range(npt):
+    rho = x[i]**2
+    w.rho[0] = 0.5 * rho
+    w.rho[1] = 0.5 * rho
+    w.cold_start = True
+    w.hs_potential()
+    w.msa_solve()
+    w.save_reference()
+    w.rpm_potential()
+    w.msa_solve()
+    w.exp_refine()
+    y[4].append(-w.un)
+    y[5].append(1.0 + w.cf_gc + w.cf_xc)
+    print("%i\t%f\t%f\t%f\t%g\tEXP" % (i, m.sqrt(rho), w.un, w.cf_gc, w.error))
 
 import matplotlib.pyplot as plt
 
 plt.plot(xdat, nundat, 'ro', label='Rasaiah et al (1972): -U/N')
 plt.plot(xdat, compdat, 'co', label='Rasaiah et al (1972): p')
-plt.plot(x, y1, 'b-', label='HNC')
-plt.plot(x, y2, 'b-')
-plt.plot(x, y3, 'b--', label='MSA')
-plt.plot(x, y4, 'b--')
+plt.plot(x, y[0], 'b-', label='HNC')
+plt.plot(x, y[1], 'b-')
+plt.plot(x, y[2], 'b--', label='MSA')
+plt.plot(x, y[3], 'b--')
+plt.plot(x[0:npt], y[4], 'r--', label='EXP')
+plt.plot(x[0:npt], y[5], 'r--')
 plt.xlabel('$(\\rho\\sigma^3)^{1/2}$')
-plt.ylabel('$-U_n$ and $p/\\rho k_\\mathrm{B}T$')
+plt.ylabel('$-U_N$ and $\\beta p/\\rho$')
 plt.legend(loc='upper left')
 
 plt.show()

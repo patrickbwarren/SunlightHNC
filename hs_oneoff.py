@@ -27,6 +27,7 @@ from oz import wizard as w
 
 parser = argparse.ArgumentParser(description='hard spheres one off calculator')
 
+parser.add_argument('--ncomp', action='store', default=1, type=int, help='number of components (species) (default 2)')
 parser.add_argument('--ng', action='store', default=65536, type=int, help='number of grid points (default 4096)')
 parser.add_argument('--deltar', action='store', default=0.001, type=float, help='grid spacing (default 0.01)')
 parser.add_argument('--alpha', action='store', default=0.2, type=float, help='Picard mixing fraction (default 0.2)')
@@ -41,12 +42,13 @@ parser.add_argument('--skcut', action='store', default=15.0, type=float, help='k
 parser.add_argument('--msa', action='store_true', help='use MSA (default HNC)')
 
 parser.add_argument('--dump', action='store_true', help='write out g(r)')
+parser.add_argument('--show', action='store_true', help='plot results')
 
 parser.add_argument('--verbose', action='store_true', help='more output')
 
 args = parser.parse_args()
 
-w.ncomp = 1
+w.ncomp = args.ncomp
 w.ng = args.ng
 w.deltar = args.deltar
 w.alpha = args.alpha
@@ -60,7 +62,9 @@ w.sigma = args.sigma
 
 w.hs_potential()
 
-w.rho[0] = 6.0 * args.eta / (w.pi * w.sigma**3)
+rho = 6.0 * args.eta / (w.pi * w.sigma**3)
+
+for i in range(args.ncomp): w.rho[i] = rho / args.ncomp
 
 eps = 1e-20
 
@@ -86,7 +90,7 @@ if args.dump:
     for i in range(w.ng-1):
         print("%g\t%g\tS" % (w.k[i], w.sk[i, 0, 0]))
 
-else:
+elif args.show:
 
     plt.figure(1)
 
