@@ -81,7 +81,7 @@ w.dpd_potential()
 w.rho[0] = rho = 3.0
 w.hnc_solve()
 
-print('\n*** Example 5.1 ***\n')
+print('\n*** Example 6.1 ***\n')
 print('rho =', rho, ' A =', A)
 print('pressure =', w.press)
 print('energy density =', w.uv)
@@ -100,11 +100,11 @@ plt.ylabel('$S(k)$')
 
 plt.show()
 
-print('\n*** Example 5.2 ***\n')
+print('\n*** Example 6.2 ***\n')
 print('CR pressure =', cr_press(0.05))
 print('VR pressure =', w.press)
 
-print('\n*** Example 5.3 ***\n')
+print('\n*** Example 6.3 ***\n')
 print('energy fnex =', fnex1(0.1))
 print('mu fnex =    ', fnex2(0.05))
 print('HNC fnex =   ', w.fnex)

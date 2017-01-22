@@ -51,15 +51,15 @@ module wizard
        & DSYSV_ERROR = 3, &
        & MISMATCH_ERROR = 4
 
-  character (len=3)  :: closure_name = '' ! 3-letter acronym for the last-used closure 
+  character (len=3)  :: closure_name = '' ! TLA for the last-used closure 
   character (len=32) :: model_name = ''   ! Model name
   character (len=47) :: error_msg = ''    ! Error message
 
-  logical :: more_err_msgs = .true. ! Set in case of severe numerical instability
-  logical :: silent = .false.       ! Set to prevent all error messages
-  logical :: verbose = .false.      ! Set to print more information
-  logical :: cold_start = .true.    ! Set to force a cold start
-  logical :: auto_fns = .true.      ! Set to calculate things at end
+  logical :: more_err_msgs = .true. ! In case of severe numerical instability
+  logical :: silent = .false.       ! Prevent printing warning/error messages
+  logical :: verbose = .false.      ! Print solver diagnostics
+  logical :: cold_start = .true.    ! Force a cold start
+  logical :: auto_fns = .true.      ! Calculate stuff at end
 
   real(kind=dp), parameter :: &
        & pi = 4.0_dp * atan(1.0_dp), &
@@ -1031,7 +1031,6 @@ contains
        return_code = CONVERGENCE_ERROR
        error_msg = 'error > tol in hnc_solve'
        if (.not.silent) print *, '** warning: ', error_msg
-       return
     end if
     i1 = mod(istep-1, nps) + 1
     if (i1.ne.1) then ! copy solution to position 1
@@ -1211,7 +1210,6 @@ contains
        return_code = CONVERGENCE_ERROR
        error_msg = 'error > tol in msa_solve'
        if (.not.silent) print *, '** warning: ', error_msg
-       return
     end if
     i1 = mod(istep-1, nps) + 1
     if (i1.ne.1) then ! copy solution to position 1
@@ -1266,10 +1264,12 @@ contains
   
   subroutine exp_refine
     implicit none
+    real(kind=dp) :: hsave(ng-1, nfnc)
+    hsave = h0
     h0 = (1.0_dp + h0) * exp(c(:,:,1) + e(:,:,1) - h0) - 1.0_dp
     call oz_solve2
     if (return_code.gt.NO_ERROR) return
-    h0 = 0.0_dp
+    h0 = hsave
     if (auto_fns) then
        call make_pair_functions
        call make_structure_factors
@@ -1371,9 +1371,10 @@ contains
     do i = 1, nfnc
        if (diam(i).gt.0.0_dp) then
           irc = nint(diam(i) / deltar)
-          t(i) =  - twopi * deltar * sum((dushort(irc+2:,i) + dulong(irc+2:,i)) &
+          t(i) =  - twopi * deltar * sum((dushort(irc+2:,i)+dulong(irc+2:,i)) &
                & * (c(irc+2:,i,1) + e(irc+2:,i,1)) * r(irc+2:)**3) / 3.0_dp &
-               & - 0.5_dp * twopi * deltar * ((dushort(irc+1,i) + dulong(irc+1,i)) &
+               & - 0.5_dp * twopi * deltar * ((dushort(irc+1,i) &
+               &                                   + dulong(irc+1,i)) &
                & * (c(irc+1,i,1) + e(irc+1,i,1)) * r(irc+1)**3) / 3.0_dp
        else
           t(i) =  - twopi * deltar * sum((dushort(:,i) + dulong(:,i)) &
@@ -1441,7 +1442,8 @@ contains
           irc = nint(diam(i) / deltar)
           t(i) = twopi * deltar * sum((ushort(irc+2:,i) + ulong(irc+2:,i)) &
                & * (c(irc+2:,i,1) + e(irc+2:,i,1)) * r(irc+2:)**2) & 
-               & + 0.5_dp * twopi * deltar * ((ushort(irc+1,i) + ulong(irc+1,i)) &
+               & + 0.5_dp * twopi * deltar * ((ushort(irc+1,i) &
+               &                                    + ulong(irc+1,i)) &
                & * (c(irc+1,i,1) + e(irc+1,i,1)) * r(irc+1)**2)
        else
           t(i) = twopi * deltar * sum((ushort(:,i) + ulong(:,i)) &
@@ -1509,9 +1511,11 @@ contains
        print *, 'Compressibility factor: mean field contribution = ', cf_mf
        print *, 'Compressibility factor: contact contribution = ', cf_gc
        print *, 'Compressibility factor: correlation contribution = ', cf_xc
-       print *, 'Compressibility factor: total = ', 1.0_dp + cf_mf + cf_gc + cf_xc
+       print *, 'Compressibility factor: total = ', &
+            & 1.0_dp + cf_mf + cf_gc + cf_xc
        print *, 'Pressure (virial route) = ', press
-       print *, 'Excess pressure (virial route) = ', sum(rho) * (cf_mf + cf_gc + cf_xc)
+       print *, 'Excess pressure (virial route) = ', &
+            & sum(rho) * (cf_mf + cf_gc + cf_xc)
        print *, 'Compressibility: correlation contribution = ', comp_xc
        print *, 'Compressibility: total = ', comp
        print *, 'Internal energy: mean field contribution = ', un_mf

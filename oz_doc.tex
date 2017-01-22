@@ -47,6 +47,9 @@
 
 \newcommand{\half}{{\textstyle\frac{1}{2}}}
 
+\newcommand{\alt}{\lesssim}
+\newcommand{\agt}{\gtrsim}
+
 \newcommand{\kB}{k_{\mathrm{B}}}
 \newcommand{\kT}{\kB T}
 \newcommand{\myex}{^{\mathrm{ex}}}
@@ -1170,15 +1173,24 @@ This is not used in the code though.  The proof is left as an exercise.
 The matrix operations in \Eqsref{eq:oznd} and \eqref{eq:ozndb} are
 implemented using the standard \verb+MATMUL+ function in \FORTRAN\ 90.
 The matrix inversions are not implemented \perse, but are rather done
-by solving the matrix equation $A\cdot X=B$ using Gauss-Jordan
-elimination with pivoting \cite{NR92}.
+by solving the matrix equation $A\cdot X=B$ using a bespoke subroutine
+\verb+axeqb_reduce+ in the code which implements a simplified version
+of Gauss-Jordan elimination with pivoting (but not $LDU$
+factorisation) \cite{NR92}.
 
 The Ng acceleration scheme is implemented by keeping track of a number
 of previous iterations (typically 6), recycling the storage.  Thus the
 main functions $c_{\mu\nu}'$ and $e_{\mu\nu}'$ are multidimensional:
 the first axis is the spatial discretisation, the second axis is the
 species pair index, and the third axis is the Ng trajectory index
-(cyclical history array).
+(cyclical history array).  The Ng scheme involves also involves
+solving $A\cdot X=B$ but this is done with a call to \verb+DSYSV+ in
+the \LAPACK\ library (which does implement $LDU$ factorisation).  Now
+you might think you could use \verb+DSYSV+ for the matrix operations
+in the OZ inversions, or \verb+axeqb_reduce+ in the Ng accelerator,
+but for some reason connected to the $LDU$ factorisation this leads to
+numerical inaccuracies.  If anyone can shed any light on this please
+let me know!
 
 The thermodynamic quantities in section \ref{sec:thermo} are all
 evaluated by standard trapezium rules, applied to the integrals given
@@ -1190,13 +1202,6 @@ and invisibly implemented in \verb+f2py+.  Also note that the optional
 parameters in \FORTRAN\ function calls can be omitted also in \python,
 and the code will gracefully fall back to the documented defaults.
 
-The solver routines require only $\beta\tilde v_{\mu\nu}\lr$ and
-$\exp[-\beta v'_{\mu\nu}]$, which are prepared in the routines which
-initialise the interaction potential.  In the case of hard cores, to
-facilitate the calculation of the thermodynamic integrals with lower
-bound $d_{\mu\nu}$, we subsequently set $v_{\mu\nu}\lr=v'_{\mu\nu}=0$
-for $r<d_{\mu\nu}$.
-
 \section{Usage notes}
 %
 The code is presented as a suite of functions in a \FORTRAN\ 90
@@ -1204,9 +1209,8 @@ module.  Thus it typically needs a driver code, which can be written
 in \FORTRAN\ 90 or in \python\ with the use of \verb+f2py+ (see
 examples below).  Thermodynamic integration schemes, for example the
 compressibility route to the equation of state, are not implemented
-here.  Rather it seems better to put these into the driver routines,
-as the philosophy has been to make the solution of the basic integral
-equation problem as fast and robust as possible.
+here.  Rather the philosophy has been to make the solution of the
+basic integral equation problem as fast and robust as possible.
 
 \subsection{Routines}
 %
@@ -1222,96 +1226,99 @@ equation problem as fast and robust as possible.
 %
 \item\verb+dpd_potential(charge_type)+ -- Sets up the DPD potential
   described in section \ref{sec:dpd}.  This routine can be called
-  multiple times.  The optional parameter indicates whether the
-  potential should be initialised with Gaussian charges (\verb+1+),
-  Bessel charges (\verb+2+), linear (Groot) charges (\verb+3+), Slater
-  charges with exact interaction (\verb+4+), or Slater charges
-  with approximate interaction (\verb+5+).  The linear case
-  (\verb+3+) is currently incomplete in the sense that the
+  multiple times.  The optional integer parameter indicates whether
+  the potential should be initialised with Gaussian charges
+  (\verb+1+), Bessel charges (\verb+2+), linear (Groot) charges
+  (\verb+3+), Slater charges with exact interaction (\verb+4+), or
+  Slater charges with approximate interaction (\verb+5+).  The linear
+  case (\verb+3+) is currently incomplete in the sense that the
   thermodynamics is not calculated correctly.  If omitted, the
   \verb+charge_type+ defaults to Gaussian (\verb+1+).
 %
-\item\verb+urpm_potential(use_ushort_flag)+ -- Sets up the ultrasoft
+\item\verb+urpm_potential(use_ushort)+ -- Sets up the ultrasoft
   restricted primitive model (URPM) potential with optional softening
   as described in section \ref{sec:softURPM}.  This routine can be
   called multiple times.  It checks that \verb+ncomp = 2+ and forces
-  $z_1=1$ and $z_2=-1$.  The optional flag indicates whether the
+  $z_1=1$ and $z_2=-1$.  The optional logical parameter
+  \verb+use_ushort+ (default \verb+.false.+) indicates whether the
   potential should be formulated to contain a short range real space
-  correction (\verb+use_ushort_flag = 1+).
+  correction.
 %
-\item\verb+rpm_potential(use_ushort_flag)+ -- Sets up the restricted
+\item\verb+rpm_potential(use_ushort)+ -- Sets up the restricted
   primitive model (RPM) with optional softening as described in
   section \ref{sec:softRPM}.  This routine can be called multiple
   times.  It checks that \verb+ncomp = 2+ and forces $z_1=1$ and
-  $z_2=-1$.  The optional flag \verb+use_ushort_flag+ works the same
-  way as described for the softened URPM potential.
+  $z_2=-1$.  The optional logical parameter works the same way as in
+  the URPM potential.
 %
 \item\verb+hs_potential+ -- Sets up one component hard spheres with
   diameter \verb+sigma+.  This routine can be called multiple times.
   It checks that \verb+ncomp = 1+.
 %
 \item\verb+hnc_solve+ -- Calculate the HNC solution.  Specifically,
-  initialise $c'_{\mu\nu}$ if the flag \verb+cold_start+ is set, take
-  enough Picard steps to pump-prime the Ng acceleration method, then
-  attempt to converge to a solution.  This is the basic HNC solver
-  routine and contains appropriate calls to \verb+oz_solve+,
-  \verb+hnc_picard+, \verb+hnc_ng+ and \verb+conv_test+ below.  A
-  warning is issued if the convergence criterion is not met.  If the
-  flag \verb+auto_fns+ is set the three \verb+make_*+ functions are
-  also called, resulting in a complete solution to the problem.  The
-  function \verb+hnc_solve+ should be called only after
-  \verb+initialise+ and the potential has been initialised.  It may be
-  called multiple times with different densities for a given
-  potential, or the potential can be reset between calls.  In
-  later calls, the existing $c'_{\mu\nu}$ is used as a
-  starting point unless the flag \verb+cold_start+ is reset.
+  initialise $c'_{\mu\nu}$ if the logical flag \verb+cold_start+ is
+  set, take enough Picard steps to pump-prime the Ng acceleration
+  method, then attempt to converge to a solution.  This is the basic
+  HNC solver routine and contains appropriate calls to
+  \verb+oz_solve+, \verb+hnc_picard+, \verb+hnc_ng+ and
+  \verb+conv_test+ below.  A warning is issued if the convergence
+  criterion is not met.  If the logical flag \verb+auto_fns+ is also
+  set (the default) the three \verb+make_*+ functions are also called,
+  resulting in a complete solution to the problem.  The function
+  \verb+hnc_solve+ should be called only after \verb+initialise+ and
+  the potential has been initialised.  It may be called multiple times
+  with different densities for a given potential, or the potential can
+  be reset between calls.  In later calls, the existing $c'_{\mu\nu}$
+  is used as a starting point unless the logical flag \verb+cold_start+ is
+  reset.
 %
 \item\verb+msa_solve+ -- Calculate the MSA solution, using a similar
   iterative algorithm to the HNC closure. This routine is the basic
   MSA solver and contains appropriate calls to \verb+oz_solve+,
   \verb+msa_picard+, \verb+msa_ng+ and \verb+conv_test+.  A warning is
-  issued if the convergence criterion is not met.  If the flag
-  \verb+auto_fns+ is set the three \verb+make_*+ functions are also
-  called, resulting in a complete solution to the problem.  Like the
-  others, the function \verb+msa_solve+ should be called only after
-  \verb+initialise+ and the potential has been initialised.  It may be
-  called multiple times with different densities for a given
-  potential, or the potential can be reset between calls.  In these
-  subsequent calls, the existing $c'_{\mu\nu}$ within the hard core
-  regions is used as a starting point unless the flag
-  \verb+cold_start+ is reset. In the case of a warm start,
-  $c'_{\mu\nu}$ outwith the hard core regions is set equal to $-\beta
-  v'_{\mu\nu}$ for the current potential. Note that the MSA is the
-  same as the RPA if there are no hard cores (therefore, use
-  \verb+rpa_solve+ in that case!).
+  issued if the convergence criterion is not met.  If the logical flag
+  \verb+auto_fns+ is set (the default) the three \verb+make_*+
+  functions are also called, resulting in a complete solution to the
+  problem.  Like the HNC, the function \verb+msa_solve+ should be
+  called only after \verb+initialise+ and the potential has been
+  initialised.  It may be called multiple times with different
+  densities for a given potential, or the potential can be reset
+  between calls.  In these subsequent calls, the existing
+  $c'_{\mu\nu}$ within the hard core regions is used as a starting
+  point unless the logical flag \verb+cold_start+ is reset. In all
+  cases though, $c'_{\mu\nu}$ outwith the hard core regions is set
+  equal to $-\beta v'_{\mu\nu}$ for the current potential. Note that
+  the MSA is the same as the RPA if there are no hard cores
+  (therefore, use \verb+rpa_solve+ in that case!).
 %
 \item\verb+rpa_solve+ -- Calculate the RPA solution.  This involves
   only a single round trip through \verb+oz_solve+ from $c'_{\mu\nu} =
-  -\beta v'_{\mu\nu}$.  Provided the flag \verb+auto_fns+ is set,
-  the three \verb+make_*+ functions are also called. The function
-  \verb+rpa_solve+ should be called only after \verb+initialise+ and
-  the potential has been initialised.  It may be called multiple times
-  with different densities for a given potential, or the potential can
-  be reset between calls.  The RPA closure cannot be used with hard
-  cores (see section \ref{sec:RPA}).
+  -\beta v'_{\mu\nu}$.  Provided the logical flag \verb+auto_fns+ is
+  set (the default), the three \verb+make_*+ functions are also
+  called. The function \verb+rpa_solve+ should be called only after
+  \verb+initialise+ and the potential has been initialised.  It may be
+  called multiple times with different densities for a given
+  potential, or the potential can be reset between calls.  The RPA
+  closure cannot be used with hard cores (see section \ref{sec:RPA}).
 %
-\item\verb+save_reference+ -- In the presence of hard cores, the EXP
+\item\verb+save_reference+ -- In the presence of hard cores, EXP
   requires a reference state $\href_{\mu\nu}$, and this routine saves
   the current $h_{\mu\nu}$ solution.  Usually, this reference state
   will be the MSA solution to hard sphere problem without the tail
-  potential, however this is not enforced.  See next entry for a note on
-  the usage.
+  potential, however this is not enforced.  See next entry for a note
+  on the usage.
 %
 \item\verb+exp_refine+ -- Implement the EXP refinement.  Use
   \Eqref{eq:exp} to compute a refined $h_{\mu\nu}$ from the current
   solution and the reference $\href_{\mu\nu}$, then call
   \verb+oz_solve2+ to rebuild the complete solution according to
-  \Eqref{eq:ozndb}.  Provided the flag \verb+auto_fns+ is set, the
-  three \verb+make_*+ functions are also called.  A call to
-  \verb+initialise+ sets $\href_{\mu\nu}=0$, thus \verb+exp_refine+ is
-  suitable for immediate use with soft potentials without hard cores.
-  To use \verb+exp_refine+ for potentials with hard cores we need to
-  calculate and save the reference state, thus (in \FORTRAN\ 90):
+  \Eqref{eq:ozndb}.  Provided the logical flag \verb+auto_fns+ is set
+  (the default), the three \verb+make_*+ functions are also called.  A
+  call to \verb+initialise+ sets $\href_{\mu\nu}=0$, thus
+  \verb+exp_refine+ is suitable for immediate use with soft potentials
+  without hard cores.  To use \verb+exp_refine+ for potentials with
+  hard cores we need to calculate and save the reference state, for example
+  in \FORTRAN\ 90:
 %
 \begin{verbatim}
   [ .. remove tail, eg lb = 0.0 ]
@@ -1322,10 +1329,9 @@ equation problem as fast and robust as possible.
   call exp_refine
 \end{verbatim}
 %
-For hard core potentials we need to recalculate $\href_{\mu\nu}$ every
-time we call \verb+exp_refine+, since \verb+exp_refine+ sets
-$\href_{\mu\nu}=0$ before exiting (for ease of use with soft
-potentials).
+Note that \verb+exp_refine+ restores the reference state after
+completing so it can be called multiple times with the same reference
+state.
 %
 \item\verb+oz_solve+ -- Solve the OZ relation in the form of
   \Eqref{eq:oznd} to find $e'_{\mu\nu}$ from $c'_{\mu\nu}$.  As a
@@ -1402,24 +1408,29 @@ called in any order.
 \item\verb+maxsteps+ -- maximum number of steps to take before giving up on
 convergence (usually safe to leave at default 100).
 %
-\item\verb+verbose+ -- Flag (0 or 1) to print diagnostics (default 0).
+\item\verb+verbose+ -- Logical flag to print solver diagnostics (default
+  \verb+.false.+).
 %
-\item\verb+cold_start+ -- Flag (0 or 1) to indicate that that the
-  solver should execute a cold start by initialising $c'_{\mu\nu}$;
-  this flag is by default only set for the first call to the solvers
-  since it is often the case that a later call can re-use the current
-  solution as the initial guess.  The flag can be re-set by the user
-  for subsequent calls.
+\item\verb+silent+ -- Suppress printing of warning/error messages
+  (default \verb+.true.+).
+%
+\item\verb+cold_start+ -- Logical flag to indicate whether the main
+  solvers should execute a cold start by initialising $c'_{\mu\nu}$.
+  This flag is initially set \verb+.true.+, then set \verb+.false.+
+  after a main solver call since it is often the case that a
+  subsequent problem can re-use the current solution as a good initial
+  guess.  The flag can of course be reset \verb+.true.+ by the user at
+  any point.
 %
 \item\verb+start_type+ -- In a HNC cold start initialise
   $c'_{\mu\nu}=0$ (start type 1), $c'_{\mu\nu}=-\beta v'_{\mu\nu}$
   (start type 2), or $c'_{\mu\nu}=\exp(-\beta v'_{\mu\nu})-1$ (start
   type 3, default).  Usually safe to leave at default.
 %
-\item\verb+auto_fns+ -- Flag (0 or 1) if set (default) the integral
-  equation solver calls all the \verb+make_*+ routines on exit.  Since
-  these routines are relatively inexpensive one would usually leave
-  this flag set.
+\item\verb+auto_fns+ -- Logical flag (default \verb+.true.+) whether
+  to call the \verb+make_*+ routines on exit of the main solver
+  routines.  Since these routines are relatively inexpensive one would
+  usually leave this flag set.
 %
 \item\verb+deltar+ -- The real space grid spacing $\delta_r$ (default 0.01).
 %
@@ -1513,11 +1524,36 @@ convergence (usually safe to leave at default 100).
   automatically by the solver routines unless \verb+auto_fns+ is
   turned off.
 %
-\item\verb+error+ -- The final error estimate for the iterative
-  solvers, should be less than \verb+tol+ if converged.
+\item\verb+error+ -- The final convergence error estimate for the
+  iterative solvers, should be less than \verb+tol+ if converged.
+%
+\item\verb+return_code+ -- Integer indicates success if
+  \verb+return_code = 0+, otherwise an error occurred (see next).
+%
+\item\verb+error_msg+ -- String (character array) describing the
+  problem in the case that \verb+return_code+ is non-zero.  The
+  message is printed out anyway unless the \verb+silent+ flag is set.
+  Note that in \python\ a returned string appears as fixed
+  length binary array and needs massaging to get into a printable
+  form, thus for example:
+%
+\begin{verbatim}
+#!/usr/bin/env python3
+from oz import wizard as w
+...
+if w.return_code: 
+    print('Error: %s' % str(w.error_msg, 'utf-8').strip())
+    exit()
+\end{verbatim}
+%
+\item\verb+closure_name+ -- String (character array) giving the
+  last-used closure (a three-letter acronym).
+%
+\item\verb+potential_name+ -- String (character array) describing the
+  potential model last used to set the potential arrays.
 %
 \end{itemize}
-%
+
 The following quantities are available after a call to
 \verb+make_thermodynamics+ (which is done automatically unless
 \verb+auto_fns+ is turned off).  They are also reported by
@@ -1566,15 +1602,12 @@ The following additional variables may be useful.
 %
 \begin{itemize}
 %
-\item\verb+c(:, :, :)+ and \verb+e(:, :, :)+ -- Arrays containing the
-  offset direct and indirect correlation functions, such that for
-  example \verb+c(i, s, p)+ contains $c'_{\mu\nu}(r_i)$, where
-  \verb+s+ is the species pair index as in \Eqref{eq:ij}, and \verb+p+
-  is the position in the cyclical history array.  After a successful
-  call to one of the main solver routines, the most converged solution
-  is always moved to the \verb+p = 1+ position.  Remember to subtract
-  $\beta v\lr_{\mu\nu}$ if comparing these functions to literature results
-  for $c_{\mu\nu}$.
+\item\verb+c(:, :, 1)+ and \verb+e(:, :, 1)+ -- After a successful
+  call to one of the main solver routines, these contain the most
+  converged solution, such that for example \verb+c(i, s, 1)+ contains
+  $c'_{\mu\nu}(r_i)$, where \verb+s+ is the species pair index as in
+  \Eqref{eq:ij}.  Remember to subtract $\beta v\lr_{\mu\nu}$ if
+  comparing these functions to literature results for $c_{\mu\nu}$.
 %
 \item\verb+ck(:, :)+ and \verb+ek(:, :)+ -- Arrays containing the
   Fourier-transformed offset direct and indirect correlation
@@ -1582,9 +1615,10 @@ The following additional variables may be useful.
     c}_{\mu\nu}\myprime(k_j)$ where \verb+s+ is the species pair
   index.
 %
-\item\verb+h0(:, :)+ -- An array containing the reference state, such
-  that \verb+h0(j, s)+ contains $\href_{\mu\nu}(r_i)$ where
-  \verb+s+ is the species pair index. 
+\item\verb+h0(:, :)+ -- An array containing the reference state total
+  correlation function, such that \verb+h0(i, s)+ contains
+  $\href_{\mu\nu}(r_i)$ where \verb+s+ is the species pair index. Used
+  by \verb+exp_refine+ and \verb+oz_solve2+.
 %
 \item\verb+ushort(:, :)+ and \verb+ulong(:, :)+ -- Arrays containing
   the potential, such that \verb+ushort(i, s)+ contains $\beta
@@ -1592,8 +1626,7 @@ The following additional variables may be useful.
   v\lr_{\mu\nu}(r_i)$, where \verb+s+ is the species index.
 %
 \item\verb+expnegus(:, :)+ -- A similar array containing $\exp(-\beta
-  v'_{\mu\nu})$, thus the exponentiated short range part of the
-  potential.
+  v'_{\mu\nu})$.
 %
 \item\verb+dushort(:, :)+ and \verb+dulong(:, :)+ -- Similar arrays
   containing the derivatives of the potential, $\partial(\beta
@@ -1605,33 +1638,15 @@ The following additional variables may be useful.
   contains $\beta{\tilde v}\lr_{\mu\nu}(k_j)$, where \verb+s+ is the
   species index.
 %
-\item\verb+potential_type+ -- The last used potential type. Currently
-  set to:
-\begin{verbatim}
-1 -- 5 : dpd_potential, corresponds to charge_type
-10, 11 : urpm_potential without, with use_ushort_flag
-20, 21 : rpm_potential without, with use_ushort_flag
-\end{verbatim}
-%
 \item The fixed parameters \verb+pi+, \verb+twopi+, and \verb+fourpi+ 
 ($\pi$, $2\pi$, and $4\pi$) are available and can be utilised if
 convenient.
 %
-\item\verb+USE_GAUSSIAN+, \verb+USE_BESSEL+, \verb+USE_LINEAR+,
-  \verb+USE_SLATER_APPROX+ and\\ \verb+USE_SLATER_EXACT+ are integer
-  constants which can be used for\\ \verb+charge_type+ when
-  calling \verb+dpd_potential+.
-%
-\item\verb+USE_USHORT+ is likewise an integer constant ($=1$) which
-  can be used for \verb+use_ushort_flag+ in
-  \verb+urpm_potential+ and \verb+rpm_potential+.
-  %
 \end{itemize}
 
 Of these, the potential parts may of course be initialised in the
 driver routine, as may the reference state total correlation function
 in which latter case \verb+oz_solve2+ acts as a general OZ solver.
-
 Note that the HNC, MSA and RPA solvers require \emph{only} the long
 range potential in reciprocal space, $\beta{\tilde v}\lr_{\mu\nu}$
 (\verb+ulongk+), and the exponentiated short range potential,
@@ -1646,28 +1661,29 @@ calculations do require all the remaining potential functions though.
 \subsection{Virial route pressure}
 \label{sec:vrp}
 %
-As a basic example the following minimalist \python\ code solves the
+As a basic example the following minimalist code solves the
 HNC closure problem for standard one-component DPD at $\rho=3$ and
 $A=25$, and prints the virial route pressure,
 %
 \begin{verbatim}
+#!/usr/bin/env python3
 from oz import wizard as w
 w.initialise()
 w.arep[0,0] = A = 25.0
-w.dpd_potential(1)
+w.dpd_potential()
 w.rho[0] = rho = 3.0
 w.hnc_solve()
-print 'rho =', rho, ' A =', A
-print 'pressure =', w.press
-print 'energy density =', w.uv
+print('rho =', rho, ' A =', A)
+print('pressure =', w.press)
+print('energy density =', w.uv)
 \end{verbatim}
 %
 with the result
 %
 \begin{verbatim}
 rho = 3.0  A = 25.0
-pressure = 23.5641475668
-energy density = 13.7619524487
+pressure = 23.564147563638308
+energy density = 13.761952448736555
 \end{verbatim}
 %
 The first line imports the \verb+wizard+ of \verb+oz+ and renames it
@@ -1675,7 +1691,7 @@ The first line imports the \verb+wizard+ of \verb+oz+ and renames it
 automatically generated by \verb+f2py+.  The actual results from
 accurate Monte-Carlo simulations are $p=23.71\pm0.01$ and
 $e=13.83\pm0.01$, so the HNC virial route result is in error by
-$\sim0.5$\%.
+$\approx0.5$\%.
 
 \begin{figure}
 \begin{center}
@@ -1692,11 +1708,12 @@ package to plot the pair distribution function and structure factor
 (with a standard normalisation),
 %
 \begin{verbatim}
+#!/usr/bin/env python3
 import matplotlib.pyplot as plt
 from oz import wizard as w
 w.initialise()
 w.arep[0,0] = A = 25.0
-w.dpd_potential(1)
+w.dpd_potential()
 w.rho[0] = rho = 3.0
 w.hnc_solve()
 plt.figure(1)  # This will be g(r)
@@ -1743,24 +1760,24 @@ completely solved.  So for example
 \begin{verbatim}
 w.initialise()
 w.arep[0,0] = 25.0
-w.dpd_potential(1)
+w.dpd_potential()
 w.rho[0] = 3.0
-print 'CR pressure =', cr_press(0.05)
-print 'VR pressure =', w.press
+print('CR pressure =', cr_press(0.05))
+print('VR pressure =', w.press)
 \end{verbatim}
 %
 results in
 %
 \begin{verbatim}
-CR pressure = 22.6662332439
-VR pressure = 23.5641475668
+CR pressure = 22.6662332442
+VR pressure = 23.5641475636383
 \end{verbatim}
 %
 Pressures calculated by the two routes differ by about 4\%
 which appears to be typical for HNC for soft potentials.  Also,
 further investigation reveals the dependence on $\delta\rho$ is linear
 and extrapolates to $p=22.31$ at $\delta\rho\to0$, for $\rho=3$ and
-$A=25$.  So the error from discretising the isotherm is here $<2$\%.
+$A=25$.  So the error from discretising the isotherm is here $\alt2$\%.
 
 \subsection{Free energy}
 \label{sec:feng}
@@ -1811,7 +1828,7 @@ $\muex$ along an isotherm, giving a second routine
 %
 \begin{verbatim}
 def fnex2(drho):
-    fvec = prev = 0.0
+    fvex = prev = 0.0
     n = int(w.rho[0]/drho + 0.5)
     w.cold_start = 1
     for i in range(n):
@@ -1831,33 +1848,31 @@ started.  As an example, to test these,
 w.initialise()
 w.rho[0] = 3.0
 w.arep[0,0] = 25.0
-w.dpd_potential(1)
-print 'energy fnex =', fnex1(0.1)
-print 'mu fnex =    ', fnex2(0.05)
-print 'HNC fnex =   ', w.fnex
+w.dpd_potential()
+print('energy fnex =', fnex1(0.1))
+print('mu fnex =    ', fnex2(0.05))
+print('HNC fnex =   ', w.fnex)
 \end{verbatim}
 %
 (the last of these uses the built-in free energy evaluation for HNC), giving
 %
 \begin{verbatim}
-energy fnex = 5.31588405588 mu fnex = 5.31606130848 HNC fnex =
- 5.31593361272
+energy fnex = 5.31588405588
+mu fnex =     5.31606130857
+HNC fnex =    5.3159336139428195
 \end{verbatim}
 %
-We see that all three routes agree to the fourth decimal place,
-which is a good test of convergence.
-
-Sections \ref{sec:vrp}--\ref{sec:feng} have been coded up as
-\verb+examples.py+. 
+We see that all three routes agree to the third decimal place, which
+is a good test of convergence.  Sections \ref{sec:vrp}--\ref{sec:feng}
+have been coded up as \verb+examples.py+.
 
 \subsection{Further examples}
 
 \begin{itemize}
 %
-\item\verb+gw_p_compare.py+ -- Uses \verb+matplotlib+ to plot
-  $(p-\rho) /A\rho^2$ versus $\rho$ (using virial route pressure), and
-  compare with data from Fig.~4 of \Refcite{GW97}.  The agreement is
-  very good.
+\item\verb+gw_p_compare.py+ -- Plot $(p-\rho) /A\rho^2$ versus $\rho$,
+  and compare with data from Fig.~4 of \Refcite{GW97}.  The agreement
+  is very good.
 %
 \item\verb+wsg_fig5_compare.py+ -- The free energy difference $\Delta
   F$ between a system of $N-1$ A particles and a B particle, and a
@@ -1885,12 +1900,12 @@ Sections \ref{sec:vrp}--\ref{sec:feng} have been coded up as
   Flory-Huggins (regular solution) theory.
 %
 \item\verb+hm_fig4-2_compare.py+ solves for the virial and
-  compressibility route pressure for the MSA and the HNC for hard
+  compressibility route pressure for the MSA and HNC, for hard
   spheres, and compares with the accurate Carnahan-Starling equation of
   state, as in Fig 4.2 of \Refcite{HM06}.  See comments in file for
   more details.
 %
-\item\verb+hm_fig10-2_compare.py+ solves the MSA and the HNC for the
+\item\verb+hm_fig10-2_compare.py+ solves the MSA and HNC for the
   RPM and compares with Monte-Carlo data, as in Fig 10.2 of
   \Refcite{HM06}.  See comments in file for more details.
 %
@@ -1902,11 +1917,10 @@ Sections \ref{sec:vrp}--\ref{sec:feng} have been coded up as
   routine is intended to scan a range of densities to zero in on the
   Kirkwood transition between pure exponential and damped oscillatory
   behaviour in the tails of the total correlation functions.  Both
-  routines are fully provided with command line options and sensible
-  defaults, via the \verb+argparse+ module.  To see the available
-  options use \verb+--help+.  The option \verb+--ncomp+ selects
-  between the pure URPM case (\verb+--ncomp=2+, default) and the
-  solvated URPM case (\verb+--ncomp=3+).
+  routines are driven by command line options, via the \verb+argparse+
+  module.  To see the available options use \verb+--help+.  The option
+  \verb+--ncomp+ selects between the pure URPM case (\verb+--ncomp=2+,
+  default) and the solvated URPM case (\verb+--ncomp=3+).
 %
 \item\verb+rpm_oneoff.py+ is a similar driver routine for exploring
   the RPM.
@@ -1935,7 +1949,7 @@ Sections \ref{sec:vrp}--\ref{sec:feng} have been coded up as
 %
 \end{itemize}
 
-\vspace{36pt}
+%\vspace{36pt}
 \appendix
 %
 \section{Appendix}
