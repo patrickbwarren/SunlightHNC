@@ -1,5 +1,26 @@
 #!/usr/bin/env python3
 
+# This file is part of SunlightDPD - a home for open source software
+# related to the dissipative particle dynamics (DPD) simulation
+# method.
+
+# Copyright (c) 2009-2017 Unilever UK Central Resources Ltd
+# (Registered in England & Wales, Company No 29140; Registered
+# Office: Unilever House, Blackfriars, London, EC4P 4BQ, UK).
+
+# SunlightDPD is free software: you can redistribute it and/or
+# modify it under the terms of the GNU General Public License as
+# published by the Free Software Foundation, either version 3 of the
+# License, or (at your option) any later version.
+
+# SunlightDPD is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with SunlightDPD.  If not, see <http://www.gnu.org/licenses/>.
+
 # The code writes lb, density, pressure, chemical potential.
 # The chemical potential only makes sense for the HNC solution.
 
