@@ -1,8 +1,8 @@
 ## General purpose HNC code
 
-The current release is version 1.9 (beta)
+The current release is version 1.9 (beta).
 
-Version 1.9 brings the source code up to modern FORTRAN standards and corrects a problem with EXP in v1.8  
+Version 1.9 brings the source code up to modern FORTRAN standards and corrects a problem with EXP in v1.8.  
 Version 1.8 includes the MSA closure and various potentials for Slater
 smeared charges.  
 Version 1.7 handles an arbitrary number of
@@ -22,8 +22,9 @@ See [PDF documentation](oz_doc.pdf "oz_doc.pdf") for details.
 
 #### Citation
 
-You are of course welcome to use and modify this code for your own
-projects. If you end up publishing results based on this code, or a
+You are of course expected to use and modify this code for your own
+projects.  
+If you end up publishing results based on this code, or a
 derived version, please cite :
 
 *Screening properties of Gaussian electrolyte models, with application
