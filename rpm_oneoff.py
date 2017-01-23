@@ -164,12 +164,12 @@ elif args.show:
 
     jmax = int(args.skcut*3 / w.deltak)
     plt.plot(w.k[0:jmax],w.ek[0:jmax, 0]+w.ck[0:jmax, 0],
-             label="${\\tilde h}_{11}$")
+             label="${\\tilde h}_{11}(k)$")
     plt.plot(w.k[0:jmax],w.ek[0:jmax, 1]+w.ck[0:jmax, 1],
-             label="${\\tilde h}_{12}$")
+             label="${\\tilde h}_{12}(k)$")
     plt.plot(w.k[0:jmax],
              1.0 + w.rho[0]*(w.ek[0:jmax, 0]+w.ck[0:jmax, 0]
-                             -w.ek[0:jmax, 1]-w.ck[0:jmax, 1]))
+                             -w.ek[0:jmax, 1]-w.ck[0:jmax, 1]), label="$\\ne 0$ !") 
 #    plt.plot(w.k[0:jmax],w.ck[0:jmax, 0],label="${\\tilde c}_{11}$")
 #    plt.plot(w.k[0:jmax],w.ck[0:jmax, 1],label="${\\tilde c}_{12}$")
     plt.legend(loc='lower right')
