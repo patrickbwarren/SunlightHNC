@@ -33,18 +33,19 @@ parser.add_argument('--deltar', action='store', default=0.01, type=float, help='
 parser.add_argument('--alpha', action='store', default=0.2, type=float, help='Picard mixing fraction (default 0.2)')
 parser.add_argument('--npic', action='store', default=6, type=int, help='number of Picard steps (default 6)')
 
-parser.add_argument('--lb', action='store', default=1.0, type=float, help='Bjerrum length (default 1.0)')
 parser.add_argument('--sigma', action='store', default=1.0, type=float, help='hard core diameter (default 1.0)')
-parser.add_argument('--kappa', action='store', default=-1.0, type=float, help='softening parameter (default off)')
-
 parser.add_argument('--rho', action='store', default=0.1, type=float, help='total charge density (default 0.1)')
+parser.add_argument('--lb', action='store', default=1.0, type=float, help='Bjerrum length (default 1.0)')
+parser.add_argument('--kappa', action='store', default=-1.0, type=float, help='softening parameter (default off)')
+parser.add_argument('--ushort', action='store_true', help='use U_short in potential')
+
 parser.add_argument('--grcut', action='store', default=15.0, type=float, help='r cut off for g(r) plots (default 15.0)')
 parser.add_argument('--skcut', action='store', default=15.0, type=float, help='k cut off for S(k) plots (default 15.0)')
 
-parser.add_argument('--msa', action='store_true', help='use MSA (default HNC)')
-parser.add_argument('--exp', action='store_true', help='use EXP refinement')
-parser.add_argument('--npt', action='store', default=1, type=int, help='number of intermediate HNC warm-up steps')
-parser.add_argument('--ushort', action='store_true', help='use U_short in potential')
+parser.add_argument('--hnc', action='store_true', help='use HNC (default)')
+parser.add_argument('--msa', action='store_true', help='use MSA')
+parser.add_argument('--exp', action='store_true', help='use EXP (+ MSA)')
+parser.add_argument('--npt', action='store', default=1, type=int, help='number of intermediate warm-up steps')
 
 parser.add_argument('--dump', action='store_true', help='write out g(r)')
 parser.add_argument('--show', action='store_true', help='plot results')
@@ -67,36 +68,34 @@ w.lb = args.lb
 w.sigma = args.sigma
 w.kappa = args.kappa
 
-w.rpm_potential(args.ushort)
 
 w.rho[0] = 0.5 * args.rho
-w.rho[1] = w.rho[0]
+w.rho[1] = 0.5 * args.rho
 
 if args.verbose:
     w.write_params()
     w.verbose = True
 
-if args.msa:
-    w.msa_solve()
-elif args.exp:
-    w.lb = 0.0
-    w.rpm_potential(args.ushort)
+if args.exp:    
+    w.hs_potential()
     w.msa_solve()
     w.save_reference()
-    w.lb = args.lb
+    s = str(w.closure_name, 'utf-8').strip()
+    print('rho = %g \thard spheres \t%s error = %g' % (np.sum(w.rho), s, w.error))
+    args.msa = True
+
+for i in range(args.npt):
+    w.lb = (i + 1.0) / args.npt * args.lb
     w.rpm_potential(args.ushort)
-    w.msa_solve()
+    if args.msa: w.msa_solve()
+    else: w.hnc_solve()
+    s = str(w.closure_name, 'utf-8').strip()
+    print('rho = %g \tlb = %g \tkappa = %g \t%s error = %g' % (np.sum(w.rho), w.lb, w.kappa, s, w.error))
+        
+if args.exp:
     w.exp_refine()
-else:
-    if args.npt == 1:
-        w.hnc_solve()
-    else:
-        for i in range(args.npt):
-            w.lb = (i + 1.0) / args.npt * args.lb
-            print('lb = ', w.lb)
-            w.rpm_potential(args.ushort)
-            w.hnc_solve()
-            if args.verbose: print('HNC error = ', w.error)
+    s = str(w.closure_name, 'utf-8').strip()
+    print('rho = %g \tlb = %g \tkappa = %g \t%s error = %g' % (np.sum(w.rho), w.lb, w.kappa, s, w.error))
 
 if w.return_code: exit()
 
