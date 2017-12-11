@@ -36,14 +36,15 @@ parser.add_argument('--npic', action='store', default=6, type=int, help='number 
 parser.add_argument('--lb', action='store', default=1.0, type=float, help='Bjerrum length (default 1.0)')
 parser.add_argument('--sigma', action='store', default=1.0, type=float, help='like charge size (default 1.0)')
 parser.add_argument('--sigmap', action='store', default=1.5, type=float, help='unlike charge size (default 1.5)')
-parser.add_argument('--rhoz', action='store', default=0.1, type=float, help='total charge density (default 0.1)')
+parser.add_argument('--rho', action='store', default=0.1, type=float, help='total charge density (default 0.1)')
 
 parser.add_argument('--rpa', action='store_true', help='use RPA (default HNC)')
 parser.add_argument('--exp', action='store_true', help='use EXP refinement')
 parser.add_argument('--ushort', action='store_true', help='use U_short in potential')
 
 parser.add_argument('--grcut', action='store', default=15.0, type=float, help='r cut off for g(r) plots (default 15.0)')
-parser.add_argument('--show', action='store_true', help='plot results (default print results)')
+parser.add_argument('--show', action='store_true', help='plot results')
+parser.add_argument('--dump', action='store_true', help='write out g(r)')
 
 args = parser.parse_args()
 
@@ -61,10 +62,11 @@ w.sigmap = args.sigmap
 
 w.urpm_potential(args.ushort)
 
-w.rho[0] = 0.5 * args.rhoz
-w.rho[1] = 0.5 * args.rhoz
+w.rho[0] = 0.5 * args.rho
+w.rho[1] = 0.5 * args.rho
 
-eps = 1e-20
+if not args.dump:
+    w.write_params()
 
 if (args.rpa or args.exp): w.rpa_solve()
 else: w.hnc_solve()
@@ -73,11 +75,12 @@ if args.exp: w.exp_refine()
 
 if w.return_code: exit()
 
+if not args.dump:
+    w.write_thermodynamics()    
+
 if args.show:
 
-    w.write_params()
-
-    w.write_thermodynamics()
+    eps = 1e-20
 
     imax = int(args.grcut / w.deltar)
 
@@ -115,8 +118,10 @@ if args.show:
 
     plt.show()
 
-else:
+if args.dump:
 
-    for i in range(w.ng-1):
+    for i in range(w.ng-1): 
+        if (w.r[i] > args.grcut):
+            break;
         print("%g\t%g\t%g\t%g" % (w.r[i], w.hr[i, 0, 0], w.hr[i, 0, 1], w.hr[i, 1, 1]))
 

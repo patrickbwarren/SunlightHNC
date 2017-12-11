@@ -309,16 +309,18 @@ c'=\exp[-\beta v'+e']-e'-1\,.
 \end{equation}
 %
 The first of these requires that we know the Fourier transform of the
-long range part of the potential.  The main advantage of the Ng split
-is that $c'(r)$ and $e'(r)$ are now genuinely short-ranged so the
-numerical behaviour is much better, certain thermodynamic integrals
-are guaranteed convergence, and the expected asymptotic behaviour of
-$c(r)$ is explicitly incorporated.  The numerical solution scheme
-based on \Eqsref{eq:oz1d} and \eqref{eq:hnc1d} goes through as before.
-The initial choices for $c'(r)$ are replicated from above with $v$
-replaced by $v'$.  If there is a hard core part of the potential, it
-should be regarded as belonging to $v'(r)$, and we make sure we always
-work with $\exp[-\beta v'(r)]$.
+long range part of the potential.  The second requires that we know
+the exponentiated short range potential.  Any hard core interaction
+can be parked safely in the latter but the consequential freedom to
+specify $v\lr(r)$ inside the hard core should be used wisely!
+
+The main advantage of the Ng split is that $c'(r)$ and $e'(r)$ are now
+genuinely short-ranged so the numerical behaviour is much better,
+certain thermodynamic integrals are guaranteed convergence, and the
+expected asymptotic behaviour of $c(r)$ is explicitly incorporated.
+The numerical solution scheme based on \Eqsref{eq:oz1d} and
+\eqref{eq:hnc1d} goes through as before.  The initial choices for
+$c'(r)$ are replicated from above with $v$ replaced by $v'$.
 
 \subsection{Multicomponent HNC}
 %
@@ -396,9 +398,7 @@ $e_{\mu\nu}'(r)$.  We substitute this into the HNC closure in
 cycle is iterated to convergence and in practice a few Picard
 iterations are used to pump-prime a multicomponent version of the Ng
 acceleration scheme.  As before, any hard core part of the potential
-should be regarded as belonging to $\beta v_{\mu\nu}'$ and the
-numerical scheme should be constructed to use only $\exp[-\beta
-  v_{\mu\nu}']$ (which can be pre-computed).
+should be parked in $\exp[-\beta v_{\mu\nu}']$.
 
 \subsubsection{Pair functions}
 %
@@ -428,9 +428,15 @@ where ${\tilde h}_{\mu\nu}={\tilde c}_{\mu\nu}\myprime + {\tilde
   e}_{\mu\nu}\myprime$ (again, $\beta v_{\mu\nu}\lr$ cancels); the
 Fourier transforms ${\tilde c}_{\mu\nu}\myprime$ and ${\tilde
   e}_{\mu\nu}\myprime$ are available as a byproduct of solving the OZ
-relation.  The unusual choice of normalisation is made to facilitate
+relation.  With this normalisation the structure factors obey
+$S_{\mu\nu}(k)\to\rho_\mu\delta_{\mu\nu}$ as $k\to\infty$.  An
+alternative (and more popular) normalisation, for which
+$S_{\mu\nu}(k)\to\delta_{\mu\nu}$ as $k\to\infty$, is obtained from
+the above expression by multiplying by $({\rho_\mu\rho_\nu})^{-1/2}$.
+
+The unusual choice of normalisation is made to facilitate
 the calculation of the density-density and charge-charge structure
-factors, \viz\
+factors \via\
 %
 \begin{equation}
   S_{NN}(k) = \frac{\sum_{\mu\nu}S_{\mu\nu}(k)}{\sum_\mu\rho_\mu}\,,\quad
@@ -439,11 +445,6 @@ factors, \viz\
 \end{equation}
 %
 (assuming the ion valencies are $z_\mu$ for the latter).
-With the above normalisation the structure factors obey
-$S_{\mu\nu}(k)\to\rho_\mu\delta_{\mu\nu}$ as $k\to\infty$.  An
-alternative (and more popular) normalisation, for which
-$S_{\mu\nu}(k)\to\delta_{\mu\nu}$ as $k\to\infty$, is obtained from
-the above expression by multiplying by $({\rho_\mu\rho_\nu})^{-1/2}$.
 
 \subsection{Multicomponent MSA}
 %
@@ -452,11 +453,7 @@ $g_{\mu\nu}(r)=0$ for $r\le d_{\mu\nu}$, and $c_{\mu\nu}(r)= -\beta
 v_{\mu\nu}(r)$ for $r> d_{\mu\nu}$.  Here, $d_{\mu\nu}$ is the range
 of the hard core repulsion between species $\mu$ and $\nu$
 (\ie\ $v'_{\mu\nu}=\infty$ for $r\le d_{\mu\nu}$).  Rewriting as usual
-in terms of our offset functions
-$v'_{\mu\nu}=v_{\mu\nu}-v\lr_{\mu\nu}$, $c'_{\mu\nu}=c_{\mu\nu}+\beta
-v\lr_{\mu\nu}$ and $e'_{\mu\nu}=e_{\mu\nu}-\beta v\lr_{\mu\nu}$, where
-$h_{\mu\nu}=g_{\mu\nu}-1$ and $e_{\mu\nu}=h_{\mu\nu}-c_{\mu\nu}$, the
-MSA closure is
+in terms of our offset functions the MSA closure becomes
 %
 \begin{equation}
   c'_{\mu\nu}=\Bigl\{\begin{array}{ll}
@@ -467,19 +464,19 @@ MSA closure is
 %
 This is almost a drop-in replacement for the HNC closure in
 \Eqref{eq:hncnd}.  For a cold start we can initialise $c'_{\mu\nu}=-1$
-for $r\le d_{\mu\nu}$.  In practice we can leave $c'_{\mu\nu}=-\beta
-v'_{\mu\nu}$ untouched for $r>d_{\mu\nu}$ during the iterative
-solution.  However, we make sure that whenever the potential is
-changed $c'_{\mu\nu}$ is correctly reset.
+for $r\le d_{\mu\nu}$, and we leave $c'_{\mu\nu}=-\beta v'_{\mu\nu}$
+untouched for $r>d_{\mu\nu}$ during the iterative solution.  We make
+sure that whenever the potential is changed $c'_{\mu\nu}$ for
+$r>d_{\mu\nu}$ is correctly set.
 
 \subsection{Multicomponent RPA}\label{sec:RPA}
 %
 The RPA closure is a special case of the MSA when there are no hard
 cores, and is represented by $c_{\mu\nu}(r)=-\beta v_{\mu\nu}(r)$.
 This is in fact one of the choices for initialising the HNC solver.
-Given the HNC machinery, the implementation of the RPA is almost
-completely trivial and comprises a single round trip through the OZ
-solver starting from $c'_{\mu\nu}(r)=-\beta v'_{\mu\nu}(r)$.
+Given the HNC machinery, the implementation of the RPA is trivial and
+comprises a single round trip through the OZ solver starting from
+$c'_{\mu\nu}(r)=-\beta v'_{\mu\nu}(r)$.  No iteration is required.
 
 \subsection{Multicomponent EXP}\label{sec:EXP}
 %
@@ -487,7 +484,7 @@ The EXP approximation is a  refinement of the MSA/RPA
 in which the  total correlation functions are replaced by
 %
 \begin{equation}
-  h_{\mu\nu}\to(1+\href_{\mu\nu})\exp(h_{\mu\nu}-\href_{\mu\nu})-1
+  h_{\mu\nu}\to(1+\href_{\mu\nu})\exp(h_{\mu\nu}-\href_{\mu\nu})-1\,,
   \label{eq:exp}
 \end{equation}
 %
@@ -911,10 +908,11 @@ $\sigma=\lambda$.  Originally, Gon\-z\'a\-lez-Melchor
 but choosing $\beta=5/(8\lambda)$ makes \Eqsref{eq:slaterapprox} and
 \eqref{eq:slaterexact} have the same limiting value as $r\to0$ and
 brings the approximate interaction much closer to the exact result.
-Note that in terms of the reciprocal space potential $\beta {\tilde
-  v}\lr(k)=4\pi\lB k^{-2}(1+\sigma^2k^2/n)^{-n}$, there is a natural
-hierarchy from Bessel ($n=1$), to approximate Slater ($n=2$), to
-exact Slater ($n=4$), to Gaussian ($n\to\infty$).
+
+Note that by writing $\beta {\tilde v}\lr(k)=4\pi\lB
+k^{-2}(1+k^2\sigma^2/n)^{-n}$, there is a natural hierarchy going from
+Bessel ($n=1$), to approximate Slater ($n=2$), to exact Slater
+($n=4$), and to Gaussian ($n\to\infty$).
 
 \subsection{Softened URPM potential}
 \label{sec:softURPM}
@@ -985,25 +983,20 @@ These should not be included if we follow the second route.
 Another potential which can be solved in the code is for charged hard
 spheres: both the `vanilla' RPM, and a version in which the unlike
 pair potential is artificially softened, are provided.  For charged
-hard spheres the interaction potential $v'_{\mu\nu}(r)=\infty$ for
-$r<\sigma$ where $\sigma$ is the hard core diameter.  This is regarded
-as belonging to the short range interaction potential, for which we
-are always careful to use the exponentiated version.  Thus hard cores
-are actually implemented by calculating $\exp[-\beta v'_{\mu\nu}]$
-using one of the choices below, and setting this to zero for
-$r<\sigma$.
+hard spheres the short range interaction potential can be taken to be
+defined by $e^{-\beta v'}=0$ for $r\le\sigma$ and $e^{-\beta v'}=1$
+for $r>\sigma$, where $\sigma$ is the hard core diameter.
 
 Given this, we might na\"\i{}vely think of using $\lB/r$ as the long
 range part of the potential.  Although the divergence at $r\to0$ is
-hidden inside the hard core, this choice forces the discretised offset
-functions $c'_{\mu\nu}$ and $e'_{\mu\nu}$ to try to compensate, giving
-rise to numerical artefacts (note that the actual direct and indirect
-correlation functions, $c_{\mu\nu}$ and $e_{\mu\nu}$, are
-non-vanishing and finite inside the hard core region, thus the
-divergence in $\beta v\lr$ unavoidably contaminates the offset
-functions).  Numerically much better is to chose the long range
-potential such that it is bounded inside the hard cores.  By far
-the simplest choice is a truncated Coulomb law,
+hidden inside the hard core, this choice forces the offset functions
+$c'_{\mu\nu}$ and $e'_{\mu\nu}$ to try to compensate, giving rise to
+numerical discretisation artefacts (note that the actual direct and
+indirect correlation functions, $c_{\mu\nu}$ and $e_{\mu\nu}$, are
+non-vanishing and finite inside the hard core region).  Numerically
+much better is to chose the long range potential such that it is
+bounded inside the hard cores.  By far the simplest choice is a
+truncated Coulomb law,
 %
 \begin{equation}
   v\lr=\Bigl\{\begin{array}{ll}
@@ -1012,8 +1005,9 @@ the simplest choice is a truncated Coulomb law,
   \end{array}
 \end{equation}
 %
-This does least damage to the potential outside the hard core.  With
-this choice, the Fourier transform is easily shown to be
+This does least damage to the potential outside the hard core so we
+can continue to use our simple definition of $e^{-\beta v'}$ above.
+With this choice, the Fourier transform is easily shown to be
 %
 \begin{equation}
   {\tilde v}\lr=\frac{4\pi\lB}{k^2}\times\frac{\sin k\sigma}{k\sigma}\,.
@@ -1024,8 +1018,8 @@ The RPM potential in the code is implemented using these choices.
 As in the softened URPM, there are two ways the softened RPM can be
 implemented.  The first way is to work purely in reciprocal space
 which takes the model away from the SYM condition expressed in
-\Eqref{eq:sp}.  In this approach the short range part $v'_{12}=0$
-(outside the hard cores), and the long range part is
+\Eqref{eq:sp}.  In this approach we change the long range part between
+unlike charges to
 %
 \begin{equation}
 v_{12}\lr=-\frac{\lB\kT}{r} \erf(\kappa r)\,.
@@ -1034,26 +1028,22 @@ v_{12}\lr=-\frac{\lB\kT}{r} \erf(\kappa r)\,.
 The potential in reciprocal space and the derivatives follow
 \mutmut\ from the softened URPM case (\ie\ URPM $\sigma\to0$ and
 $\sigma'\to1/(2\kappa)$).  Unlike the na\"\i{}ve $\lB/r$ choice for
-the RPM, this softened potential is well-behaved inside the hard core.
-Thus the softened RPM is implemented with the truncated repulsive
-Coulomb interaction between like charges, and the softened attractive
-Coulomb interaction between unlike charges.
+the vanilla RPM, this softened potential is well-behaved inside the
+hard core and can be used without further modification.
   
 In the alternative approach we retain the SYM condition so that the
-long range part is given by the vanilla RPM above, and the short range
+long range part is given as in the vanilla RPM above, and the short range
 part is
 %
 \begin{equation}
   v'_{12}\equiv-\Delta v_{12}=\frac{\lB\kT}{r}\erfc(\kappa r)
-  +\Bigl(\frac{\lB\kT}{\sigma}-\frac{\lB\kT}{r}\Bigr)\Theta(\sigma-r)
+  \quad(r>\sigma)\,,
 \label{eq:dv12a}
 \end{equation}
 %
-where $\Theta(\sigma-r)$ is the Heaviside function (and obviously,
-$v'_{11}=v'_{22}=0$).  As in the URPM, we define $\Delta v_{12}$ as
-the potential that should be \emph{added} to the softened RPM, to
-recover the standard RPM.  This is so that we can use the softened
-version as a reference fluid.
+together with $\exp[-\beta v'_{12}]=0$ for $r\le\sigma$.
+As in the URPM, we define $\Delta v_{12}$ as the potential that should
+be \emph{added} to the softened RPM, to recover the standard RPM.
 
 For both routes the mean field contributions to the virial route
 pressure and energy are non-zero only for the unlike pairs.  We can
@@ -1202,7 +1192,7 @@ therein.
 If scripting with \python\ note that the \python\ array index is one
 less than the \FORTRAN\ array index.  This conversion is seamlessly
 and invisibly implemented in \verb+f2py+.  Also note that the optional
-parameters in \FORTRAN\ function calls can be omitted also in \python,
+parameters in the \FORTRAN\ function calls can be omitted also in \python,
 and the code will gracefully fall back to the documented defaults.
 
 \section{Usage notes}
@@ -1254,9 +1244,9 @@ basic integral equation problem as fast and robust as possible.
   $z_2=-1$.  The optional logical parameter works the same way as in
   the URPM potential.
 %
-\item\verb+hs_potential+ -- Sets up one component hard spheres with
-  diameter \verb+sigma+.  This routine can be called multiple times.
-  It checks that \verb+ncomp = 1+.
+\item\verb+hs_potential+ -- Sets up hard sphere potentials for an
+  arbitrary number of components, with common diameter \verb+sigma+.
+  This routine can be called multiple times.
 %
 \item\verb+hnc_solve+ -- Calculate the HNC solution.  Specifically,
   initialise $c'_{\mu\nu}$ if the logical flag \verb+cold_start+ is
@@ -1324,7 +1314,7 @@ basic integral equation problem as fast and robust as possible.
   in \FORTRAN\ 90:
 %
 \begin{verbatim}
-  [ .. remove tail, eg lb = 0.0 ]
+  [ .. remove tail, eg lb = 0.0 or call hs_potential ]
   call msa_solve
   call save_reference
   [ .. restore tail, eg lb > 0.0 ]
@@ -1601,7 +1591,7 @@ virial route compressibility factor $\beta p/\rho$.
 %
 \end{itemize}
 
-The following additional variables may be useful.
+The following internal variables may be useful.
 %
 \begin{itemize}
 %
