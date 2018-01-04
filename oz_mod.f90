@@ -51,6 +51,7 @@ module wizard
        & DSYSV_ERROR = 3, &
        & MISMATCH_ERROR = 4
 
+  character (len=4)  :: version = '1.10'  ! The current version
   character (len=3)  :: closure_name = '' ! TLA for the last-used closure 
   character (len=32) :: model_name = ''   ! Model name
   character (len=47) :: error_msg = ''    ! Error message
@@ -1470,9 +1471,10 @@ contains
 
     ! Also valid ONLY for HNC is the expression for the free energy
     ! density f = sum_mu rho_mu mu_mu - p (we compute the excess).
+    ! Note that pressure = rhotot * (1.0_dp + cf_gc + cf_mf + cf_xc)
 
-    fvex = sum(rho(:) * muex(:)) - rhotot * (cf_mf + cf_xc)
-    fnex = sum(rho(:) * muex(:)) / rhotot - (cf_mf + cf_xc)
+    fvex = sum(rho(:) * muex(:)) - rhotot * (cf_gc + cf_mf + cf_xc)
+    fnex = sum(rho(:) * muex(:)) / rhotot - (cf_gc + cf_mf + cf_xc)
 
   end subroutine make_thermodynamics
 

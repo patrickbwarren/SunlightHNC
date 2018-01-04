@@ -68,7 +68,6 @@ w.lb = args.lb
 w.sigma = args.sigma
 w.kappa = args.kappa
 
-
 w.rho[0] = 0.5 * args.rho
 w.rho[1] = 0.5 * args.rho
 
