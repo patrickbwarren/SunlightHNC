@@ -37,8 +37,8 @@ import math as m
 import scipy.optimize
 from oz import wizard as w
 
-def urpm_press(rhoz):
-    w.rho[0] = rhoz / 2.0
+def urpm_press(rho):
+    w.rho[0] = rho / 2.0
     w.rho[1] = w.rho[0]
     if (args.rpa or args.exp): w.rpa_solve()
     else: w.hnc_solve()
@@ -47,8 +47,8 @@ def urpm_press(rhoz):
     if (args.verbose):
         w.write_params()
         w.write_thermodynamics()
-    p = w.press - args.targp
-    return p
+    pdiff = w.press - args.targp
+    return pdiff
 
 parser = argparse.ArgumentParser(description='find density for target pressure for URPM')
 
@@ -59,8 +59,11 @@ parser.add_argument('--npic', action='store', default=6, type=int, help='number 
 
 parser.add_argument('--lb', action='store', default=100.0, type=float, help='Bjerrum length (default 100.0)')
 parser.add_argument('--sigma', action='store', default=1.0, type=float, help='like charge size (default 1.0)')
-parser.add_argument('--rhoz', action='store', default=0.1, type=float, help='total charge density (default 0.1)')
+parser.add_argument('--rho', action='store', default=0.1, type=float, help='total charge density (default 0.1)')
 parser.add_argument('--targp', action='store', default=0.0, type=float, help='target pressure (default 0.0)')
+
+parser.add_argument('--ushort', action='store_true', help='use U_short in potential')
+parser.add_argument('--dpd', action='store_true', help='use DPD potential')
 
 parser.add_argument('--rpa', action='store_true', help='use RPA (default HNC)')
 parser.add_argument('--exp', action='store_true', help='use EXP refinement')
@@ -78,12 +81,24 @@ w.initialise()
 
 w.lb = args.lb
 w.sigma = args.sigma
+w.sigmap = args.sigma
 w.z[0] = 1.0
 w.z[1] = -1.0
-w.dpd_potential()
 
-rho1 = scipy.optimize.fsolve(urpm_press, args.rhoz)
-p = urpm_press(rho1)
+
+
+if args.dpd: w.dpd_potential(args.ushort)
+else: w.urpm_potential(args.ushort)
+
+rho1 = scipy.optimize.fsolve(urpm_press, args.rho)
+
+urpm_press(rho1)
+
+model = str(w.model_name, 'utf-8').strip()
+closure = str(w.closure_name, 'utf-8').strip()
+version = str(w.version, 'utf-8').strip()
+
+print('SunlightHNC v%s: %s, %s closure, err = %g' % (version, model, closure, w.error))
 
 print("%g\t%g\t%g\t%g" % (w.lb, 2.0*w.rho[0], w.press, m.log(w.rho[0]) + w.muex[0]))
 
