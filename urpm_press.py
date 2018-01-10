@@ -26,6 +26,7 @@
 
 import argparse
 import math as m
+import numpy as np
 from oz import wizard as w
 
 parser = argparse.ArgumentParser(description='URPM thermodynamics generator')
@@ -37,7 +38,11 @@ parser.add_argument('--npic', action='store', default=6, type=int, help='number 
 
 parser.add_argument('--lb', action='store', default=1.0, type=float, help='Bjerrum length (default 1.0)')
 parser.add_argument('--sigma', action='store', default=1.0, type=float, help='like charge size (default 1.0)')
-parser.add_argument('--rhoz', action='store', default=0.1, type=float, help='total charge density (default 0.1)')
+parser.add_argument('--rho', action='store', default=0.1, type=float, help='total charge density (default 0.1)')
+parser.add_argument('--npt', action='store', default=1, type=int, help='number of intermediate warm-up steps')
+
+parser.add_argument('--ushort', action='store_true', help='use U_short in potential')
+parser.add_argument('--dpd', action='store_true', help='use DPD potential')
 
 parser.add_argument('--rpa', action='store_true', help='use RPA (default HNC)')
 parser.add_argument('--exp', action='store_true', help='use EXP refinement')
@@ -55,21 +60,36 @@ w.initialise()
 
 w.lb = args.lb
 w.sigma = args.sigma
+w.sigmap = args.sigma
 w.z[0] = 1.0
 w.z[1] = -1.0
-w.dpd_potential()
 
-w.rho[0] = args.rhoz / 2.0
+w.verbose = args.verbose > 0
+
+w.rho[0] = args.rho / 2.0
 w.rho[1] = w.rho[0]
 
-if args.rpa: w.rpa_solve()
-else: w.hnc_solve()
+for i in range(args.npt):
+    w.lb = (i + 1.0) / args.npt * args.lb
 
-if args.exp: w.exp_refine()
+    if args.dpd: w.dpd_potential(args.ushort)
+    else: w.urpm_potential(args.ushort)
+
+    if args.rpa: w.rpa_solve()
+    else: w.hnc_solve()
+    if args.exp: w.exp_refine()
+    
+    s = str(w.closure_name, 'utf-8').strip()
+    print('rho = %g \tlb = %g \tkappa = %g \t%s error = %g' % (np.sum(w.rho), w.lb, w.kappa, s, w.error))
 
 if (args.verbose):
     w.write_params()
     w.write_thermodynamics()
 
-print("%g\t%g\t%g\t%g" % (w.lb, 2.0*w.rho[0], w.press, m.log(w.rho[0]) + w.muex[0]))
+model = str(w.model_name, 'utf-8').strip()
+closure = str(w.closure_name, 'utf-8').strip()
+version = str(w.version, 'utf-8').strip()
 
+print('SunlightHNC v%s: %s, %s closure, err = %g' % (version, model, closure, w.error))
+
+print("%g\t%g\t%g\t%g" % (w.lb, 2.0*w.rho[0], w.press, m.log(w.rho[0]) + w.muex[0]))

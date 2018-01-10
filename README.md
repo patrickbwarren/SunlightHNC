@@ -1,7 +1,8 @@
 ## General purpose HNC code
 
-The current release is version 1.9 (beta).
+The current release is version 1.10 (beta).
 
+Version 1.10 fixes a bug: the contact virial pressure contribution was accidentally omitted in the HNC free energy.  
 Version 1.9 brings the source code up to modern FORTRAN standards and corrects a problem with EXP in v1.8.  
 Version 1.8 includes the MSA closure and various potentials for Slater
 smeared charges.  

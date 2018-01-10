@@ -81,6 +81,8 @@ w.dpd_potential()
 w.rho[0] = rho = 3.0
 w.hnc_solve()
 
+print('SunlightHNC v%s' % str(w.version, 'utf-8').strip())
+
 print('\n*** Example 6.1 ***\n')
 print('rho =', rho, ' A =', A)
 print('pressure =', w.press)

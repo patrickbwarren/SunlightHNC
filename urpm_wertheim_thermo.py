@@ -75,8 +75,9 @@ parser.add_argument('--npic', action='store', default=6, type=int, help='number 
 
 parser.add_argument('--lb', action='store', default=1.0, type=float, help='Bjerrum length (default 1.0)')
 parser.add_argument('--sigma', action='store', default=1.0, type=float, help='like charge size (default 1.0)')
-parser.add_argument('--sigmap', action='store', default=1.5, type=float, help='unlike charge size (default 1.5)')
-parser.add_argument('--rhoz', action='store', default=0.1, type=float, help='total charge density (default 0.1)')
+parser.add_argument('--sigmap', action='store', default=1.0, type=float, help='unlike charge size (default 1.0)')
+parser.add_argument('--rho', action='store', default=0.1, type=float, help='total charge density (default 0.1)')
+parser.add_argument('--npt', action='store', default=1, type=int, help='number of intermediate warm-up steps')
 
 parser.add_argument('--rpa', action='store_true', help='use RPA (default HNC)')
 parser.add_argument('--exp', action='store_true', help='use EXP refinement')
@@ -93,56 +94,79 @@ w.npic = args.npic
 
 w.initialise()
 
-w.lb = args.lb
-w.sigma = args.sigma
-w.sigmap = args.sigmap
+w.sigma, w.sigmap = args.sigma, args.sigmap
 
-w.urpm_potential(args.ushort)
+for i in range(args.npt):
+    w.lb = (i + 1.0) / args.npt * args.lb
+    w.urpm_potential(args.ushort)
+    w.rho[0] = 0.5 * args.rho
+    w.rho[1] = 0.5 * args.rho
 
-w.rho[0] = 0.5 * args.rhoz
-w.rho[1] = 0.5 * args.rhoz
+    if (args.rpa or args.exp): w.rpa_solve()
+    else: w.hnc_solve()
 
-# w.write_params()
+    if args.exp: w.exp_refine()
 
-if (args.rpa or args.exp): w.rpa_solve()
-else: w.hnc_solve()
+    print('rho = %g \tlb = %g \tsigmap = %g \tHNC error = %g' % (np.sum(w.rho), w.lb, w.sigmap, w.error))
 
-if args.exp: w.exp_refine()
-
+    
+w.write_params()
 w.write_thermodynamics()
+
+model = str(w.model_name, 'utf-8').strip()
+closure = str(w.closure_name, 'utf-8').strip()
+version = str(w.version, 'utf-8').strip()
+
+print('SunlightHNC v%s: %s, %s closure, err = %g' % (version, model, closure, w.error))
 
 if (args.test == 1):
     print('fnex (direct)       =', w.fnex)
     print('fnex (energy route) =', fnex1(100))
     print('fnex (mu route)     =', fnex2(100))
 
+p_virial = 0.0 + w.press # otherwise keeps updating as w.press changes
+
+print("%g\t%g\t%g\t%g\tRESULT" % (w.lb, 2.0*w.rho[0], w.press, m.log(w.rho[0]) + w.muex[0]))
+
 # Calculate the Wertheim integral
 
-d12 = 0.0
 
-for i in range(w.ng-1):
-    g12 = 1.0 + w.hr[i, 0, 1]
-    du12 = w.lb * (m.erfc(0.5*w.r[i]/w.sigma) - m.erfc(0.5*w.r[i]/w.sigmap)) / w.r[i]
-    d12 = d12 + w.fourpi * w.deltar * (m.exp(-du12) - 1.0) * g12 * w.r[i]**2
+rho = np.sum(w.rho)
 
-rhotot = args.rhoz
-x = (m.sqrt(1.0 + 2.0*d12*rhotot) - 1.0) / (d12*rhotot)
-rhomon = x * rhotot
-rhodim = d12 * rhomon**2 / 4.0
+if (w.sigmap == w.sigma):
+
+    d12 = 0.0
+    x = 1.0
+    rhomon = rho
+    rhodim = 0.0
+    fvass = 0.0
+
+else:
+
+    d12 = 0.0
+    for i in range(w.ng-1):
+        g12 = 1.0 + w.hr[i, 0, 1]
+        du12 = w.lb * (m.erfc(0.5*w.r[i]/w.sigma) - m.erfc(0.5*w.r[i]/w.sigmap)) / w.r[i]
+        d12 = d12 + w.fourpi * w.deltar * (m.exp(-du12) - 1.0) * g12 * w.r[i]**2
+
+    x = (m.sqrt(1.0 + 2.0*d12*rho) - 1.0) / (d12*rho)
+    rhomon = x * rho
+    rhodim = d12 * rhomon**2 / 4.0
+
 
 print('Wertheim D+- = ', d12)
 print('Wertheim x = ', x)
-print('Total density = ', rhotot)
+print('Total density = ', rho)
 print('Monomer density = ', rhomon)
 print('Dimer density = ', rhodim)
 print('Mass balance monomer + 2*dimer = ', rhomon + 2.0*rhodim)
 print('Association constant dimer / (0.5 monomer)^2 = ', rhodim / (0.5*rhomon)**2)
 
-fvass = rhotot * m.log(x) + rhodim
+fvass = rho * m.log(x) + rhodim
 fvtot = w.fvex + fvass
 
 print('Wertheim association free energy density = ', fvass)
 print('Reference fluid free energy density = ', w.fvex)
 print('Total free energy density = ', fvtot)
-print('Total free energy per particle = ', fvtot / rhotot)
+print('Total free energy per particle = ', fvtot / rho)
 

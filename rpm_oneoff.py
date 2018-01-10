@@ -42,10 +42,9 @@ parser.add_argument('--ushort', action='store_true', help='use U_short in potent
 parser.add_argument('--grcut', action='store', default=15.0, type=float, help='r cut off for g(r) plots (default 15.0)')
 parser.add_argument('--skcut', action='store', default=15.0, type=float, help='k cut off for S(k) plots (default 15.0)')
 
-parser.add_argument('--hnc', action='store_true', help='use HNC (default)')
-parser.add_argument('--msa', action='store_true', help='use MSA')
-parser.add_argument('--exp', action='store_true', help='use EXP (+ MSA)')
-parser.add_argument('--npt', action='store', default=1, type=int, help='number of intermediate warm-up steps')
+parser.add_argument('--msa', action='store_true', help='use MSA instead of HNC')
+parser.add_argument('--exp', action='store_true', help='use EXP (implies MSA)')
+parser.add_argument('--nwarm', action='store', default=1, type=int, help='number of intermediate warm-up steps')
 
 parser.add_argument('--dump', action='store_true', help='write out g(r)')
 parser.add_argument('--show', action='store_true', help='plot results')
@@ -64,10 +63,8 @@ w.initialise()
 
 # print(w.c.shape)
 
-w.lb = args.lb
 w.sigma = args.sigma
 w.kappa = args.kappa
-
 
 w.rho[0] = 0.5 * args.rho
 w.rho[1] = 0.5 * args.rho
@@ -80,19 +77,24 @@ if args.exp:
     w.hs_potential()
     w.msa_solve()
     w.save_reference()
+    w.backup()
     s = str(w.closure_name, 'utf-8').strip()
     print('rho = %g \thard spheres \t%s error = %g' % (np.sum(w.rho), s, w.error))
     args.msa = True
 
-for i in range(args.npt):
-    w.lb = (i + 1.0) / args.npt * args.lb
+for i in range(args.nwarm):
+    w.lb = (i + 1.0) / args.nwarm * args.lb
     w.rpm_potential(args.ushort)
-    if args.msa: w.msa_solve()
-    else: w.hnc_solve()
+    if args.msa:
+        if args.exp: w.restore()
+        w.msa_solve()
+    else:
+        w.hnc_solve()
     s = str(w.closure_name, 'utf-8').strip()
     print('rho = %g \tlb = %g \tkappa = %g \t%s error = %g' % (np.sum(w.rho), w.lb, w.kappa, s, w.error))
         
 if args.exp:
+    w.backup()
     w.exp_refine()
     s = str(w.closure_name, 'utf-8').strip()
     print('rho = %g \tlb = %g \tkappa = %g \t%s error = %g' % (np.sum(w.rho), w.lb, w.kappa, s, w.error))

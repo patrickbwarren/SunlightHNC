@@ -51,6 +51,7 @@ module wizard
        & DSYSV_ERROR = 3, &
        & MISMATCH_ERROR = 4
 
+  character (len=4)  :: version = '1.10'  ! The current version
   character (len=3)  :: closure_name = '' ! TLA for the last-used closure 
   character (len=32) :: model_name = ''   ! Model name
   character (len=47) :: error_msg = ''    ! Error message
@@ -116,6 +117,8 @@ module wizard
        & muex(:),           & ! chemical potential array
        & c(:, :, :),        & ! direct correlation functions (dcfs)
        & e(:, :, :),        & ! indirect correlation functions (icfs)
+       & c0(:, :),          & ! backup direct correlation functions
+       & e0(:, :),          & ! backup indirect correlation functions
        & h0(:, :),          & ! reference total correlation functions
        & hr(:, :, :),       & ! current total correlation functions
        & ck(:, :),          & ! transform of dcfs
@@ -148,6 +151,8 @@ contains
     allocate(tl(nfnc))
     allocate(c(ng-1, nfnc, nps))
     allocate(e(ng-1, nfnc, nps))
+    allocate(c0(ng-1, nfnc))
+    allocate(e0(ng-1, nfnc))
     allocate(h0(ng-1, nfnc))
     allocate(hr(ng-1, ncomp, ncomp))
     allocate(ck(ng-1, nfnc))
@@ -537,7 +542,7 @@ contains
     irc = nint(sigma / deltar)
 
     ulong(:,1) = lb / r
-    ulong(1:irc,1) = lB / sigma
+    ulong(1:irc,1) = lb / sigma
     ulongk(:,1) = fourpi * lb * sin(k*sigma)  / (sigma * k**3)
     dulong(:,1) = - lb / r**2
     dulong(1:irc,1) = 0.0_dp
@@ -1026,6 +1031,24 @@ contains
     closure_name = 'HNC'
   end subroutine hnc_solve
 
+! Pair of functions to backup and restore the c and e functions at
+! position 1 in the history trajectory.  If restoring cannot assume
+! earlier points in history trajectory have any relevance, so would
+! usually fill with Picard iterations (which will be the default if
+! the usual solvers are called).  Not documented yet in oz_doc.
+
+  subroutine ec1_save
+    implicit none
+    c0(:, :) = c(:, :, 1)
+    e0(:, :) = e(:, :, 1)
+  end subroutine ec1_save
+
+  subroutine ec1_restore
+    implicit none
+    c(:, :, 1) = c0(:, :)
+    e(:, :, 1) = e0(:, :)
+  end subroutine ec1_restore
+
 ! Calculate the difference between the direct correlation functions
 ! for the current and previous iteration, used as a convergence test;
 ! return answer in variable 'error'.
@@ -1470,9 +1493,10 @@ contains
 
     ! Also valid ONLY for HNC is the expression for the free energy
     ! density f = sum_mu rho_mu mu_mu - p (we compute the excess).
+    ! Note that pressure = rhotot * (1.0_dp + cf_gc + cf_mf + cf_xc)
 
-    fvex = sum(rho(:) * muex(:)) - rhotot * (cf_mf + cf_xc)
-    fnex = sum(rho(:) * muex(:)) / rhotot - (cf_mf + cf_xc)
+    fvex = sum(rho(:) * muex(:)) - rhotot * (cf_gc + cf_mf + cf_xc)
+    fnex = sum(rho(:) * muex(:)) / rhotot - (cf_gc + cf_mf + cf_xc)
 
   end subroutine make_thermodynamics
 
