@@ -31,6 +31,13 @@ module wizard
   
   integer, parameter :: dp = kind(1.0d0)
 
+  integer, parameter :: & ! Enumeration of current closures
+       & NO_CLOSURE  = 0, &
+       & HNC_CLOSURE = 1, &
+       & RPA_CLOSURE = 2, &
+       & MSA_CLOSURE = 3, &
+       & EXP_CLOSURE = 4
+
   integer, parameter :: & ! Enumeration of current potential models
        & NO_MODEL_TYPE = 0, &
        & DPD_GAUSSIAN_CHARGES = 1, &
@@ -69,16 +76,17 @@ module wizard
        & rootpi = sqrt(pi)
 
   integer :: &
-       & start_type = 3,  & ! how to initialise in a cold start
-       & model_type = 0,  & ! which potential was (last) chosen
-       & istep,           & ! current position in iterative solver
-       & ng = 4096,       & ! grid size
-       & ncomp = 1,       & ! number of chemical components
-       & nfnc = 0,        & ! number of functions, = ncomp (ncomp + 1) / 2
-       & nps = 6,         & ! number of previous states used in Ng method
-       & npic = 6,        & ! number of Picard steps
-       & maxsteps = 100,  & ! max number of steps to take for convergence
-       & return_code = 0    ! error code (see above)
+       & start_type = 3,    & ! how to initialise in a cold start
+       & model_type = 0,    & ! which potential was (last) chosen
+       & closure_type = 0,  & ! last-used closure 
+       & istep,             & ! current position in iterative solver
+       & ng = 4096,         & ! grid size
+       & ncomp = 1,         & ! number of chemical components
+       & nfnc = 0,          & ! number of functions, = ncomp (ncomp + 1) / 2
+       & nps = 6,           & ! number of previous states used in Ng method
+       & npic = 6,          & ! number of Picard steps
+       & maxsteps = 100,    & ! max number of steps to take for convergence
+       & return_code = 0      ! error code (see above)
 
   integer*8 :: plan  ! FFTW plan for fast discrete sine transforms
 
@@ -1029,25 +1037,8 @@ contains
        call make_thermodynamics
     end if
     closure_name = 'HNC'
+    closure_type = HNC_CLOSURE
   end subroutine hnc_solve
-
-! Pair of functions to backup and restore the c and e functions at
-! position 1 in the history trajectory.  If restoring cannot assume
-! earlier points in history trajectory have any relevance, so would
-! usually fill with Picard iterations (which will be the default if
-! the usual solvers are called).  Not documented yet in oz_doc.
-
-  subroutine ec1_save
-    implicit none
-    c0(:, :) = c(:, :, 1)
-    e0(:, :) = e(:, :, 1)
-  end subroutine ec1_save
-
-  subroutine ec1_restore
-    implicit none
-    c(:, :, 1) = c0(:, :)
-    e(:, :, 1) = e0(:, :)
-  end subroutine ec1_restore
 
 ! Calculate the difference between the direct correlation functions
 ! for the current and previous iteration, used as a convergence test;
@@ -1222,6 +1213,7 @@ contains
        call make_thermodynamics
     end if
     closure_name = 'MSA'
+    closure_type = MSA_CLOSURE
   end subroutine msa_solve
 
 ! Given the HNC machinery, the implementation of the RPA is almost
@@ -1243,6 +1235,7 @@ contains
     end if
     error = 0.0_dp
     closure_name = 'RPA'
+    closure_type = RPA_CLOSURE
   end subroutine rpa_solve
 
 ! Save the reference state, assuming the c and e functions are those
@@ -1276,6 +1269,7 @@ contains
        call make_thermodynamics
     end if
     closure_name = 'EXP'
+    closure_type = EXP_CLOSURE
   end subroutine exp_refine
 
 ! Construct the structure factors out of the transform of the total
@@ -1463,40 +1457,44 @@ contains
 
     ! Finally do the chemical potentials (this is valid ONLY for HNC).
 
-    ! Evaluate t_ij = 4 pi int_0^inf (h_ij e_ij / 2 - c_ij) r^2 dr.
-    ! Note that the contribution from both end-points again vanishes.
-    ! We can use c' for c in the second term because the long range
-    ! part is accounted for analytically (it is the same integral as
-    ! appears in the compressibility), but we must use e = e' + Ulong
-    ! for the first term.
+    if (closure_type.eq.HNC_CLOSURE) then
 
-    do i = 1, nfnc
-       t(i) = fourpi * deltar * sum((0.5_dp*(c(:,i,1) + e(:,i,1)) &
-            & * (e(:,i,1) + ulong(:,i)) - c(:,i,1)) * r(:)**2)
-    end do
+       ! Evaluate t_ij = 4 pi int_0^inf (h_ij e_ij / 2 - c_ij) r^2 dr.
+       ! Note that the contribution from both end-points again vanishes.
+       ! We can use c' for c in the second term because the long range
+       ! part is accounted for analytically (it is the same integral as
+       ! appears in the compressibility), but we must use e = e' + Ulong
+       ! for the first term.
 
-    ! The excess chemical potential of the ith component is then sum_j
-    ! rho_j t_ij
-
-    muex = 0.0_dp
-
-    do i = 1, ncomp
-       do j = 1, ncomp
-          if (i.le.j) then
-             ij = i + j*(j-1)/2
-          else
-             ij = j + i*(i-1)/2
-          end if
-          muex(i) = muex(i) + rho(j) * (t(ij) + tl(ij))
+       do i = 1, nfnc
+          t(i) = fourpi * deltar * sum((0.5_dp*(c(:,i,1) + e(:,i,1)) &
+               & * (e(:,i,1) + ulong(:,i)) - c(:,i,1)) * r(:)**2)
        end do
-    end do
 
-    ! Also valid ONLY for HNC is the expression for the free energy
-    ! density f = sum_mu rho_mu mu_mu - p (we compute the excess).
-    ! Note that pressure = rhotot * (1.0_dp + cf_gc + cf_mf + cf_xc)
+       ! The excess chemical potential of the ith component is then sum_j
+       ! rho_j t_ij
 
-    fvex = sum(rho(:) * muex(:)) - rhotot * (cf_gc + cf_mf + cf_xc)
-    fnex = sum(rho(:) * muex(:)) / rhotot - (cf_gc + cf_mf + cf_xc)
+       muex = 0.0_dp
+
+       do i = 1, ncomp
+          do j = 1, ncomp
+             if (i.le.j) then
+                ij = i + j*(j-1)/2
+             else
+                ij = j + i*(i-1)/2
+             end if
+             muex(i) = muex(i) + rho(j) * (t(ij) + tl(ij))
+          end do
+       end do
+
+       ! Also valid ONLY for HNC is the expression for the free energy
+       ! density f = sum_mu rho_mu mu_mu - p (we compute the excess).
+       ! Note that pressure = rhotot * (1.0_dp + cf_gc + cf_mf + cf_xc)
+
+       fvex = sum(rho(:) * muex(:)) - rhotot * (cf_gc + cf_mf + cf_xc)
+       fnex = sum(rho(:) * muex(:)) / rhotot - (cf_gc + cf_mf + cf_xc)
+
+    end if
 
   end subroutine make_thermodynamics
 
@@ -1504,26 +1502,35 @@ contains
   subroutine write_thermodynamics
     integer :: i
 
+    if (closure_type.eq.NO_CLOSURE) then
+       print *, 'No closure = no thermodynamics'
+       return
+    end if
+    
     if (model_type.eq.DPD_LINEAR_CHARGES) then
        print *, 'No thermodynamics for ', model_name
-    else
-       print *, 'Thermodynamics for ', model_name
-       print *, closure_name, ' closure, convergence = ', error
-       print *, 'Compressibility factor: mean field contribution = ', cf_mf
-       print *, 'Compressibility factor: contact contribution = ', cf_gc
-       print *, 'Compressibility factor: correlation contribution = ', cf_xc
-       print *, 'Compressibility factor: total = ', &
-            & 1.0_dp + cf_mf + cf_gc + cf_xc
-       print *, 'Pressure (virial route) = ', press
-       print *, 'Excess pressure (virial route) = ', &
-            & sum(rho) * (cf_mf + cf_gc + cf_xc)
-       print *, 'Compressibility: correlation contribution = ', comp_xc
-       print *, 'Compressibility: total = ', comp
-       print *, 'Internal energy: mean field contribution = ', un_mf
-       print *, 'Internal energy: correlation contribution = ', un_xc
-       print *, 'Internal energy: un (per particle) = ', un
-       print *, 'Internal energy: un / 3 = ', un / 3.0_dp
-       print *, 'Internal energy: uv (per unit volume) = ', uv
+       return
+    end if
+
+    print *, 'Thermodynamics for ', model_name
+    print *, closure_name, ' closure, convergence = ', error
+    print *, 'Compressibility factor: mean field contribution = ', cf_mf
+    print *, 'Compressibility factor: contact contribution = ', cf_gc
+    print *, 'Compressibility factor: correlation contribution = ', cf_xc
+    print *, 'Compressibility factor: total = ', &
+         & 1.0_dp + cf_mf + cf_gc + cf_xc
+    print *, 'Pressure (virial route) = ', press
+    print *, 'Excess pressure (virial route) = ', &
+         & sum(rho) * (cf_mf + cf_gc + cf_xc)
+    print *, 'Compressibility: correlation contribution = ', comp_xc
+    print *, 'Compressibility: total = ', comp
+    print *, 'Internal energy: mean field contribution = ', un_mf
+    print *, 'Internal energy: correlation contribution = ', un_xc
+    print *, 'Internal energy: un (per particle) = ', un
+    print *, 'Internal energy: un / 3 = ', un / 3.0_dp
+    print *, 'Internal energy: uv (per unit volume) = ', uv
+
+    if (closure_type.eq.HNC_CLOSURE) then
        do i = 1, ncomp
           print *, 'Chemical potential: species ', i, ' = ', muex(i)
        end do

@@ -77,7 +77,6 @@ if args.exp:
     w.hs_potential()
     w.msa_solve()
     w.save_reference()
-    w.backup()
     s = str(w.closure_name, 'utf-8').strip()
     print('rho = %g \thard spheres \t%s error = %g' % (np.sum(w.rho), s, w.error))
     args.msa = True
@@ -86,18 +85,17 @@ for i in range(args.nwarm):
     w.lb = (i + 1.0) / args.nwarm * args.lb
     w.rpm_potential(args.ushort)
     if args.msa:
-        if args.exp: w.restore()
         w.msa_solve()
     else:
         w.hnc_solve()
     s = str(w.closure_name, 'utf-8').strip()
     print('rho = %g \tlb = %g \tkappa = %g \t%s error = %g' % (np.sum(w.rho), w.lb, w.kappa, s, w.error))
-        
+
 if args.exp:
-    w.backup()
     w.exp_refine()
-    s = str(w.closure_name, 'utf-8').strip()
-    print('rho = %g \tlb = %g \tkappa = %g \t%s error = %g' % (np.sum(w.rho), w.lb, w.kappa, s, w.error))
+    
+s = str(w.closure_name, 'utf-8').strip()
+print('rho = %g \tlb = %g \tkappa = %g \t%s error = %g' % (np.sum(w.rho), w.lb, w.kappa, s, w.error))
 
 if w.return_code: exit()
 
