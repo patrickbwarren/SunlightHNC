@@ -70,6 +70,8 @@
 \newcommand{\gc}{g^{c}}
 \newcommand{\href}{h^{(0)}}
 
+\newcommand{\varbeta}{\text{\ss}}
+
 % The following are used to typeset a box of width character '0'
 \newlength{\zerolen}
 \settowidth{\zerolen}{0}
@@ -91,7 +93,7 @@
 
 \begin{document}
 
-\noindent{\bf\large FORTRAN 90 Ornstein-Zernike solver --- version 1.9.1}\\[6pt]
+\noindent{\bf\large FORTRAN 90 Ornstein-Zernike solver --- version 1.11}\\[6pt]
 \noindent{\it Patrick B Warren, Unilever R\&D Port Sunlight (January
   2017)}\\[6pt]
 
@@ -108,8 +110,11 @@ projects. If you end up publishing results based on this, please cite\\
 
 \vspace{0.25in}
 \noindent 
-Version 1.10 fixes a bug: the contact virial pressure contribution
-was accidentally omitted from the HNC free energy.\\
+Last two point releases fix bugs in the treatment of hard cores: the contact
+virial pressure contribution was missing from the HNC free energy
+(fixed in v1.10), and the compressibility and HNC chemical potentials
+was missing a mean-field term for the off-SYM RPM potential (fixed in
+v1.11).\\
 
 \noindent Features of version 1.9:
 \begin{itemize}
@@ -741,8 +746,8 @@ short range part is
 \newcommand{\rc}{r_c}
 \newcommand{\lB}{l_{\mathrm{B}}}
 \begin{equation}
-v'_{\mu\nu}(r)=\left\{\begin{array}{ll}
-\frac{1}{2}A_{\mu\nu}\kT(1-r/\rc)^2 & r<\rc\\[3pt]
+\beta v'_{\mu\nu}(r)=\left\{\begin{array}{ll}
+\frac{1}{2}A_{\mu\nu}(1-r/\rc)^2 & r<\rc\\[3pt]
 0 & r \ge \rc
 \end{array}\right.\,.
 \end{equation}
@@ -762,7 +767,7 @@ SYM condition and is given by
 %
 \begin{equation}
 v_{\mu\nu}\lr(r)=z_\mu z_\nu v\lr(r)\,,\quad
-v\lr(r)=\frac{\lB\kT}{r}
+\beta v\lr(r)=\frac{\lB}{r}
 \erf\Bigl(\frac{r}{2\sigma}\Bigr)
 \label{eq:dpdvlr}
 \end{equation}
@@ -864,23 +869,23 @@ Gonz\'alez-Melchor \etal\ \cite{GM+06}.  They use an approximate
 expression for the interaction potential, for which we have
 %
 \begin{equation}
-  \beta v\lr(r)=\frac{\lB}{r}\Bigl[1-e^{-2\beta r}(1+\beta r)\Bigr]\,.
+  \beta v\lr(r)=\frac{\lB}{r}\Bigl[1-e^{-2\varbeta r}(1+\varbeta r)\Bigr]\,.
   \label{eq:slaterapprox}
 \end{equation}
 %
 \begin{equation}
   \frac{\partial(\beta v\lr)}{\partial r}=
-  -\frac{\lB}{r^2}\Bigl[1-e^{-2\beta r}(1+2\beta r(1+\beta r))\Bigr]\,,
+  -\frac{\lB}{r^2}\Bigl[1-e^{-2\varbeta r}(1+2\varbeta r(1+\varbeta r))\Bigr]\,,
 \end{equation}
 %
 \begin{equation}
-\beta {\tilde v}\lr(k)=\frac{4\pi\lB}{k^2}\times\frac{1}{(1+k^2/4\beta^2)^2}\,.
+\beta {\tilde v}\lr(k)=\frac{4\pi\lB}{k^2}\times\frac{1}{(1+k^2/4\varbeta^2)^2}\,.
 \end{equation}
 %
-These actually corresponds to a charge density $\beta^2 e^{-2\beta
-  r}/\pi r$ ($\beta$ is a parameter here, not to be confused with
-$1/\kT$). The equivalent Gaussian smearing length is here
-$\sigma=1/\beta\sqrt{2}$.
+These actually corresponds to a charge density $\varbeta^2
+e^{-2\varbeta r}/\pi r$ where $\varbeta$ is a smearing parameter, not
+to be confused with $\beta=1/\kT$. The equivalent Gaussian smearing
+length is here $\sigma=1/\varbeta\sqrt{2}$.
 
 The intended charge density in Slater smearing is
 $(1/\pi\lambda^3)e^{-2r/\lambda}$.  It turns out that there are exact
@@ -906,10 +911,10 @@ namely
 %
 The equivalent Gaussian smearing length for these exact expressions is
 $\sigma=\lambda$.  Originally, Gon\-z\'a\-lez-Melchor
-\etal\ \cite{GM+06} had $\beta=1/\lambda$ in \Eqref{eq:slaterapprox},
-but choosing $\beta=5/(8\lambda)$ makes \Eqsref{eq:slaterapprox} and
-\eqref{eq:slaterexact} have the same limiting value as $r\to0$ and
-brings the approximate interaction much closer to the exact result.
+\etal\ \cite{GM+06} mistakenly set $\varbeta=1/\lambda$ in
+\Eqref{eq:slaterapprox}, but the correct mapping
+$\varbeta=5/(8\lambda)$ makes \Eqsref{eq:slaterapprox} and
+\eqref{eq:slaterexact} have the same limiting value as $r\to0$.
 
 Note that by writing $\beta {\tilde v}\lr(k)=4\pi\lB
 k^{-2}(1+k^2\sigma^2/n)^{-n}$, there is a natural hierarchy going from
@@ -930,9 +935,9 @@ this takes the model away from the SYM condition expressed in
 and the long range part is
 %
 \begin{equation}
-v_{11}\lr=v_{22}\lr=\frac{\lB\kT}{r}
+\beta v_{11}\lr=v_{22}\lr=\frac{\lB}{r}
 \erf\Bigl(\frac{r}{2\sigma}\Bigr)\quad
-v_{12}\lr=-\frac{\lB\kT}{r}
+\beta v_{12}\lr=-\frac{\lB}{r}
 \erf\Bigl(\frac{r}{2\sigmap}\Bigr)
 \end{equation}
 %
@@ -944,7 +949,7 @@ approach we retain the SYM condition so that the long range part is
 given by \Eqref{eq:dpdvlr} and the short range part is
 %
 \begin{equation}
-v'_{12}\equiv-\Delta v_{12}=-\frac{\lB\kT}{r}
+\beta v'_{12}\equiv-\beta \Delta v_{12}=-\frac{\lB}{r}
 \erf\Bigl(\frac{r}{2\sigmap}\Bigr)
 +\frac{\lB\kT}{r}
 \erf\Bigl(\frac{r}{2\sigma}\Bigr)
@@ -1001,7 +1006,7 @@ bounded inside the hard cores.  By far the simplest choice is a
 truncated Coulomb law,
 %
 \begin{equation}
-  v\lr=\Bigl\{\begin{array}{ll}
+  \beta v\lr=\Bigl\{\begin{array}{ll}
   \lB/\sigma & r\le\sigma\,,\\
   \lB/r & r > \sigma\,.
   \end{array}
@@ -1012,10 +1017,12 @@ can continue to use our simple definition of $e^{-\beta v'}$ above.
 With this choice, the Fourier transform is easily shown to be
 %
 \begin{equation}
-  {\tilde v}\lr=\frac{4\pi\lB}{k^2}\times\frac{\sin k\sigma}{k\sigma}\,.
+  \beta {\tilde v}\lr=\frac{4\pi\lB}{k^2}\times\frac{\sin k\sigma}{k\sigma}\,.
 \end{equation}
 %
-The RPM potential in the code is implemented using these choices.
+The RPM potential in the code is implemented using these
+choices. However this choice has a knock-on effect on the
+thermodynamics discussed below.
 
 As in the softened URPM, there are two ways the softened RPM can be
 implemented.  The first way is to work purely in reciprocal space
@@ -1024,7 +1031,7 @@ which takes the model away from the SYM condition expressed in
 unlike charges to
 %
 \begin{equation}
-v_{12}\lr=-\frac{\lB\kT}{r} \erf(\kappa r)\,.
+\beta v_{12}\lr=-\frac{\lB}{r} \erf(\kappa r)\,.
 \end{equation}
 %
 The potential in reciprocal space and the derivatives follow
@@ -1038,7 +1045,7 @@ long range part is given as in the vanilla RPM above, and the short range
 part is
 %
 \begin{equation}
-  v'_{12}\equiv-\Delta v_{12}=\frac{\lB\kT}{r}\erfc(\kappa r)
+  \beta v'_{12}\equiv-\beta\Delta v_{12}=\frac{\lB}{r}\erfc(\kappa r)
   \quad(r>\sigma)\,,
 \label{eq:dv12a}
 \end{equation}
@@ -1072,16 +1079,18 @@ vanish.
 
 If we take the first, purely reciprocal space route, the failure to
 satisfy the SYM condition means the compressibility and chemical
-potentials need to take account of $v_{\mu\nu}\lr$.  This leads to the
-long range contributions 
+potentials need to take account of $v_{\mu\nu}\lr$.  This leads to a
+contribution for unlike pairs
 %
 \begin{equation}
-{4\pi}\int_0^\infty\!\!dr\,r^2\,\beta
-v'_{12}=\frac{\pi\lB}{\kappa^2}\,.
+  {4\pi}\int_0^\infty\!\!dr\,r^2\,
+  \Bigl[\frac{\lB}{r}\erfc(\kappa r)
+    +\Bigl(\frac{\lB}{\sigma}
+    -\frac{\lB}{r}\Bigr)\Theta(\sigma-r)\Bigr]
+  =\frac{\pi\lB}{\kappa^2}-\frac{2\pi\lB\sigma^2}{3}\,.
 \end{equation}
 %
-These should not be included if we follow the second route, and
-vanishes in any case for the RPM case ($\kappa\to\infty$).
+The second term accounts for the choice of $v\lr$ in the core.
 
 \section{Implementation notes}
 %

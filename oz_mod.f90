@@ -58,7 +58,7 @@ module wizard
        & DSYSV_ERROR = 3, &
        & MISMATCH_ERROR = 4
 
-  character (len=4)  :: version = '1.10'  ! The current version
+  character (len=4)  :: version = '1.11'  ! The current version
   character (len=3)  :: closure_name = '' ! TLA for the last-used closure 
   character (len=32) :: model_name = ''   ! Model name
   character (len=47) :: error_msg = ''    ! Error message
@@ -597,8 +597,8 @@ contains
             & + (1/(2.0_dp*kappa**2) - sigma**2/3.0_dp) * erfc(kappa*sigma) )
        tu(2) = pi*lb * ( sigma * exp(-kappa**2*sigma**2) / (kappa*rootpi) &
             & + (1/(2.0_dp*kappa**2) - sigma**2) * erfc(kappa*sigma) )
-       if (.not.uuflag) then ! off SYM condition
-          tl(2) = pi*lb / kappa**2
+       if (.not.uuflag) then ! off SYM condition; missing last term added in v1.11
+          tl(2) = pi*lb / kappa**2 - 2.0_dp*pi*lb*sigma**2 / 3.0_dp
        end if
     end if
 
@@ -1031,13 +1031,13 @@ contains
        c(:, :, 1) = c(:, :, i1)
        e(:, :, 1) = e(:, :, i1)
     end if
+    closure_name = 'HNC'
+    closure_type = HNC_CLOSURE
     if (auto_fns) then
        call make_pair_functions
        call make_structure_factors
        call make_thermodynamics
     end if
-    closure_name = 'HNC'
-    closure_type = HNC_CLOSURE
   end subroutine hnc_solve
 
 ! Calculate the difference between the direct correlation functions
@@ -1207,13 +1207,13 @@ contains
        c(:, :, 1) = c(:, :, i1)
        e(:, :, 1) = e(:, :, i1)
     end if
+    closure_name = 'MSA'
+    closure_type = MSA_CLOSURE
     if (auto_fns) then
        call make_pair_functions
        call make_structure_factors
        call make_thermodynamics
     end if
-    closure_name = 'MSA'
-    closure_type = MSA_CLOSURE
   end subroutine msa_solve
 
 ! Given the HNC machinery, the implementation of the RPA is almost
@@ -1228,14 +1228,14 @@ contains
     c(:,:,1) = - ushort(:,:)
     call oz_solve
     if (return_code.gt.NO_ERROR) return
+    error = 0.0_dp
+    closure_name = 'RPA'
+    closure_type = RPA_CLOSURE
     if (auto_fns) then
        call make_pair_functions
        call make_structure_factors
        call make_thermodynamics
     end if
-    error = 0.0_dp
-    closure_name = 'RPA'
-    closure_type = RPA_CLOSURE
   end subroutine rpa_solve
 
 ! Save the reference state, assuming the c and e functions are those
@@ -1263,13 +1263,13 @@ contains
     call oz_solve2
     if (return_code.gt.NO_ERROR) return
     h0 = hsave
+    closure_name = 'EXP'
+    closure_type = EXP_CLOSURE
     if (auto_fns) then
        call make_pair_functions
        call make_structure_factors
        call make_thermodynamics
     end if
-    closure_name = 'EXP'
-    closure_type = EXP_CLOSURE
   end subroutine exp_refine
 
 ! Construct the structure factors out of the transform of the total
@@ -1490,6 +1490,7 @@ contains
        ! Also valid ONLY for HNC is the expression for the free energy
        ! density f = sum_mu rho_mu mu_mu - p (we compute the excess).
        ! Note that pressure = rhotot * (1.0_dp + cf_gc + cf_mf + cf_xc)
+       ! -- missing contact contribution added in v1.10
 
        fvex = sum(rho(:) * muex(:)) - rhotot * (cf_gc + cf_mf + cf_xc)
        fnex = sum(rho(:) * muex(:)) / rhotot - (cf_gc + cf_mf + cf_xc)
