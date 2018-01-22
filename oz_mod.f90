@@ -129,6 +129,7 @@ module wizard
        & e0(:, :),          & ! backup indirect correlation functions
        & h0(:, :),          & ! reference total correlation functions
        & hr(:, :, :),       & ! current total correlation functions
+       & hc(:, :),          & ! current contact values
        & ck(:, :),          & ! transform of dcfs
        & ek(:, :),          & ! transform of icfs
        & sk(:, :, :),       & ! partial structure factors
@@ -163,6 +164,7 @@ contains
     allocate(e0(ng-1, nfnc))
     allocate(h0(ng-1, nfnc))
     allocate(hr(ng-1, ncomp, ncomp))
+    allocate(hc(ncomp, ncomp))
     allocate(ck(ng-1, nfnc))
     allocate(ek(ng-1, nfnc))
     allocate(sk(ng-1, ncomp, ncomp))
@@ -1304,7 +1306,9 @@ contains
 
   subroutine make_pair_functions
     implicit none
-    integer :: i, j, ij
+    integer :: i, j, ij, irc
+    real(kind=dp) :: r1, r2, h1, h2
+
     do j = 1, ncomp
        do i = 1, j
           ij = i + j*(j-1)/2
@@ -1312,6 +1316,27 @@ contains
           hr(:, j, i) = hr(:, i, j)
        end do
     end do
+
+    ! The contact value in the case of hard cores.  We extrapolate
+    ! from the two nearest points.
+
+    do j = 1, ncomp
+       do i = 1, j
+          ij = i + j*(j-1)/2
+          if (diam(ij).gt.0.0_dp) then
+             irc = nint(diam(ij) / deltar)
+             r1 = r(irc+1)
+             r2 = r(irc+2)
+             h1 = c(irc+1, ij, 1) + e(irc+1, ij, 1)
+             h2 = c(irc+2, ij, 1) + e(irc+2, ij, 1)
+             hc(i, j) = ( (h1 - h2) * diam(i) + h2 * r1 - h1 * r2 ) / (r1 - r2)
+          else
+             hc(i, j) = 0.0_dp
+          end if
+          hc(j, i) = hc(i, j)
+       end do
+    end do
+    
   end subroutine make_pair_functions
 
 ! Calculate various thermodynamics properties by spatial integration
@@ -1333,7 +1358,7 @@ contains
   subroutine make_thermodynamics
     implicit none
     integer :: i, j, ij, irc
-    real(kind=dp) :: rhotot, r1, r2, g1, g2, gc
+    real(kind=dp) :: rhotot, r1, r2, h1, h2, hc
     real(kind=dp) :: rhoxx(nfnc), t(nfnc)
 
     ! rhoxx is rho x_i x_j, doubled up for the off-diagonal components
@@ -1389,10 +1414,10 @@ contains
           irc = nint(diam(i) / deltar)
           r1 = r(irc+1)
           r2 = r(irc+2)
-          g1 = 1.0_dp + c(irc+1,i,1) + e(irc+1,i,1)
-          g2 = 1.0_dp + c(irc+2,i,1) + e(irc+2,i,1)
-          gc = ( (g1 - g2) * diam(i) + g2 * r1 - g1 * r2 ) / (r1 - r2)
-          t(i) = twopi * diam(i)**3 * gc / 3.0_dp
+          h1 = c(irc+1,i,1) + e(irc+1,i,1)
+          h2 = c(irc+2,i,1) + e(irc+2,i,1)
+          hc = ( (h1 - h2) * diam(i) + h2 * r1 - h1 * r2 ) / (r1 - r2)
+          t(i) = twopi * diam(i)**3 * (1.0_dp + hc) / 3.0_dp
        else
           t(i) = 0.0_dp
        end if
