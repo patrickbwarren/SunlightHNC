@@ -28,8 +28,8 @@ from oz import wizard as w
 
 parser = argparse.ArgumentParser(description='RPM one off calculator')
 
-parser.add_argument('--ng', action='store', default=4096, type=int, help='number of grid points (default 4096)')
-parser.add_argument('--deltar', action='store', default=0.01, type=float, help='grid spacing (default 0.01)')
+parser.add_argument('--ng', action='store', default=65536, type=int, help='number of grid points (default 65536)')
+parser.add_argument('--deltar', action='store', default=0.001, type=float, help='grid spacing (default 0.001)')
 parser.add_argument('--alpha', action='store', default=0.2, type=float, help='Picard mixing fraction (default 0.2)')
 parser.add_argument('--npic', action='store', default=6, type=int, help='number of Picard steps (default 6)')
 
@@ -61,8 +61,6 @@ w.npic = args.npic
 
 w.initialise()
 
-# print(w.c.shape)
-
 w.sigma = args.sigma
 w.kappa = args.kappa
 
@@ -93,9 +91,8 @@ for i in range(args.nwarm):
 
 if args.exp:
     w.exp_refine()
-    
-s = str(w.closure_name, 'utf-8').strip()
-print('rho = %g \tlb = %g \tkappa = %g \t%s error = %g' % (np.sum(w.rho), w.lb, w.kappa, s, w.error))
+    s = str(w.closure_name, 'utf-8').strip()
+    print('rho = %g \tlb = %g \tkappa = %g \t%s error = %g' % (np.sum(w.rho), w.lb, w.kappa, s, w.error))
 
 if w.return_code: exit()
 
@@ -167,9 +164,9 @@ elif args.show:
              label="${\\tilde h}_{11}(k)$")
     plt.plot(w.k[0:jmax],w.ek[0:jmax, 1]+w.ck[0:jmax, 1],
              label="${\\tilde h}_{12}(k)$")
-    plt.plot(w.k[0:jmax],
-             1.0 + w.rho[0]*(w.ek[0:jmax, 0]+w.ck[0:jmax, 0]
-                             -w.ek[0:jmax, 1]-w.ck[0:jmax, 1]), label="$\\ne 0$ !") 
+#    plt.plot(w.k[0:jmax],
+#             1.0 + w.rho[0]*(w.ek[0:jmax, 0]+w.ck[0:jmax, 0]
+#                             -w.ek[0:jmax, 1]-w.ck[0:jmax, 1]), label="$\\ne 0$ !") 
 #    plt.plot(w.k[0:jmax],w.ck[0:jmax, 0],label="${\\tilde c}_{11}$")
 #    plt.plot(w.k[0:jmax],w.ck[0:jmax, 1],label="${\\tilde c}_{12}$")
     plt.legend(loc='lower right')

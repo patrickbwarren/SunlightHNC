@@ -76,17 +76,17 @@
 # the two state points should have the same pressure and chemical
 # potential (to within the target numerical accuracy).
 
-/usr/bin/env python3 wertheim_solver.py --lb=50 --rhoz=2.6e-4 --sigmap=4.5 --min
+/usr/bin/env python3 urpm_wertheim_solver.py --lb=50 --rhoz=2.6e-4 --sigmap=4.5 --min
 /usr/bin/env python3 urpm_targp.py --lb=50 --targp=0.000172844
 
-/usr/bin/env python3 wertheim_solver.py --lb=80 --rhoz=1.92e-4 --sigmap=5 --min
+/usr/bin/env python3 urpm_wertheim_solver.py --lb=80 --rhoz=1.92e-4 --sigmap=5 --min
 /usr/bin/env python3 urpm_targp.py --lb=80 --targp=0.000135821
 
-/usr/bin/env python3 wertheim_solver.py --lb=100 --rhoz=1.59e-4 --sigmap=5 --min
+/usr/bin/env python3 urpm_wertheim_solver.py --lb=100 --rhoz=1.59e-4 --sigmap=5 --min
 /usr/bin/env python3 urpm_targp.py --lb=100 --targp=0.000114403
 
-/usr/bin/env python3 wertheim_solver.py --lb=120 --rhoz=1.365e-4 --sigmap=5 --min
+/usr/bin/env python3 urpm_wertheim_solver.py --lb=120 --rhoz=1.365e-4 --sigmap=5 --min
 /usr/bin/env python3 urpm_targp.py --lb=120 --targp=9.45e-5
 
-/usr/bin/env python3 wertheim_solver.py --lb=150 --rhoz=1.17e-4 --sigmap=5 --min
+/usr/bin/env python3 urpm_wertheim_solver.py --lb=150 --rhoz=1.17e-4 --sigmap=5 --min
 /usr/bin/env python3 urpm_targp.py --lb=150 --targp=7.38239e-05
