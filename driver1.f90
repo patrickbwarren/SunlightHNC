@@ -4,7 +4,7 @@
 
 ! Based on an original code copyright (c) 2007 Lucian Anton.
 ! Modifications copyright (c) 2008, 2009 Andrey Vlasov.  Additional
-! modifications copyright (c) 2009-2017 Unilever UK Central Resources
+! modifications copyright (c) 2009-2018 Unilever UK Central Resources
 ! Ltd (Registered in England & Wales, Company No 29140; Registered
 ! Office: Unilever House, Blackfriars, London, EC4P 4BQ, UK).
 
@@ -21,42 +21,23 @@
 ! You should have received a copy of the GNU General Public License
 ! along with SunlightDPD.  If not, see <http://www.gnu.org/licenses/>.
 
-program driver4
+program driver1
   use wizard
   implicit none
-  real(kind=dp) :: rhotot, mfcharge
+  integer :: i, j
 
   verbose = .true.
 
   ng = 4096
-  ncomp = 4
+  ncomp = 1
 
   call initialise
 
-  sigma = 0.5_dp
-  lb = 25.0_dp
   arep = 25.0_dp
-
-  arep(1, 2) = 28.0_dp
-  arep(1, 3) = 22.0_dp
-  arep(1, 4) = 15.0_dp
-  arep(2, 3) = 30.0_dp
-  arep(2, 4) = 26.0_dp
-  arep(3, 4) = 20.0_dp
-  
-  z(2) = 1.0_dp
-  z(3) = -1.0_dp
-  z(4) = -1.0_dp
 
   call dpd_potential
 
-  rhotot = 3.0_dp
-  mfcharge = 0.2_dp
-
-  rho(1) = rhotot * (1.0_dp - mfcharge)
-  rho(2) = 0.5_dp * rhotot * mfcharge
-  rho(3) = rho(2) * 0.2_dp
-  rho(4) = rho(2) - rho(3)
+  rho = 3.0_dp
 
   call write_params
 
@@ -65,6 +46,20 @@ program driver4
   if (error .gt. 1.0E-10_dp) &
        & print *, 'Warning, did not converge to 1e-10'
 
+  open (unit=10, file='driver1_sf.dat')
+  do j = 1, ng-1
+     write (10, '(3(f15.8,2x))') k(j), sk(j, 1, 1)
+  end do
+  close (10)
+  print *, 'structure factors written to driver1_sf.dat'
+
+  open (unit=11, file='driver1_hij.dat')
+  do i = 1, ng-1
+     write (11, '(4(f15.8,2x))') r(i), hr(i, 1, 1)
+  end do
+  close (11)
+  print *, 'pair correlation functions written to driver1_gij.dat'
+
   call write_thermodynamics
 
-end program driver4
+end program driver1

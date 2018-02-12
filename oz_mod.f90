@@ -4,10 +4,9 @@
 
 ! Based on an original code copyright (c) 2007 Lucian Anton.
 ! Modifications copyright (c) 2008, 2009 Andrey Vlasov.  Additional
-! modifications copyright (c) 2009-2017 Unilever UK Central Resources
+! modifications copyright (c) 2009-2018 Unilever UK Central Resources
 ! Ltd (Registered in England & Wales, Company No 29140; Registered
 ! Office: Unilever House, Blackfriars, London, EC4P 4BQ, UK).
-
 ! SunlightDPD is free software: you can redistribute it and/or
 ! modify it under the terms of the GNU General Public License as
 ! published by the Free Software Foundation, either version 3 of the
@@ -56,9 +55,10 @@ module wizard
        & CONVERGENCE_ERROR = 1, &
        & AXEQB_ERROR = 2, &
        & DSYSV_ERROR = 3, &
-       & MISMATCH_ERROR = 4
+       & DGEEV_ERROR = 4, &
+       & MISMATCH_ERROR = 5
 
-  character (len=4)  :: version = '1.11'  ! The current version
+  character (len=4)  :: version = '1.12'  ! The current version
   character (len=3)  :: closure_name = '' ! TLA for the last-used closure 
   character (len=32) :: model_name = ''   ! Model name
   character (len=47) :: error_msg = ''    ! Error message
@@ -107,7 +107,9 @@ module wizard
        & cf_mf, cf_xc,      & ! the virial route pressure contributions ..
        & cf_gc, press,      & ! .. and the virial route pressure
        & comp, comp_xc,     & ! compressibility, and excess
-       & fvex, fnex,        & ! excess free energy, density and per particle
+       & a_rl, a_rs, a_tl,  & ! contributions to HNC excess free energy density
+       & a_ld, a_ts, a_ex,  & !    --- '' ---
+       & a_gh,              & ! excess free energy from Gibbs-Duhem
        & un_mf, un_xc,      & ! energy per particle contributions
        & un, uv               ! energy per particle and density
 
@@ -122,6 +124,7 @@ module wizard
        & tp(:),             & ! mean field pressure contribution
        & tu(:),             & ! mean field energy contribution
        & tl(:),             & ! mean field long range potential
+       & t0(:),             & ! r = 0 of long range potential (diagonal)
        & muex(:),           & ! chemical potential array
        & c(:, :, :),        & ! direct correlation functions (dcfs)
        & e(:, :, :),        & ! indirect correlation functions (icfs)
@@ -158,6 +161,7 @@ contains
     allocate(tp(nfnc))
     allocate(tu(nfnc))
     allocate(tl(nfnc))
+    allocate(t0(ncomp))
     allocate(c(ng-1, nfnc, nps))
     allocate(e(ng-1, nfnc, nps))
     allocate(c0(ng-1, nfnc))
@@ -288,7 +292,7 @@ contains
     integer, intent(in), optional :: charge_type
     integer :: ctype = DPD_GAUSSIAN_CHARGES
     integer :: i, j, ij, irc
-    real(kind=dp) :: aa(nfnc), zz(nfnc)
+    real(kind=dp) :: ulong0, aa(nfnc), zz(nfnc)
 
     if (present(charge_type) .and. charge_type.gt.0) ctype = charge_type
 
@@ -325,6 +329,8 @@ contains
 
        ulong(:,nfnc) = (lb / r) * erf(0.5_dp*r/sigma)
 
+       ulong0 = lb / (sigma * rootpi)
+
        ulongk(:,nfnc) = (fourpi * lb / k**2) * exp(-k**2*sigma**2)
 
        dulong(:,nfnc) = lb * exp(-0.25_dp*r**2/sigma**2) &
@@ -340,6 +346,8 @@ contains
     if (ctype .eq. DPD_BESSEL_CHARGES) then
 
        ulong(:,nfnc) = (lb / r) * (1.0_dp - exp(-r/sigma))
+
+       ulong0 = lb / sigma
 
        ulongk(:,nfnc) = (fourpi * lb / k**2) &
             & * 1.0_dp / (1.0_dp + k**2*sigma**2)
@@ -361,6 +369,8 @@ contains
 
        ulong(:,nfnc) = 0.0_dp
 
+       ulong0 = 0.0_dp
+
        ulongk(:,nfnc) = (fourpi * lb / k**2) * 144.0_dp &
             & * (2.0_dp - 2.0_dp*cos(k*rgroot) &
             &      - k*rgroot*sin(k*rgroot))**2 &
@@ -381,6 +391,8 @@ contains
             & * (1.0_dp + 1.375_dp*r/lbda + 0.75_dp*r**2/lbda**2 &
             &   + r**3/(6.0_dp*lbda**3)) )
 
+       ulong0 = 0.625_dp * lb / lbda
+
        ulongk(:,nfnc) = (fourpi * lb / k**2) * &
             & 1.0_dp / (1.0_dp + k**2*lbda**2/4.0_dp)**4
 
@@ -400,6 +412,8 @@ contains
 
        ulong(:,nfnc) = (lb / r) * (1.0_dp - exp(-2*beta*r) * &
             & (1.0_dp + beta*r) )
+
+       ulong0 = beta * lb
 
        ulongk(:,nfnc) = (fourpi * lb / k**2) * &
             & 1.0_dp / (1.0_dp + k**2/(4.0_dp*beta**2))**2
@@ -430,6 +444,10 @@ contains
     tu = tp
     tl = 0.0_dp
 
+    ! The r = 0 diagonal parts of the long range potential
+    
+    t0(:) = z(:)**2 * ulong0
+    
     ! Generate auxiliary function
 
     expnegus = exp(-ushort)
@@ -509,6 +527,10 @@ contains
        tl = 0.0_dp
     end if
 
+    ! The r = 0 diagonal parts of the long range potential
+    
+    t0(:) = z(:)**2 * lb / (sigma * rootpi)
+    
     ! Generate auxiliary function
 
     expnegus = exp(-ushort)
@@ -604,6 +626,10 @@ contains
        end if
     end if
 
+    ! The r = 0 diagonal parts of the long range potential
+    
+    t0(:) = z(:)**2 * lb / sigma
+    
     if (.not.uuflag) then
        model_type = RPM_WITHOUT_USHORT
        model_name = 'RPM without U_short'
@@ -639,6 +665,7 @@ contains
     tp = 0.0_dp
     tu = 0.0_dp
     tl = 0.0_dp
+    t0 = 0.0_dp
     
     model_type = HARD_SPHERES
     model_name = 'hard spheres'
@@ -947,7 +974,7 @@ contains
           end do
        end do
     end do
-    call DSYSV( 'U', nd, 1, a, nps-1, ipiv, x, nps-1, work, &
+    call DSYSV('U', nd, 1, a, nps-1, ipiv, x, nps-1, work, &
          & lwork, info)
     if (info.gt.0) then
        return_code = DSYSV_ERROR
@@ -1121,7 +1148,7 @@ contains
           end do
        end do
     end do
-    call DSYSV( 'U', nd, 1, a, nps-1, ipiv, x, nps-1, work, &
+    call DSYSV('U', nd, 1, a, nps-1, ipiv, x, nps-1, work, &
          & lwork, info)
     if (info.gt.0) then
        return_code = DSYSV_ERROR
@@ -1480,10 +1507,26 @@ contains
     un = un_mf + un_xc
     uv = rhotot * un
 
-    ! Finally do the chemical potentials (this is valid ONLY for HNC).
+    ! Finally do the free energy and chemical potentials for HNC
 
     if (closure_type.eq.HNC_CLOSURE) then
 
+       ! Evaluate t_ij = 2 pi int_0^inf ( h_ij^2 / 2 - c_ij) r^2 dr where
+       ! we use c = c' - Ulong in the second term and pull this out as a
+       ! long range contribution.
+
+       do i = 1, nfnc
+          t(i) = fourpi * deltar * sum((0.5_dp*(c(:,i,1) + e(:,i,1))**2 &
+               & - c(:,i,1)) * r(:)**2)
+       end do
+       
+       a_rs = 0.5_dp * rhotot * sum(rhoxx(:) * t(:))
+       a_rl = 0.5_dp * rhotot * sum(rhoxx(:) * tl(:))
+       
+       ! Call out to compute the k-space to excess free energy
+
+       call hnc_kspace_integrals
+       
        ! Evaluate t_ij = 4 pi int_0^inf (h_ij e_ij / 2 - c_ij) r^2 dr.
        ! Note that the contribution from both end-points again vanishes.
        ! We can use c' for c in the second term because the long range
@@ -1512,18 +1555,118 @@ contains
           end do
        end do
 
-       ! Also valid ONLY for HNC is the expression for the free energy
-       ! density f = sum_mu rho_mu mu_mu - p (we compute the excess).
+       ! The free energy density is also given by (Gibbs-Duhem)
+       ! f = sum_mu rho_mu mu_mu - p.
+       ! The excess here should agree with that calculated directly.
        ! Note that pressure = rhotot * (1.0_dp + cf_gc + cf_mf + cf_xc)
        ! -- missing contact contribution added in v1.10
 
-       fvex = sum(rho(:) * muex(:)) - rhotot * (cf_gc + cf_mf + cf_xc)
-       fnex = sum(rho(:) * muex(:)) / rhotot - (cf_gc + cf_mf + cf_xc)
+       a_gh = sum(rho(:) * muex(:)) - rhotot * (cf_gc + cf_mf + cf_xc)
 
     end if
 
   end subroutine make_thermodynamics
 
+  ! Calculate all the contributions to the HNC free energy.  Note that
+  ! c = c' - Ulong, and ck is available after a call to OZ solver.
+
+  subroutine hnc_kspace_integrals
+    implicit none
+    integer :: i, j, ij, ik, info
+    real(kind=dp) :: prefac, &
+         & cmat(ncomp, ncomp), umat(ncomp, ncomp), &
+         & rhomat(ncomp, ncomp), unita(ncomp, ncomp), &
+         & m(ncomp, ncomp), wr(ncomp), wi(ncomp), &
+         & lndet(ng-1), tr(ng-1)
+    integer, parameter :: lwork = 100
+    real(kind=dp) :: work(lwork)
+    
+    ! Calculate the short range trace part in k-space
+    
+    tr = 0.0_dp   
+    do i = 1, ncomp
+       ij = i + i*(i-1)/2
+       tr(:) = tr(:) + rho(i) * ck(:, ij)
+    end do
+    
+    ! Calculate log(det) part in k-space
+    
+    if (ncomp .eq. 1) then ! One-component case
+
+       lndet(:) = log(1.0_dp - rho(1)*(ck(:, 1) - ulongk(:, 1)))
+
+    else ! Multicomponent case
+
+       ! First set up a unit matrix, and the diagonal R matrix
+
+       rhomat = 0.0_dp
+       unita = 0.0_dp
+
+       do i = 1, ncomp
+          rhomat(i, i) = rho(i)
+          unita(i, i) = 1.0_dp
+       end do
+
+       ! Do the matrix calculations for each wavevector k.
+
+       do ik = 1, ng-1
+
+          ! Unpack the reciprocal space functions into matrices.
+
+          do j = 1, ncomp
+             do i = 1, j
+                ij = i + j*(j-1)/2
+                cmat(i, j) = ck(ik, ij)
+                umat(i, j) = ulongk(ik, ij)
+                if (i.lt.j) then
+                   cmat(j, i) = cmat(i, j)
+                   umat(j, i) = umat(i, j)
+                end if
+             end do
+          end do
+
+          ! Construct M = I - R . (C - beta UL)
+
+          m = unita - matmul(rhomat, cmat - umat)
+
+          ! Find the eigenvalues of M (which is _not_ symmetric)
+
+          call DGEEV('N', 'N', ncomp, m, ncomp, wr, wi, &
+               & m, ncomp, m, ncomp, work, lwork, info)
+
+          if (info.gt.0) then
+             return_code = DGEEV_ERROR
+             error_msg = 'DGEEV failed to converge in hnc_kspace_integrals'
+             if (.not.silent) then
+                print *, '** error: ', error_msg
+             end if
+             return
+          end if
+
+          ! Calculate ln det M = 1/2 sum_i ln |lambda_i|^2
+
+          lndet(ik) = 0.5_dp * sum(log(wr(:)**2 + wi(:)**2))
+
+       end do ! loop over k vectors
+
+    end if ! select single component or multicomponent case
+
+    ! Finally the contribution is the integral of ln(det) + trace.
+    ! The long range contribution in the trace is taken care of
+    ! analytically.
+    
+    prefac = 1.0_dp / (fourpi * pi)
+    
+    a_ld = prefac * deltak * sum(lndet(:) * k(:)**2)
+    a_ts = prefac * deltak * sum(tr(:) * k(:)**2)
+
+    a_tl = - 0.5_dp * sum(rho(:) * t0(:))
+
+    ! Final total excess free energy density
+    
+    a_ex = a_rs + a_rl + a_ld + a_ts + a_tl
+
+  end subroutine hnc_kspace_integrals
 
   subroutine write_thermodynamics
     integer :: i
@@ -1558,11 +1701,16 @@ contains
 
     if (closure_type.eq.HNC_CLOSURE) then
        do i = 1, ncomp
-          print *, 'Chemical potential: species ', i, ' = ', muex(i)
+          print *, 'HNC: species ', i, '  mu = ', muex(i)
        end do
-       print *, 'Excess free energy: fvex (per unit volume) = ', fvex
-       print *, 'Excess free energy: fnex (per particle) = ', fnex
-    end if
+       print *, 'HNC: real space (short),  a_rs = ', a_rs
+       print *, 'HNC: real space (long),   a_rl = ', a_rl
+       print *, 'HNC: k-space, log(det),   a_ld = ', a_ld
+       print *, 'HNC: k-space, tr (short), a_ts = ', a_ts
+       print *, 'HNC: k-space, tr (long),  a_tl = ', a_tl
+       print *, 'HNC: total,               a_ex = ', a_ex
+       print *, 'HNC: from Gibbs-Duhem,    a_gh = ', a_gh
+     end if
 
   end subroutine write_thermodynamics
 

@@ -109,4 +109,15 @@ print('VR pressure =', w.press)
 print('\n*** Example 6.3 ***\n')
 print('energy fnex =', fnex1(0.1))
 print('mu fnex =    ', fnex2(0.05))
-print('HNC fnex =   ', w.fnex)
+print('a_gh/rho =   ', w.a_gh/rho)
+
+print('\nFree energy contributions (HNC) and sum')
+
+print('short range, real space,    a_rs = ', w.a_rs)
+print('long range, real space,     a_rl = ', w.a_rl)
+print('log(det), k-space,          a_ld = ', w.a_ld)
+print('short range trace, k-space, a_ts = ', w.a_ts)
+print('long range trace, k-space,  a_tl = ', w.a_tl)
+
+print('total excess free energy,   a_ex = ', w.a_ex)
+print('Gibbs-Duhem route,          a_gh = ', w.a_gh)

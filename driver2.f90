@@ -35,7 +35,8 @@ program driver2
 
   call initialise
 
-  lb = 120.0_dp
+  sigma = 0.5_dp
+  lb = 50.0_dp
   arep = 25.0_dp
   arep(1, 2) = 30.0_dp
   z(1) = 1.0_dp

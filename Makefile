@@ -26,7 +26,7 @@ FFLAGS = -Wall -fbounds-check
 LIBFLAGS =  -L/usr/lib -llapack -lfftw3
 INCFLAGS = -I/usr/include/
 
-DRIVERS = driver2 driver3 driver4
+DRIVERS = driver1 driver2 driver3 driver4
 
 default: oz.so
 
@@ -37,6 +37,9 @@ drivers : $(DRIVERS)
 oz.so : oz_mod.f90
 	f2py3 --overwrite-signature $< -m oz -h oz.pyf
 	f2py3 -c $< oz.pyf $(INCFLAGS) $(LIBFLAGS)
+
+driver1 : driver1.o oz_mod.o
+	$(F90) -o $@ $^ $(LIBFLAGS)
 
 driver2 : driver2.o oz_mod.o
 	$(F90) -o $@ $^ $(LIBFLAGS)
@@ -56,6 +59,7 @@ fftw_test : fftw_test.o
 %.o : %.f90
 	$(F90) -c $(FFLAGS) $(INCFLAGS) $<
 
+driver1.o : driver1.f90 oz_mod.o
 driver2.o : driver2.f90 oz_mod.o
 driver3.o : driver3.f90 oz_mod.o
 driver4.o : driver4.f90 oz_mod.o
