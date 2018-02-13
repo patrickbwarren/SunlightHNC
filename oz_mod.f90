@@ -61,7 +61,7 @@ module wizard
   character (len=4)  :: version = '1.12'  ! The current version
   character (len=3)  :: closure_name = '' ! TLA for the last-used closure 
   character (len=32) :: model_name = ''   ! Model name
-  character (len=47) :: error_msg = ''    ! Error message
+  character (len=48) :: error_msg = ''    ! Error message
 
   logical :: suppress_msgs = .false. ! In case of severe numerical instability
   logical :: silent = .false.        ! Prevent printing warning/error messages
@@ -105,11 +105,11 @@ module wizard
        & lbda = 1.0_dp,     & ! Slater charge smearing range (exact)
        & beta = 1.0_dp,     & ! Slater charge smearing range (approx)
        & cf_mf, cf_xc,      & ! the virial route pressure contributions ..
-       & cf_gc, press,      & ! .. and the virial route pressure
+       & cf_gc, pex, press, & ! .. and the virial route pressure
        & comp, comp_xc,     & ! compressibility, and excess
-       & a_rl, a_rs, a_tl,  & ! contributions to HNC excess free energy density
-       & a_ld, a_ts, a_ex,  & !    --- '' ---
-       & a_gh,              & ! excess free energy from Gibbs-Duhem
+       & a_rl, a_rs, a_kl,  & ! contributions to HNC excess free energy density
+       & a_kd, a_ks, a_ex,  & !    --- '' ---
+       & a_delta,           & ! excess free energy deficit (see docs)
        & un_mf, un_xc,      & ! energy per particle contributions
        & un, uv               ! energy per particle and density
 
@@ -1454,7 +1454,8 @@ contains
 
     ! This is the final pressure.
 
-    press = rhotot * (1.0_dp + cf_gc + cf_mf + cf_xc)
+    pex = rhotot * (cf_gc + cf_mf + cf_xc)
+    press = rhotot + pex
 
     ! Now we do the compressibility (not to be confused with the above
     ! compressibility factor).  The long range part is accounted for
@@ -1526,6 +1527,10 @@ contains
        ! Call out to compute the k-space to excess free energy
 
        call hnc_kspace_integrals
+
+       ! Final total excess free energy density
+    
+       a_ex = a_rs + a_rl + a_kd + a_ks + a_kl
        
        ! Evaluate t_ij = 4 pi int_0^inf (h_ij e_ij / 2 - c_ij) r^2 dr.
        ! Note that the contribution from both end-points again vanishes.
@@ -1555,13 +1560,13 @@ contains
           end do
        end do
 
-       ! The free energy density is also given by (Gibbs-Duhem)
-       ! f = sum_mu rho_mu mu_mu - p.
-       ! The excess here should agree with that calculated directly.
+       ! The free energy density should satisfy
+       ! f - sum_mu rho_mu mu_mu + p = 0.
+       ! The deficit/excess here is a test of the numerics
        ! Note that pressure = rhotot * (1.0_dp + cf_gc + cf_mf + cf_xc)
        ! -- missing contact contribution added in v1.10
 
-       a_gh = sum(rho(:) * muex(:)) - rhotot * (cf_gc + cf_mf + cf_xc)
+       a_delta = a_ex - sum(rho(:) * muex(:)) + pex
 
     end if
 
@@ -1657,14 +1662,9 @@ contains
     
     prefac = 1.0_dp / (fourpi * pi)
     
-    a_ld = prefac * deltak * sum(lndet(:) * k(:)**2)
-    a_ts = prefac * deltak * sum(tr(:) * k(:)**2)
-
-    a_tl = - 0.5_dp * sum(rho(:) * t0(:))
-
-    ! Final total excess free energy density
-    
-    a_ex = a_rs + a_rl + a_ld + a_ts + a_tl
+    a_kd = prefac * deltak * sum(lndet(:) * k(:)**2)
+    a_ks = prefac * deltak * sum(tr(:) * k(:)**2)
+    a_kl = - 0.5_dp * sum(rho(:) * t0(:))
 
   end subroutine hnc_kspace_integrals
 
@@ -1688,9 +1688,8 @@ contains
     print *, 'Compressibility factor: correlation contribution = ', cf_xc
     print *, 'Compressibility factor: total = ', &
          & 1.0_dp + cf_mf + cf_gc + cf_xc
+    print *, 'Excess pressure (virial route) = ', pex
     print *, 'Pressure (virial route) = ', press
-    print *, 'Excess pressure (virial route) = ', &
-         & sum(rho) * (cf_mf + cf_gc + cf_xc)
     print *, 'Compressibility: correlation contribution = ', comp_xc
     print *, 'Compressibility: total = ', comp
     print *, 'Internal energy: mean field contribution = ', un_mf
@@ -1701,15 +1700,16 @@ contains
 
     if (closure_type.eq.HNC_CLOSURE) then
        do i = 1, ncomp
-          print *, 'HNC: species ', i, '  mu = ', muex(i)
+          print *, 'HNC: species', i, ' muex = ', muex(i)
        end do
        print *, 'HNC: real space (short),  a_rs = ', a_rs
        print *, 'HNC: real space (long),   a_rl = ', a_rl
-       print *, 'HNC: k-space, log(det),   a_ld = ', a_ld
-       print *, 'HNC: k-space, tr (short), a_ts = ', a_ts
-       print *, 'HNC: k-space, tr (long),  a_tl = ', a_tl
+       print *, 'HNC: k-space, log(det),   a_kd = ', a_kd
+       print *, 'HNC: k-space, tr (short), a_ks = ', a_ks
+       print *, 'HNC: k-space, tr (long),  a_kl = ', a_kl
        print *, 'HNC: total,               a_ex = ', a_ex
-       print *, 'HNC: from Gibbs-Duhem,    a_gh = ', a_gh
+       print *, 'HNC: sum rho muex - pex        = ', sum(rho(:) * muex(:)) - pex
+       print *, 'HNC: deficit                   = ', a_delta
      end if
 
   end subroutine write_thermodynamics

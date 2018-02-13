@@ -1,23 +1,23 @@
 ## General purpose HNC code
 
-The current release is version 1.11 (beta).
+The current release is version 1.12 (beta).
+
+Version 1.12 adds direct calculation of HNC free energy (see documentation).
 
 Version 1.11 fixes another bug: missing mean-field contribution to thermodynamics for off-SYM RPM potential.  
 Version 1.10 fixes a bug: missing contact virial pressure contribution in the HNC free energy.  
 Version 1.9 brings the source code up to modern FORTRAN standards and corrects a problem with EXP in v1.8.  
-Version 1.8 includes the MSA closure and various potentials for Slater
-smeared charges.  
-Version 1.7 handles an arbitrary number of
-components (rather than a maximum of three, as for previous versions).
+Version 1.8 includes the MSA closure and various potentials for Slater smeared charges.  
+Version 1.7 handles an arbitrary number of components (rather than a maximum of three, as for previous versions).
 
 #### Features
 
-* FORTRAN 90 based, with example python driver scripts ;
-* HNC, MSA, RPA, and EXP closures ;
-* fast Ng solver, and Ng decomposition for long range potentials ;
-* multicomponent (arbitrary number of components) ;
-* hard core (RPM-like) and soft core (DPD-like) potentials ;
-* full structural thermodynamics ;
+* FORTRAN 90 based, with example python driver scripts;
+* HNC, MSA, RPA, and EXP closures;
+* fast Ng solver, and Ng decomposition for long range potentials;
+* multicomponent (arbitrary number of components);
+* hard core (RPM-like) and soft core (DPD-like) potentials;
+* full structural thermodynamics;
 * fully open source.
 
 See [PDF documentation](oz_doc.pdf "oz_doc.pdf") for details.
@@ -92,7 +92,7 @@ along with this program.  If not, see
 
 SunlightDPD is based on an original code copyright &copy; 2007 Lucian
 Anton, with modifications copyright &copy; 2008, 2009 Andrey Vlasov, and
-additional modifications copyright &copy; 2009-2017 Unilever UK Central
+additional modifications copyright &copy; 2009-2018 Unilever UK Central
 Resources Ltd (Registered in London number 29140;
 Registered Office: Unilever House, 100 Victoria Embankment, London EC4Y 0DY, UK).
 
