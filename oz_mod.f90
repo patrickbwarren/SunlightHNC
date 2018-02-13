@@ -107,11 +107,11 @@ module wizard
        & cf_mf, cf_xc,      & ! the virial route pressure contributions ..
        & cf_gc, pex, press, & ! .. and the virial route pressure
        & comp, comp_xc,     & ! compressibility, and excess
-       & a_rl, a_rs, a_kl,  & ! contributions to HNC excess free energy density
-       & a_kd, a_ks, a_ex,  & !    --- '' ---
-       & a_delta,           & ! excess free energy deficit (see docs)
-       & un_mf, un_xc,      & ! energy per particle contributions
-       & un, uv               ! energy per particle and density
+       & aex_rl, aex_rs,    & ! contributions to HNC excess free energy density
+       & aex_kl, aex_kd,    & !    --- '' ---
+       & aex_ks, aex,       & !    --- '' ---, and final excess free energy density
+       & deficit,           & ! excess free energy deficit (see docs)
+       & uv, uv_mf, uv_xc     ! energy density total and contributions
 
   ! (*) sigma is used both for the long-range Coulomb smearing length
   ! for the soft potentials, and for hard core diameter for RPM models
@@ -1474,10 +1474,10 @@ contains
     comp_xc = - sum(rhoxx(:) * (t(:) - tl(:)))
     comp = 1.0_dp + comp_xc
 
-    ! Now we do the energy per particle.  First the mean-field
-    ! contribution (per particle).
+    ! Now we do the energy density.  First the mean-field
+    ! contribution.
 
-    un_mf = sum(rhoxx(:) * tu(:))
+    uv_mf = rhotot * sum(rhoxx(:) * tu(:))
 
     ! Evaluate t_ij = 2 pi int_0^inf U_ij h_ij r^2 dr.  Note that with
     ! a hard core the contribution from the inner end-point is halved
@@ -1500,13 +1500,11 @@ contains
 
     ! The extra contribution is sum_ij rho x_i x_j t_ij
 
-    un_xc = sum(rhoxx(:) * t(:))
+    uv_xc = rhotot * sum(rhoxx(:) * t(:))
 
-    ! This is the final energy per particle and density (per unit
-    ! volume).
+    ! This is the final energy density.
 
-    un = un_mf + un_xc
-    uv = rhotot * un
+    uv = uv_mf + uv_xc
 
     ! Finally do the free energy and chemical potentials for HNC
 
@@ -1521,8 +1519,8 @@ contains
                & - c(:,i,1)) * r(:)**2)
        end do
        
-       a_rs = 0.5_dp * rhotot * sum(rhoxx(:) * t(:))
-       a_rl = 0.5_dp * rhotot * sum(rhoxx(:) * tl(:))
+       aex_rs = 0.5_dp * rhotot * sum(rhoxx(:) * t(:))
+       aex_rl = 0.5_dp * rhotot * sum(rhoxx(:) * tl(:))
        
        ! Call out to compute the k-space to excess free energy
 
@@ -1530,7 +1528,7 @@ contains
 
        ! Final total excess free energy density
     
-       a_ex = a_rs + a_rl + a_kd + a_ks + a_kl
+       aex = aex_rs + aex_rl + aex_kd + aex_ks + aex_kl
        
        ! Evaluate t_ij = 4 pi int_0^inf (h_ij e_ij / 2 - c_ij) r^2 dr.
        ! Note that the contribution from both end-points again vanishes.
@@ -1563,10 +1561,8 @@ contains
        ! The free energy density should satisfy
        ! f - sum_mu rho_mu mu_mu + p = 0.
        ! The deficit/excess here is a test of the numerics
-       ! Note that pressure = rhotot * (1.0_dp + cf_gc + cf_mf + cf_xc)
-       ! -- missing contact contribution added in v1.10
 
-       a_delta = a_ex - sum(rho(:) * muex(:)) + pex
+       deficit = aex - sum(rho(:) * muex(:)) + pex
 
     end if
 
@@ -1662,9 +1658,9 @@ contains
     
     prefac = 1.0_dp / (fourpi * pi)
     
-    a_kd = prefac * deltak * sum(lndet(:) * k(:)**2)
-    a_ks = prefac * deltak * sum(tr(:) * k(:)**2)
-    a_kl = - 0.5_dp * sum(rho(:) * t0(:))
+    aex_kd = prefac * deltak * sum(lndet(:) * k(:)**2)
+    aex_ks = prefac * deltak * sum(tr(:) * k(:)**2)
+    aex_kl = - 0.5_dp * sum(rho(:) * t0(:))
 
   end subroutine hnc_kspace_integrals
 
@@ -1692,24 +1688,24 @@ contains
     print *, 'Pressure (virial route) = ', press
     print *, 'Compressibility: correlation contribution = ', comp_xc
     print *, 'Compressibility: total = ', comp
-    print *, 'Internal energy: mean field contribution = ', un_mf
-    print *, 'Internal energy: correlation contribution = ', un_xc
-    print *, 'Internal energy: un (per particle) = ', un
-    print *, 'Internal energy: un / 3 = ', un / 3.0_dp
-    print *, 'Internal energy: uv (per unit volume) = ', uv
+    print *, 'Internal energy density: mean field contribution = ', uv_mf
+    print *, 'Internal energy density: correlation contribution = ', uv_xc
+    print *, 'Internal energy density = ', uv
+    print *, 'Internal energy per particle = ', uv / sum(rho(:))
+    print *, 'Internal energy per particle / 3 = ', uv / (3.0_dp * sum(rho(:)))
 
     if (closure_type.eq.HNC_CLOSURE) then
        do i = 1, ncomp
           print *, 'HNC: species', i, ' muex = ', muex(i)
        end do
-       print *, 'HNC: real space (short),  a_rs = ', a_rs
-       print *, 'HNC: real space (long),   a_rl = ', a_rl
-       print *, 'HNC: k-space, log(det),   a_kd = ', a_kd
-       print *, 'HNC: k-space, tr (short), a_ks = ', a_ks
-       print *, 'HNC: k-space, tr (long),  a_kl = ', a_kl
-       print *, 'HNC: total,               a_ex = ', a_ex
-       print *, 'HNC: sum rho muex - pex        = ', sum(rho(:) * muex(:)) - pex
-       print *, 'HNC: deficit                   = ', a_delta
+       print *, 'HNC: real space (short),  aex_rs = ', aex_rs
+       print *, 'HNC: real space (long),   aex_rl = ', aex_rl
+       print *, 'HNC: k-space, log(det),   aex_kd = ', aex_kd
+       print *, 'HNC: k-space, tr (short), aex_ks = ', aex_ks
+       print *, 'HNC: k-space, tr (long),  aex_kl = ', aex_kl
+       print *, 'HNC: total,               aex = ', aex
+       print *, 'HNC: sum rho muex - pex       = ', sum(rho(:) * muex(:)) - pex
+       print *, 'HNC: deficit = ', deficit
      end if
 
   end subroutine write_thermodynamics

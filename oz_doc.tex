@@ -2,7 +2,7 @@
 % related to the dissipative particle dynamics (DPD) simulation
 % method.
 
-% Copyright (c) 2009-2017 Unilever UK Central Resources Ltd
+% Copyright (c) 2009-2018 Unilever UK Central Resources Ltd
 % (Registered in England & Wales, Company No 29140; Registered
 % Office: Unilever House, Blackfriars, London, EC4P 4BQ, UK).
 
@@ -23,11 +23,13 @@
 \usepackage{graphicx}
 \usepackage{amsmath}
 \usepackage{amssymb}
-\usepackage{color}
+%\usepackage{color}
+\usepackage{upquote}
 
 \DeclareMathOperator{\erf}{erf}
 \DeclareMathOperator{\erfc}{erfc}
 \DeclareMathOperator{\imaginary}{Im}
+\DeclareMathOperator{\Tr}{Tr}
 
 \newcommand{\latin}[1]{\emph{#1}}
 \newcommand{\german}[1]{$\frak{#1}$}
@@ -53,10 +55,11 @@
 \newcommand{\kB}{k_{\mathrm{B}}}
 \newcommand{\kT}{\kB T}
 \newcommand{\myex}{^{\mathrm{ex}}}
+\newcommand{\pex}{p\myex}
 \newcommand{\Uex}{U\myex}
-\newcommand{\Fex}{F\myex}
+\newcommand{\Aex}{A\myex}
+\newcommand{\aex}{a\myex}
 \newcommand{\muex}{\mu\myex}
-\newcommand{\fNex}{f_N\myex}
 \newcommand{\myvec}[1]{{\mathbf #1}}
 \newcommand{\rvec}{\myvec{r}}
 \newcommand{\kvec}{\myvec{k}}
@@ -93,9 +96,9 @@
 
 \begin{document}
 
-\noindent{\bf\large FORTRAN 90 Ornstein-Zernike solver --- version 1.11}\\[6pt]
-\noindent{\it Patrick B Warren, Unilever R\&D Port Sunlight (January
-  2017)}\\[6pt]
+\noindent{\bf\large FORTRAN 90 Ornstein-Zernike solver :: version 1.12}\\[6pt]
+\noindent{\it Patrick B Warren, Unilever R\&D Port Sunlight (February
+  2018)}\\[6pt]
 
 \noindent The code and this accompanying documentation is released
 under the GPL.  You are welcome to use and modify it for your own
@@ -109,38 +112,32 @@ projects. If you end up publishing results based on this, please cite\\
 \end{center}
 
 \vspace{0.25in}
-\noindent 
-Last two point releases fix bugs in the treatment of hard cores: the contact
-virial pressure contribution was missing from the HNC free energy
-(fixed in v1.10), and the compressibility and HNC chemical potentials
-was missing a mean-field term for the off-SYM RPM potential (fixed in
-v1.11).\\
 
-\noindent Features of version 1.9:
+\noindent Features of version 1.12:
 \begin{itemize}
-\item FORTRAN 90 based, with example python driver scripts ;
-\item HNC, MSA, RPA, and EXP closures ;
-\item fast Ng solver, and Ng decomposition for electrostatics ;
-\item multicomponent (arbitrary number of components) ;
-\item hard core (RPM-like) and soft core (DPD-like) potentials ;
-\item full structural thermodynamics ;
+\item modern \FORTRAN\ 90 based, with example \python\ driver scripts;
+\item HNC, MSA, RPA, and EXP closures;
+\item fast Ng solver, and Ng decomposition for electrostatics;
+\item multicomponent (arbitrary number of components);
+\item hard core (RPM-like) and soft core (DPD-like) potentials;
+\item thermodynamics computed (full HNC free energy added in v1.12);
 \item fully open source.
 \end{itemize}
 
-\noindent Added in version 1.9:
-\begin{itemize}
-\item EXP  for hard core potentials fixed, new examples added ;
-\item Source code brought up to a modern \FORTRAN\ 90 standard.
-\end{itemize}
+\noindent
+{\small Versions 1.10, 1.11 fix bugs: the
+contact virial pressure contribution was missing from the HNC free
+energy, and the compressibility and HNC chemical potentials was
+missing a mean-field term for the off-SYM RPM potential.}\\
 
-\noindent Added in versions 1.8 and 1.7:
-\begin{itemize}
-\item MSA closure and EXP ;
-\item exact and approximate pair potentials for Slater smearing. 
-\end{itemize}
+\noindent
+{\small Added in version 1.7--1.9: MSA closure and EXP; exact and approximate
+pair potentials for Slater smearing; EXP for hard core potentials
+fixed, new examples added; source code brought up to a modern
+\FORTRAN\ 90 standard.}
 
 \newpage
-\tableofcontents
+{\small\tableofcontents}
 \newpage
 
 \section{Introduction}
@@ -162,14 +159,12 @@ independent package called `pyOZ', implemented entirely in
 approach: the Ornstein-Zernike relation is normalised slightly
 differently, a conjugate gradient method is used to accelerate
 convergence, and pyOZ provides other closures in addition to the ones
-provided here.
-
-The present code is based on an HNC code developed by Lucian Anton,
-modified for dissipative particle dynamics (DPD) by Andrey Vlasov with
-help from Lucian and Andrew Masters.  The code was later converted by
-Patrick Warren to use the open source libraries \FFTW\ and \LAPACK,
-and rewritten to be compatible with the \FORTRAN-\python\ interface
-generator \verb+f2py+.
+provided here.  The present code is based on an HNC code developed by
+Lucian Anton, modified for dissipative particle dynamics (DPD) by
+Andrey Vlasov with help from Lucian and Andrew Masters.  The code was
+later converted by Patrick Warren to use the open source libraries
+\FFTW\ and \LAPACK, and rewritten to be compatible with \python\ using
+the \verb+f2py+ interface generator.
 
 \section{Theoretical background}
 %
@@ -199,7 +194,7 @@ which simplifies to the Fourier-Bessel transform
 and
 %
 \begin{equation}
-h(r) = \int\! \frac{d^3\kvec}{(2\pi)^3} \,e^{i\kvec\cdot\rvec} \,\tilde h(k)\,,
+h(r) = \int\! \frac{d^3\kvec}{(2\pi)^3} \,e^{i\kvec\cdot\rvec} \,\tilde h(k)\,,\label{eq:ftinv}
 \end{equation}
 %
 which simplifies to 
@@ -407,52 +402,6 @@ iterations are used to pump-prime a multicomponent version of the Ng
 acceleration scheme.  As before, any hard core part of the potential
 should be parked in $\exp[-\beta v_{\mu\nu}']$.
 
-\subsubsection{Pair functions}
-%
-Given a converged solution pair $(c_{\mu\nu}', e_{\mu\nu}')$, the
-total correlation functions can be evaluated from
-%
-\begin{equation}
-h_{\mu\nu}(r) = c'_{\mu\nu}(r) +  e'_{\mu\nu}(r)\label{eq:hrs}
-\end{equation}
-%
-(note that $\beta v_{\mu\nu}\lr$ cancels).  The pair functions are
-given by $g_{\mu\nu}=\delta_{\mu\nu}+h_{\mu\nu}$.
-
-\subsubsection{Structure factors}
-%
-For the partial structure factors, there is a choice of normalisation.
-In the present code the structure factors are perhaps unusually
-defined to be
-%
-\begin{equation}
-S_{\mu\nu}(k) = \rho_\mu\delta_{\mu\nu} + \rho_\mu\rho_\nu{\tilde
-  h}_{\mu\nu}
-\label{eq:skdef}
-\end{equation}
-%
-where ${\tilde h}_{\mu\nu}={\tilde c}_{\mu\nu}\myprime + {\tilde
-  e}_{\mu\nu}\myprime$ (again, $\beta v_{\mu\nu}\lr$ cancels); the
-Fourier transforms ${\tilde c}_{\mu\nu}\myprime$ and ${\tilde
-  e}_{\mu\nu}\myprime$ are available as a byproduct of solving the OZ
-relation.  With this normalisation the structure factors obey
-$S_{\mu\nu}(k)\to\rho_\mu\delta_{\mu\nu}$ as $k\to\infty$.  An
-alternative (and more popular) normalisation, for which
-$S_{\mu\nu}(k)\to\delta_{\mu\nu}$ as $k\to\infty$, is obtained from
-the above expression by multiplying by $({\rho_\mu\rho_\nu})^{-1/2}$.
-
-The unusual choice of normalisation is made to facilitate
-the calculation of the density-density and charge-charge structure
-factors \via\
-%
-\begin{equation}
-  S_{NN}(k) = \frac{\sum_{\mu\nu}S_{\mu\nu}(k)}{\sum_\mu\rho_\mu}\,,\quad
-  S_{ZZ}(k) = \frac{\sum_{\mu\nu}z_\mu z_\nu S_{\mu\nu}(k)}{\sum_\mu\rho_\mu}
-  \label{eq:snnszz}
-\end{equation}
-%
-(assuming the ion valencies are $z_\mu$ for the latter).
-
 \subsection{Multicomponent MSA}
 %
 The closure in the mean spherical approximation (MSA) is
@@ -517,18 +466,67 @@ correlation functions.  To do this we rewrite the OZ relation in
 With this implemented, $c'_{\mu\nu}=c_{\mu\nu}+\beta
 v\lr_{\mu\nu}$ and $e'_{\mu\nu}= h_{\mu\nu} - c'_{\mu\nu}$ follow.
 
+\subsection{Structural properties}
+%
+\subsubsection{Pair functions}
+%
+Given a converged solution pair $(c_{\mu\nu}', e_{\mu\nu}')$, the
+total correlation functions can be evaluated from
+%
+\begin{equation}
+h_{\mu\nu}(r) = c'_{\mu\nu}(r) +  e'_{\mu\nu}(r)\label{eq:hrs}
+\end{equation}
+%
+(note that $\beta v_{\mu\nu}\lr$ cancels).  The pair functions are
+given by $g_{\mu\nu}=\delta_{\mu\nu}+h_{\mu\nu}$.
+
+\subsubsection{Structure factors}
+%
+For the partial structure factors, there is a choice of normalisation.
+In the present code the structure factors are perhaps unusually
+defined to be
+%
+\begin{equation}
+S_{\mu\nu}(k) = \rho_\mu\delta_{\mu\nu} + \rho_\mu\rho_\nu{\tilde
+  h}_{\mu\nu}
+\label{eq:skdef}
+\end{equation}
+%
+where ${\tilde h}_{\mu\nu}={\tilde c}_{\mu\nu}\myprime + {\tilde
+  e}_{\mu\nu}\myprime$ (again, $\beta v_{\mu\nu}\lr$ cancels); the
+Fourier transforms ${\tilde c}_{\mu\nu}\myprime$ and ${\tilde
+  e}_{\mu\nu}\myprime$ are available as a byproduct of solving the OZ
+relation.  With this normalisation the structure factors obey
+$S_{\mu\nu}(k)\to\rho_\mu\delta_{\mu\nu}$ as $k\to\infty$.  An
+alternative (and more popular) normalisation, for which
+$S_{\mu\nu}(k)\to\delta_{\mu\nu}$ as $k\to\infty$, is obtained from
+the above expression by multiplying by $({\rho_\mu\rho_\nu})^{-1/2}$.
+
+The unusual choice of normalisation is made to facilitate
+the calculation of the density-density and charge-charge structure
+factors \via\
+%
+\begin{equation}
+  S_{NN}(k) = \frac{\sum_{\mu\nu}S_{\mu\nu}(k)}{\sum_\mu\rho_\mu}\,,\quad
+  S_{ZZ}(k) = \frac{\sum_{\mu\nu}z_\mu z_\nu S_{\mu\nu}(k)}{\sum_\mu\rho_\mu}
+  \label{eq:snnszz}
+\end{equation}
+%
+(assuming the ion valencies are $z_\mu$ for the latter).
+
 \subsection{Thermodynamics}
 \label{sec:thermo}
 %
-The above section completely specifies the various closures for the
-integral equation problem for multicomponent system.  We provide here
+The above sections specify the various closures for the
+integral equation problem for multicomponent systems.  We provide here
 the suite of thermodynamic quantities which can be evaluated from the
 converged solution pair $(c_{\mu\nu}', e_{\mu\nu}')$.  Some care is
 needed in the case of hard core potentials, where $v_{\mu\nu}=\infty$
 for $r<d_{\mu\nu}$.
 
-The first thermodynamic quantity is the so-called virial route
-compressibility factor
+\subsubsection{Virial pressure}
+%
+The so-called virial route compressibility factor is
 %
 \begin{equation}
 \frac{\beta p}{\rho}=1-\frac{2\pi}{3}\,{\textstyle \sum_{\mu\nu}}\,
@@ -562,6 +560,7 @@ don't care what it does for $r<d_{\mu\nu}$ except that it should be
 \emph{continuous} through $r=d_{\mu\nu}$.  The Heaviside step function
 $\Theta(x)=0$ for $x<0$ and $\Theta(x)=1$ for $x\ge0$, with derivative
 $\Theta'(x)=\delta(x)$. Then
+%
 \begin{equation}
 \begin{split}
 I_{\mu\nu}&=-\int_0^\infty\!\!dr\,r^3\,\Bigl(\delta(r-d_{\mu\nu})
@@ -621,7 +620,10 @@ neutrality implies $\sum_{\mu\nu}\rho x_\mu x_\nu v_{\mu\nu}\lr
 \Eqref{eq:vrpb} is the correlation correction (note
 $c'_{\mu\nu}+e'_{\mu\nu}=g_{\mu\nu}-1$).
 
-Next up is the compressibility itself which we write as
+\subsubsection{Compressibility}
+%
+The compressibility (not to be confused with the above
+\emph{compressibility factor}) is
 %
 \begin{equation}
 \frac{\partial(\beta p)}{\partial\rho}=
@@ -635,24 +637,25 @@ t^{\mathrm{C}}_{\mu\nu}={4\pi}\int_0^\infty\!\!dr\,r^2\,(c_{\mu\nu}'(r)
 -\beta v_{\mu\nu}\lr)
 \end{equation}
 %
-(\cf\ Eq. (18) in \Refcite{Vrbka09}; the \emph{compressibility} is
-not to be confused with the above \emph{compressibility factor}), In
-terms of this, the isothermal compressibility is
-$\chi_T=[\rho(\partial p/\partial\rho)]^{-1}$.  The contribution from
-$v_{\mu\nu}\lr$ can also often be evaluated analytically and vanishes
-under the SYM condition by the same argument as above.  Obviously the
+(\cf\ Eq. (18) in \Refcite{Vrbka09}).  In terms of this, the
+isothermal compressibility is $\chi_T=[\rho(\partial
+  p/\partial\rho)]^{-1}$.  The contribution from $v_{\mu\nu}\lr$ can
+also often be evaluated analytically and vanishes under the SYM
+condition by the same argument as above.  Obviously the
 compressibility can be integrated along an isotherm to obtain an
 alternative expression for the pressure.  This is the so-called
 compressibility route to the equation of state.  This expression is
 insensitive to the presence of hard cores since they are supposed to
 be contained in $v_{\mu\nu}'$ and enter \via\ the direct correlation
-function. 
+function.
 
-The next quantity of interest is the internal energy $U$.  Per
-particle, the excess internal energy is
+\subsubsection{Energy}
+%
+Let $U$ be the internal energy.  Per particle, the excess internal
+energy is
 %
 \begin{equation}
-\frac{\Uex}{N}=2\pi\,{\textstyle \sum_{\mu\nu}}\,\rho x_\mu x_\nu 
+\frac{\Uex}{V}=2\pi\rho\,{\textstyle \sum_{\mu\nu}}\,\rho x_\mu x_\nu 
 \int_{d_{\mu\nu}}^\infty\!\!dr\, r^2\, v_{\mu\nu}(r)\,g_{\mu\nu}(r)
 \end{equation}
 %
@@ -660,10 +663,10 @@ particle, the excess internal energy is
 a mean field term and a correlation correction,
 %
 \begin{equation}
-\frac{\beta\Uex}{N}={2\pi}\int_{d_{\mu\nu}}^\infty\!\!dr\,r^2\,
+\frac{\beta\Uex}{V}={2\pi\rho}\int_{d_{\mu\nu}}^\infty\!\!dr\,r^2\,
 ({\textstyle \sum_{\mu\nu}}\,\rho x_\mu x_\nu\,\beta
   v_{\mu\nu})
-+{\textstyle \sum_{\mu\nu}}\,
++\rho\,{\textstyle \sum_{\mu\nu}}\,
 \rho x_\mu x_\nu t^{\mathrm{E}}_{\mu\nu}
 \end{equation}
 %
@@ -687,13 +690,69 @@ to that for the compressibility factor,
   v_{\mu\nu})}{\partial r}\,.\label{eq:same}
 \end{equation}
 %
-The excess internal energy density (per unit volume) is
-$\Uex/V=\rho\times (\Uex/N)$.  The equation of state can be derived
-from the internal energy and this is the so-called energy route.
+The equation of state can be derived from the internal energy and this
+is the so-called energy route.
 
-Last, and {\bf only valid for the HNC closure}, are thermodynamic
-integrals for excess chemical potentials.
-The relevant result is
+\subsubsection{Free energy and chemical potentials}
+%
+Last, \emph{only valid for the HNC closure}, are expressions for the
+free energy and chemical potentials.  The excess free energy density
+can be written as
+%
+\begin{equation}
+  \begin{split}
+    \beta\aex\equiv\frac{\beta\Aex}{V}&=\frac{1}{2}\int\!d^3\rvec\,
+                        {\textstyle \sum_{\mu\nu}}\,\rho_\mu \rho_\nu
+                        (\half h_{\mu\nu}^2-c_{\mu\nu})\\[6pt]
+         &\qquad{}+ \frac{1}{2}\int\!\frac{d^3\kvec}{(2\pi)^3}\,
+         [\ln\det(I-R\cdot {\tilde C})+ \Tr R\cdot {\tilde C} ]\,.
+  \end{split}
+\end{equation}
+%
+The first (real space) term in this is simplified from the literature
+expressions (\cf\ Eq.~(5.1) in \Refcite{Hir60} or Eq.~(30) in
+\Refcite{LB94}), by assuming the HNC closure \Eqref{eq:hncnd}.  The
+second (reciprocal space) term is couched in terms of the $R$ and
+$\tilde C$ matrices introduced in \Eqref{eq:oz2}: $R$ as a diagonal
+matrix with entries $\rho_\mu=\rho_\mu=\rho x_\mu$ and ${\tilde C}$ is
+the matrix with entries ${\tilde c}_{\mu\lambda}$.  For the real space
+part we make the usual split so that $\beta\aex{}^{,1} = (\rho/2)\,
+{\textstyle \sum_{\mu\nu}}\,\rho x_\mu x_\nu t^{\mathrm{A}}_{\mu\nu}$
+where
+%
+\begin{equation}
+  t^{\mathrm{A}}_{\mu\nu}={4\pi}\int_0^\infty\!\!dr\,r^2\,
+  [\half (c_{\mu\nu}'(r)+e_{\mu\nu}'(r)]^2-
+  c_{\mu\nu}'(r)+\beta v_{\mu\nu}\lr]\,.
+\end{equation}
+%
+The last term in this is same as that appearing in the compressibility
+(to within an overall sign) and often can be evaluated analytically.
+
+We split the reciprocal space part into the separate contributions
+from the determinant and the trace.  For the former we use $\ln\det
+M=\half\,\sum_i\ln |\lambda_i|^2$ where the sum is over the
+eigenvalues $\lambda_i$ of $M=I-R\cdot{\tilde C}$.  Note that this matrix is not
+symmetric and the eigenvalues may be complex.  For the latter we write
+the trace as $\sum_\mu \rho_\mu ({\tilde c}_{\mu\mu}'-\beta {\tilde
+  v}_{\mu\mu}\lr)$ and we note from the definition of the inverse
+Fourier transform in \Eqref{eq:ftinv} that $(2\pi)^{-3}\!\int\!
+d^3\kvec\, {\tilde v}_{\mu\mu}\lr=v_{\mu\mu}\lr(0)$, \ie\ the long
+range potential in real space evaluated at $r=0$.  Thus 
+the reciprocal space contribution is computed from
+%
+\begin{equation}
+  \beta\aex{}^{,2}=\frac{1}{4\pi^2}\int_0^\infty\!\!dk\,k^2\,
+  \bigl[\half{\textstyle\sum_i}\ln|\lambda_i(k)|^2
+    + {\textstyle\sum_\mu} \rho_\mu {\tilde c}_{\mu\mu}'(k)\bigr]
+  -\half{\textstyle\sum_\mu} \rho_\mu v_{\mu\mu}\lr(0)\,.
+\end{equation}
+%
+The final excess free energy density is $\aex = \aex{}^{,1} +
+\aex{}^{,2}$.  The above expressions are insensitive to the presence
+of hard cores.
+
+The corresponding chemical potentials are
 %
 \begin{equation}
 \beta\muex_\mu = 4\pi\,{\textstyle \sum_{\nu}}\,\rho x_\nu 
@@ -713,32 +772,27 @@ t^{\mathrm{M}}_{\mu\nu}=
 -c'_{\mu\nu}+\beta v_{\mu\nu}\lr]\,.
 \end{equation}
 %
-The contribution from $v_{\mu\nu}\lr$ (the last term) can usually be
-evaluated analytically and is the same as that appearing in the
-compressibility (to within an overall sign).  These expressions, valid
-only for HNC, offer a fourth route to the equation of state (the
-chemical-potential route).  These expressions are insensitive to the
-presence of hard cores.
+The contribution from $v_{\mu\nu}\lr$ (the last term) also appears in
+the free energy and is computed separately (analytically).  These
+expressions are also insensitive to the presence of hard cores.
 
-In HNC both the virial route pressure and the chemical potentials
-correspond to a certain free energy.  Since they are compatible in
-this way, the excess free energy density follows from
+The virial route pressure and the chemical potentials are derived from
+the above HNC free energy.  It therefore follows that
 %
 \begin{equation}
-{\beta\Fex}/{V} = \beta{\textstyle \sum_{\mu}}\,\rho x_\mu \muex_\mu
--\beta p + \rho
+\aex - {\textstyle \sum_{\mu}}\,\rho_\mu \muex_\mu + \pex \equiv 0
 \end{equation}
 %
-where the pressure is calculated from the virial route compressibility
-factor.
+where $\pex=p-\rho$ is the excess pressure.  The extent to which this
+actually true is largely a test of the numeric discretisation error.
 
 \section{Potentials}
 %
 \subsection{DPD potential}
 \label{sec:dpd}
 %
-The HNC code contains routines which specify a multicomponent
-potential for dissipative particle dynamics (DPD) with Gaussian
+The code contains routines which specify a multicomponent
+potential for dissipative particle dynamics (DPD) with possible
 charges.  The potential in this case consists of short range and long
 range contributions which can be mapped exactly to the Ng split.  The
 short range part is
@@ -754,11 +808,13 @@ short range part is
 %
 This is a conventional choice, depending on a dimensionless symmetric
 repulsion amplitude matrix $A_{\mu\nu}$ and cut off beyond a
-distance $\rc$.  
+distance $\rc$.
 
+\subsubsection{Gaussian charges}
+%
 Unlike the short range part there is no consensus on the best choice
 for the long range interaction although the differences can always be
-adsorbed into a redefinition of the short range potential.  The first
+adsorbed into a redefinition of the short range potential.  The \emph{default}
 choice of Gaussian charges can be supported for a range of practical
 reasons \cite{WVA+13, WV14}.  The Gaussian charges have size
 $\sim\sigma$ and a density distribution $(2\pi\sigma^2)^{-3/2}
@@ -768,7 +824,8 @@ SYM condition and is given by
 \begin{equation}
 v_{\mu\nu}\lr(r)=z_\mu z_\nu v\lr(r)\,,\quad
 \beta v\lr(r)=\frac{\lB}{r}
-\erf\Bigl(\frac{r}{2\sigma}\Bigr)
+\erf\Bigl(\frac{r}{2\sigma}\Bigr)\,,\quad
+\beta v\lr(0)=\frac{\lB}{\sigma\sqrt{\pi}}\>,
 \label{eq:dpdvlr}
 \end{equation}
 %
@@ -825,12 +882,15 @@ $\rc=1$ is often used as the fundamental length scale.  The ratio
 $\lB/\sigma$ plays the role of an inverse effective temperature for
 the Coloumbic part of the potential.
 
-The above is the Gaussian charge case and is the default.  If Bessel
-charges are selected the charge distribution becomes $K_1(r/\sigma) /
-2\pi^2\sigma^2 r$ and the expressions change to \cite{WV14}
+\subsubsection{Bessel charges}
+%
+If Bessel charges are selected the charge distribution becomes
+$K_1(r/\sigma) / 2\pi^2\sigma^2 r$ and the expressions change to
+\cite{WV14}
 %
 \begin{equation}
-\beta v\lr(r)=\frac{\lB}{r}(1-e^{-r/\sigma})\,,
+  \beta v\lr(r)=\frac{\lB}{r}(1-e^{-r/\sigma})\,,\quad
+  \beta v\lr(0)=\frac{\lB}{\sigma}\,,
 \end{equation}
 %
 \begin{equation}
@@ -845,6 +905,8 @@ charges are selected the charge distribution becomes $K_1(r/\sigma) /
 Note that $\sigma$ here is chosen to match the second moment of the
 charge distribution for the Gaussian case.
 
+\subsubsection{Linear charge smearing}
+%
 Another alternative is linear charge smearing proposed by Groot
 \cite{Groot03}.  In this case the charge distribution is $(3/\pi
 R^3)(1-r/R)$ for $r<R$, vanishing for $r>R$. This gives rise to an
@@ -864,12 +926,15 @@ Matching the second moment of the charge distribution \cite{WV14}
 shows that the equivalent Gaussian smearing length is
 $\sigma=R\sqrt{2/15}$.
 
+\subsubsection{Approximate Slater smearing}
+%
 Another popular alternative is Slater smearing proposed by
 Gonz\'alez-Melchor \etal\ \cite{GM+06}.  They use an approximate
 expression for the interaction potential, for which we have
 %
 \begin{equation}
-  \beta v\lr(r)=\frac{\lB}{r}\Bigl[1-e^{-2\varbeta r}(1+\varbeta r)\Bigr]\,.
+  \beta v\lr(r)=\frac{\lB}{r}\Bigl[1-e^{-2\varbeta r}(1+\varbeta r)\Bigr]\,,
+  \quad \beta v\lr(0)=\varbeta\lB\,,
   \label{eq:slaterapprox}
 \end{equation}
 %
@@ -887,15 +952,18 @@ e^{-2\varbeta r}/\pi r$ where $\varbeta$ is a smearing parameter, not
 to be confused with $\beta=1/\kT$. The equivalent Gaussian smearing
 length is here $\sigma=1/\varbeta\sqrt{2}$.
 
+\subsubsection{Exact Slater smearing}
+%
 The intended charge density in Slater smearing is
 $(1/\pi\lambda^3)e^{-2r/\lambda}$.  It turns out that there are exact
 expressions for the interaction between such charges \cite{WV14},
-namely
 %
 \begin{equation}
   \beta v\lr(r)=\frac{\lB}{r}\Bigl[1-e^{-2r/\lambda}\Bigl(
     1+\frac{11r}{8\lambda}+\frac{3r^2}{4\lambda^2}
-    +\frac{r^3}{6\lambda^3}\Bigr)\Bigr]\,,\label{eq:slaterexact}
+    +\frac{r^3}{6\lambda^3}\Bigr)\Bigr]\,,
+  \quad \beta v\lr(0)=\frac{5\lB}{8\lambda}\>,
+  \label{eq:slaterexact}
 \end{equation}
 %
 \begin{equation}
@@ -912,16 +980,15 @@ namely
 The equivalent Gaussian smearing length for these exact expressions is
 $\sigma=\lambda$.  Originally, Gon\-z\'a\-lez-Melchor
 \etal\ \cite{GM+06} mistakenly set $\varbeta=1/\lambda$ in
-\Eqref{eq:slaterapprox}, but the correct mapping
-$\varbeta=5/(8\lambda)$ makes \Eqsref{eq:slaterapprox} and
-\eqref{eq:slaterexact} have the same limiting value as $r\to0$.
+\Eqref{eq:slaterapprox}, but setting
+$\varbeta=5/(8\lambda)$ matches the values of $\beta v\lr(0)$.
 
 Note that by writing $\beta {\tilde v}\lr(k)=4\pi\lB
 k^{-2}(1+k^2\sigma^2/n)^{-n}$, there is a natural hierarchy going from
 Bessel ($n=1$), to approximate Slater ($n=2$), to exact Slater
 ($n=4$), and to Gaussian ($n\to\infty$).
 
-\subsection{Softened URPM potential}
+\subsection{URPM and softened URPM potential}
 \label{sec:softURPM}
 %
 Another potential provided by the code at present is for the URPM in
@@ -1006,10 +1073,10 @@ bounded inside the hard cores.  By far the simplest choice is a
 truncated Coulomb law,
 %
 \begin{equation}
-  \beta v\lr=\Bigl\{\begin{array}{ll}
+  \beta v\lr(r)=\Bigl\{\begin{array}{ll}
   \lB/\sigma & r\le\sigma\,,\\
-  \lB/r & r > \sigma\,.
-  \end{array}
+  \lB/r & r > \sigma\,,
+  \end{array}\quad \beta v\lr(0)=\frac{\lB}{\sigma}\,.
 \end{equation}
 %
 This does least damage to the potential outside the hard core so we
@@ -1112,7 +1179,7 @@ The implementation of the Fourier transforms is as follows.  A
 discrete version of \Eqref{eq:fFB} is
 %
 \begin{equation}
-{\tilde h}_j = \frac{2\pi\delta_r}{k_j} \times 
+{\tilde h}_j = ({2\pi\delta_r}/{k_j}) \times 
 2\, {\textstyle\sum_{i=1}^{n-1}} r_i h_i \sin(\pi i j / n)
 \end{equation}
 %
@@ -1126,15 +1193,14 @@ first term since the array length is $n-1$).  For the back-transform
 the corresponding discrete version of \Eqref{eq:bFB} is
 %
 \begin{equation}
-h_i = \frac{\delta_k}{(2\pi)^2 r_i}  \times 
+h_i = ({\delta_k}/{(2\pi)^2 r_i})  \times 
 2\,{\textstyle \sum_{j=1}^{n-1}} k_j {\tilde h}_j \sin(\pi i j / n)
 \end{equation}
 %
 The quantity $2\,\sum_{j=1}^{n-1} k_j h_j \sin(\pi i j / n)$ is
 computed by calling \verb+RODFT00+ on $k_j h_j$.
 
-Version 1.7 of the code can handle an arbitrary number of components
-(versions prior to this could only handle at most three components).
+Versions $\ge1.7$ of the code can handle an arbitrary number of components.
 A species pair array index $(i, j)$ is mapped to a `function' index
 $s$ according to the following rule
 %
@@ -1198,7 +1264,9 @@ let me know!
 
 The thermodynamic quantities in section \ref{sec:thermo} are all
 evaluated by standard trapezium rules, applied to the integrals given
-therein.
+therein.  The eigenvalues of the matrix required for the HNC
+free energy are found by calling \verb+DGEEV+  in the \LAPACK\ library
+(general purpose, since the matrix is not symmetric).
 
 If scripting with \python\ note that the \python\ array index is one
 less than the \FORTRAN\ array index.  This conversion is seamlessly
@@ -1380,6 +1448,10 @@ $c'_{\mu\nu}$ given $e'_{\mu\nu}$, but using the Ng acceleration scheme.
 \item\verb+make_thermodynamics+ -- everything in section
   \ref{sec:thermo}.
 %
+\item\verb+hnc_kspace_integrals+ -- specialised calculation of
+  reciprocal space integrals in HNC free energy (called
+  by \verb+make_thermodynamics+).
+%
 \item\verb+write_params+ -- Write out basic information.  Often useful
   as a check that the right potential is being solved.
 %
@@ -1550,17 +1622,14 @@ if w.return_code:
     exit()
 \end{verbatim}
 %
-\item\verb+closure_name+ -- String (character array) giving the
-  last-used closure (a three-letter acronym).
-%
-\item\verb+model_name+ -- String (character array) describing the
-  potential model last used to set the potential arrays.
-%
-\item\verb+version+ -- String (character array) giving the
-  SunlightHNC version number (added in 1.10).
+\item\verb+closure_name+\,, \verb+model_name+\,, \verb+version+ --
+  Strings (character arrays) giving respectively the last-used closure
+  (a three-letter acronym), the potential model last used to set the
+  potential arrays, and the SunlightHNC version number (added in
+  1.10).
 %
 \end{itemize}
-
+%
 The following quantities are available after a call to
 \verb+make_thermodynamics+ (which is done automatically unless
 \verb+auto_fns+ is turned off).  They are also reported by
@@ -1568,43 +1637,46 @@ The following quantities are available after a call to
 %
 \begin{itemize}
 %
-\item\verb+press+ -- The virial route pressure $\beta p$.
+\item\verb+press+\,, \verb+pex+ -- The virial route pressure $\beta p$,
+  and excess pressure $\beta \pex=\beta p-\beta\rho$
 %
-\item\verb+cf_mf+ -- The mean-field contribution to the
-virial route compressibility factor $\beta p/\rho$.
+\item\verb+cf_mf+\,, \verb+cf_gc+\,, \verb+cf_xc+ -- The mean-field,
+  contact, and correlation contributions respectively, to the virial
+  route compressibility factor $\beta p/\rho$.
 %
-\item\verb+cf_gc+ -- The contact contribution to the
-virial route compressibility factor $\beta p/\rho$.
+\item\verb+comp+\,, \verb+comp_xc+ -- The compressibility
+  $\partial(\beta p)/\partial\rho$ (not to be confused with the
+  above), and the correlation contribution to the same.
 %
-\item\verb+cf_xc+ -- The correlation contribution to the
- virial route compressibility factor $\beta p/\rho$.
-%
-\item\verb+comp+ -- The compressibility $\partial(\beta
-  p)/\partial\rho$ (not to be confused with the 
-  compressibility factor $\beta p/\rho$).
-%
-\item\verb+comp_xc+ -- The correlation contribution to the
-  compressibility.
-%
-\item\verb+uv+ -- Internal energy density $\beta U/V$ (excludes
-  kinetic contribution).
-%
-\item\verb+un+ -- Internal energy per particle $\beta U/N$ (excludes
-  kinetic contribution).
-%
-\item\verb+un_mf+ -- The mean field contribution to \verb+un+.
-%
-\item\verb+un_corrn+ -- The correlation contribution to \verb+un+.
-%
-\item\verb+muex(:)+ -- Chemical potentials, \verb+muex(mu)+ contains
-  $\beta\muex_\mu$ (HNC only).
-%
-\item\verb+fvex+ -- Excess free energy density $\beta \Fex/V$ (HNC only).
-%
-\item\verb+fnex+ -- Excess free energy per particle $\beta \Fex/N$ (HNC only).
+\item\verb+uv+\,, \verb+uv_mf+\,, \verb+uv_corrn+ -- Internal energy
+  density $\beta U/V$ (excluding kinetic contribution), with mean
+  field and correlation contributions.
 %
 \end{itemize}
-
+%
+The following are calculated only for the HNC closure.
+\begin{itemize}
+%
+\item\verb+aex_rs+\,, \verb+aex_rl+ -- The correlation and mean field
+  ($v\lr$ term) pieces of the real space contribution to the excess
+  free energy density.
+%
+\item\verb+aex_kd+\,, \verb+aex_ks+\,, \verb+aex_kl+ -- The determinant,
+  correlation (trace), and mean field (trace, $v\lr$ term) pieces of the
+  reciprocal space contribution to the excess free energy density.
+%
+\item\verb+aex+ -- The total excess free energy density
+  $\beta\aex=\beta\Aex/V$ (the sum of all the above).
+%
+\item\verb+muex(:)+ -- Chemical potentials, \verb+muex(mu)+ contains
+  $\beta\muex_\mu$
+%
+\item\verb+deficit+ -- The quantity $\aex - \sum_{\mu}\rho_\mu
+  \muex_\mu + \pex$ which should vanish (indicative of numerical
+  discretisation error).
+%
+\end{itemize}
+%
 The following internal variables may be useful.
 %
 \begin{itemize}
@@ -1645,9 +1717,8 @@ The following internal variables may be useful.
   contains $\beta{\tilde v}\lr_{\mu\nu}(k_j)$, where \verb+s+ is the
   species index.
 %
-\item The fixed parameters \verb+pi+, \verb+twopi+, and \verb+fourpi+ 
-($\pi$, $2\pi$, and $4\pi$) are available and can be utilised if
-convenient.
+\item \verb+pi+\,, \verb+twopi+\,, \verb+fourpi+ --- Available for convenience
+($=\pi, 2\pi, 4\pi$).
 %
 \end{itemize}
 
@@ -1793,34 +1864,34 @@ One can continue in the same vein, to calculate the pressure \via\ the
 energy route, but this really involves the calculation of the free
 energy.  This can be done by coupling constant integration.  The basic
 result can be derived by differentiating the fundamental expression
-$e^{-\beta F} = \int\!d\Omega\,e^{-\beta V}$ with respect to a
+$e^{-\beta\Aex} = \int\!d\Omega\,e^{-\beta V}$ with respect to a
 parameter in the potential $V$.  For instance for standard
-single-component DPD, ${\partial F}/{\partial A}={\langle
+single-component DPD, ${\partial\Aex}/{\partial A}={\langle
   V\rangle}/{A}$ where $\langle V\rangle\equiv U$ is the internal
 energy.  Thus
 %
 \begin{equation}
-F=\int_0^A\frac{dA'}{A'}\,\langle V\rangle_{A'}
+\Aex=\int_0^A\frac{dA'}{A'}\,\langle V\rangle_{A'}
 \label{eq:fint}
 \end{equation}
 %
 which should be evaluated along an isochore (constant density line).
 The following \python\ routine uses this to compute the excess free
-energy per particle, $\fNex$,
+energy
 %
 \begin{verbatim}
-def fnex1(dA):
-    fnex_xc = prev = 0.0
+def energy_aex(dA):
+    aex_xc = prev = 0.0
     n = int(w.arep[0,0]/dA + 0.5)
     w.cold_start = 1
     for i in range(n):
         w.arep[0,0] = dA * (i + 1.0)
-        w.dpd_potential(1)
+        w.dpd_potential()
         w.hnc_solve()
-        curr = w.un_xc / w.arep[0,0]
-        fnex_xc = fnex_xc + 0.5*dA*(prev + curr)
+        curr = w.uv_xc / w.arep[0,0]
+        aex_xc = aex_xc + 0.5*dA*(prev + curr)
         prev = curr
-    return w.un_mf + fnex_xc
+    return w.uv_mf + aex_xc
 \end{verbatim}
 %
 Points to note are again that this implements a trapezium rule, and
@@ -1830,48 +1901,47 @@ contribution to the internal energy is strictly proportional to $A$,
 so it passes unscathed through \Eqref{eq:fint} to contribute
 to the free energy.
 
-For the HNC specifically, we could also calculate $\fNex$ by integrating
-$\muex$ along an isotherm, giving a second routine
+For the HNC specifically, we could also calculate the free energy by
+integrating $\muex$ along an isotherm, giving a second routine
 %
 \begin{verbatim}
-def fnex2(drho):
-    fvex = prev = 0.0
+def mu_aex(drho):
+    aex = prev = 0.0
     n = int(w.rho[0]/drho + 0.5)
     w.cold_start = 1
     for i in range(n):
         w.rho[0] = drho * (i + 1.0)
         w.hnc_solve()
-        fvex = fvex + 0.5*drho*(prev + w.muex[0])
+        aex = aex + 0.5*drho*(prev + w.muex[0])
         prev = w.muex[0]
-    return fvex / w.rho[0]
+    return aex
 \end{verbatim}
 %
-Note that integrating $\muex$ with respect to $\rho$ generates the
-excess free energy density, so the routine divides this $\rho$ to get
-$\fNex$.  Both routines leave the system in the same state as it
-started.  As an example, to test these,
+Both routines leave the system in the same state as it started.  As an
+example, to test these,
 %
 \begin{verbatim}
 w.initialise()
 w.rho[0] = 3.0
 w.arep[0,0] = 25.0
 w.dpd_potential()
-print('energy fnex =', fnex1(0.1))
-print('mu fnex =    ', fnex2(0.05))
-print('HNC fnex =   ', w.fnex)
+print('energy aex =', energy_aex(0.1))
+print('mu aex     =', mu_aex(0.05))
+print('aex        =', w.aex)
 \end{verbatim}
 %
 (the last of these uses the built-in free energy evaluation for HNC), giving
 %
 \begin{verbatim}
-energy fnex = 5.31588405588
-mu fnex =     5.31606130857
-HNC fnex =    5.3159336139428195
+energy aex = 15.9476521676
+mu aex     = 15.9481839257
+aex        = 15.947542189636641
 \end{verbatim}
 %
 We see that all three routes agree to the third decimal place, which
-is a good test of convergence.  Sections \ref{sec:vrp}--\ref{sec:feng}
-have been coded up as \verb+examples.py+.
+is a good test of convergence (the absolute HNC deficit is
+$2.6\times10^{-4}$).  Sections \ref{sec:vrp}--\ref{sec:feng} have been
+coded up as \verb+examples.py+.
 
 \subsection{Further examples}
 
@@ -2110,6 +2180,13 @@ If the indicated operations are carried out, one indeed recovers
   R.~R.~Netz, and W.~Kunz, ``Ion-specific thermodynamics of
   multicomponent electrolytes: A hybrid HNC/MD approach'',
   J.\ Chem.\ Phys.\ {\bf131}, 154109 (2009).
+
+\bibitem{Hir60} K.~Hiroike, ``A new approach to the theory of
+  classical fluids, II'', Prog.\ Theor.\ Phys.\ {\bf24}, 317 (1960).
+
+\bibitem{LB94} L.~Lue and D.~Blankschtein, ``Proper integral equations
+  for interaction-site fluids: exact free-energy expressions'',
+  J.\ Chem.\ Phys.\ {\bf100}, 3002 (1994).
   
 \bibitem{WV14} P.~B.~Warren and A.~Vlasov ``Screening properties of
   four mesoscale smoothed charge models, with application to

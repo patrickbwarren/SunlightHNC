@@ -45,41 +45,43 @@ def cr_press(drho):
         prev = w.comp_xc
     return w.rho[0] + p_xc
 
-# Function calculates the excess free energy per particle by coupling
+# Function calculates the excess free energy density by coupling
 # constant integration along an isochore.
 
-def fnex1(dA):
-    fnex_xc = prev = 0.0
+def energy_aex(dA):
+    aex_xc = prev = 0.0
     n = int(w.arep[0,0]/dA + 0.5)
     w.cold_start = 1
     for i in range(n):
         w.arep[0,0] = dA * (i + 1.0)
         w.dpd_potential()
         w.hnc_solve()
-        curr = w.un_xc / w.arep[0,0]
-        fnex_xc = fnex_xc + 0.5*dA*(prev + curr)
+        curr = w.uv_xc / w.arep[0,0]
+        aex_xc = aex_xc + 0.5*dA*(prev + curr)
         prev = curr
-    return w.un_mf + fnex_xc
+    return w.uv_mf + aex_xc
 
-# Function calculates the excess free energy per particle by
+# Function calculates the excess free energy density by
 # integrating the chemical potential along an isotherm.
 
-def fnex2(drho):
-    fvex = prev = 0.0
+def mu_aex(drho):
+    aex = prev = 0.0
     n = int(w.rho[0]/drho + 0.5)
     w.cold_start = 1
     for i in range(n):
         w.rho[0] = drho * (i + 1.0)
         w.hnc_solve()
-        fvex = fvex + 0.5*drho*(prev + w.muex[0])
+        aex = aex + 0.5*drho*(prev + w.muex[0])
         prev = w.muex[0]
-    return fvex / w.rho[0]
+    return aex
 
 w.initialise()
 w.arep[0,0] = A = 25.0
 w.dpd_potential()
 w.rho[0] = rho = 3.0
 w.hnc_solve()
+
+w.write_thermodynamics()
 
 print('SunlightHNC v%s' % str(w.version, 'utf-8').strip())
 
@@ -107,17 +109,6 @@ print('CR pressure =', cr_press(0.05))
 print('VR pressure =', w.press)
 
 print('\n*** Example 6.3 ***\n')
-print('energy fnex =', fnex1(0.1))
-print('mu fnex =    ', fnex2(0.05))
-print('a_gh/rho =   ', w.a_gh/rho)
-
-print('\nFree energy contributions (HNC) and sum')
-
-print('short range, real space,    a_rs = ', w.a_rs)
-print('long range, real space,     a_rl = ', w.a_rl)
-print('log(det), k-space,          a_ld = ', w.a_ld)
-print('short range trace, k-space, a_ts = ', w.a_ts)
-print('long range trace, k-space,  a_tl = ', w.a_tl)
-
-print('total excess free energy,   a_ex = ', w.a_ex)
-print('Gibbs-Duhem route,          a_gh = ', w.a_gh)
+print('energy aex =', energy_aex(0.1))
+print('mu aex     =', mu_aex(0.05))
+print('aex        =', w.aex)
