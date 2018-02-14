@@ -1,6 +1,6 @@
 ## General purpose HNC code
 
-The current release is version 1.12 (beta).
+The current release is version 1.12.
 
 Version 1.12 adds direct calculation of HNC free energy (see documentation).
 
