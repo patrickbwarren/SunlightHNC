@@ -95,15 +95,15 @@ for i in range(npt):
     w.rho[0] = 0.5 * rho
     w.rho[1] = 0.5 * rho
     w.hnc_solve()
-    y[0].append(-w.uv/rho)
+    y[0].append(-w.uex/rho)
     y[1].append(1.0 + w.cf_gc + w.cf_xc)
     print("%i\t%f\t%f\t%f\t%g\tHNC" %
-          (i, m.sqrt(rho), w.uv/rho, w.cf_gc, w.error))
+          (i, m.sqrt(rho), w.uex/rho, w.cf_gc, w.error))
     w.msa_solve()
-    y[2].append(-w.uv/rho)
+    y[2].append(-w.uex/rho)
     y[3].append(1.0 + w.cf_gc + w.cf_xc)
     print("%i\t%f\t%f\t%f\t%g\tMSA" %
-          (i, m.sqrt(rho), w.uv/rho, w.cf_gc, w.error))
+          (i, m.sqrt(rho), w.uex/rho, w.cf_gc, w.error))
 
 for i in range(npt):
     rho = x[i]**2
@@ -116,10 +116,10 @@ for i in range(npt):
     w.rpm_potential()
     w.msa_solve()
     w.exp_refine()
-    y[4].append(-w.uv/rho)
+    y[4].append(-w.uex/rho)
     y[5].append(1.0 + w.cf_gc + w.cf_xc)
     print("%i\t%f\t%f\t%f\t%g\tEXP" %
-          (i, m.sqrt(rho), w.uv/rho, w.cf_gc, w.error))
+          (i, m.sqrt(rho), w.uex/rho, w.cf_gc, w.error))
 
 import matplotlib.pyplot as plt
 

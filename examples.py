@@ -56,10 +56,10 @@ def energy_aex(dA):
         w.arep[0,0] = dA * (i + 1.0)
         w.dpd_potential()
         w.hnc_solve()
-        curr = w.uv_xc / w.arep[0,0]
+        curr = w.uex_xc / w.arep[0,0]
         aex_xc = aex_xc + 0.5*dA*(prev + curr)
         prev = curr
-    return w.uv_mf + aex_xc
+    return w.uex_mf + aex_xc
 
 # Function calculates the excess free energy density by
 # integrating the chemical potential along an isotherm.
@@ -88,7 +88,7 @@ print('SunlightHNC v%s' % str(w.version, 'utf-8').strip())
 print('\n*** Example 6.1 ***\n')
 print('rho =', rho, ' A =', A)
 print('pressure =', w.press)
-print('energy density =', w.uv)
+print('energy density =', w.uex)
 
 plt.figure(1)  # This will be g(r)
 imax = int(3.0 / w.deltar)
@@ -111,4 +111,4 @@ print('VR pressure =', w.press)
 print('\n*** Example 6.3 ***\n')
 print('energy aex =', energy_aex(0.1))
 print('mu aex     =', mu_aex(0.05))
-print('aex        =', w.aex)
+print('direct aex =', w.aex)

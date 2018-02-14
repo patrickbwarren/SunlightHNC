@@ -60,6 +60,7 @@
 \newcommand{\myex}{^{\mathrm{ex}}}
 \newcommand{\pex}{p\myex}
 \newcommand{\Uex}{U\myex}
+\newcommand{\uex}{u\myex}
 \newcommand{\Aex}{A\myex}
 \newcommand{\aex}{a\myex}
 \newcommand{\muex}{\mu\myex}
@@ -128,13 +129,11 @@ projects. If you end up publishing results based on this, please cite\\
 \end{itemize}
 
 \noindent
-{\small Versions 1.10, 1.11 fix bugs: the
+{\small Versions 1.10, 1.11 fixed bugs: the
 contact virial pressure contribution was missing from the HNC free
-energy, and the compressibility and HNC chemical potentials was
-missing a mean-field term for the off-SYM RPM potential.}\\
-
-\noindent
-{\small Added in version 1.7--1.9: MSA closure and EXP; exact and approximate
+energy, and the compressibility and HNC chemical potentials were
+missing a mean-field term for the off-SYM RPM potential.
+Added in version 1.7--1.9: MSA closure and EXP; exact and approximate
 pair potentials for Slater smearing; EXP for hard core potentials
 fixed, new examples added; source code brought up to a modern
 \FORTRAN\ 90 standard.}
@@ -165,9 +164,9 @@ convergence, and pyOZ provides other closures in addition to the ones
 provided here.  The present code is based on an HNC code developed by
 Lucian Anton, modified for dissipative particle dynamics (DPD) by
 Andrey Vlasov with help from Lucian and Andrew Masters.  The code was
-later converted by Patrick Warren to use the open source libraries
-\FFTW\ and \LAPACK, and rewritten to be compatible with \python\ using
-the \verb+f2py+ interface generator.
+later converted to use the open source libraries \FFTW\ and
+\LAPACK\ by Patrick Warren, and rewritten to be compatible with
+\python\ using the \verb+f2py+ interface generator.
 
 \section{Theoretical background}
 %
@@ -654,11 +653,11 @@ function.
 
 \subsubsection{Energy}
 %
-Let $U$ be the internal energy.  Per particle, the excess internal
-energy is
+The excess internal energy density is
 %
 \begin{equation}
-\frac{\beta \Uex}{V}=2\pi\rho\,{\textstyle \sum_{\mu\nu}}\,\rho x_\mu x_\nu 
+  \beta\uex\equiv
+  \frac{\beta \Uex}{V}=2\pi\rho\,{\textstyle \sum_{\mu\nu}}\,\rho x_\mu x_\nu 
 \int_{d_{\mu\nu}}^\infty\!\!dr\, r^2\, \beta v_{\mu\nu}(r)\,g_{\mu\nu}(r)
 \end{equation}
 %
@@ -666,7 +665,7 @@ energy is
 a mean field term and a correlation correction,
 %
 \begin{equation}
-\frac{\beta\Uex}{V}={2\pi\rho}\int_{d_{\mu\nu}}^\infty\!\!dr\,r^2\,
+{\beta\uex}={2\pi\rho}\int_{d_{\mu\nu}}^\infty\!\!dr\,r^2\,
 ({\textstyle \sum_{\mu\nu}}\,\rho x_\mu x_\nu\,\beta
   v_{\mu\nu})
 +\rho\,{\textstyle \sum_{\mu\nu}}\,
@@ -696,7 +695,7 @@ to that for the compressibility factor,
 The equation of state can be derived from the internal energy and this
 is the so-called energy route.
 
-\subsubsection{Free energy and chemical potentials}
+\subsubsection{Free energy and chemical potentials}\label{subsec:aex}
 %
 Last, \emph{only valid for the HNC closure}, are expressions for the
 free energy and chemical potentials.  The excess free energy density
@@ -992,7 +991,7 @@ expressions for the interaction between such charges \cite{WV14},
 %
 The equivalent Gaussian smearing length for these exact expressions is
 $\sigma=\lambda$.  Originally, Gon\-z\'a\-lez-Melchor
-\etal\ \cite{GM+06} mistakenly set $\varbeta=1/\lambda$ in
+\etal\ \cite{GM+06} set $\varbeta=1/\lambda$ in
 \Eqref{eq:slaterapprox}, but setting
 $\varbeta=5/(8\lambda)$ matches the values of $\beta v\lr(0)$.
 
@@ -1250,13 +1249,15 @@ index $s$ by the following rule, where $\lfloor\cdots\rfloor$ is the
 %
 This is not used in the code though.  The proof is left as an exercise.
 
-The matrix operations in \Eqsref{eq:oznd} and \eqref{eq:ozndb} are
-implemented using the standard \verb+MATMUL+ function in \FORTRAN\ 90.
-The matrix inversions are not implemented \perse, but are rather done
-by solving the matrix equation $A\cdot X=B$ using a bespoke subroutine
-\verb+axeqb_reduce+ in the code which implements a simplified version
-of Gauss-Jordan elimination with pivoting (but not $LDU$
-factorisation) \cite{NR92}.
+The matrix multiplications in the Ornstein-Zernike relation and elsewhere
+are implemented using the standard \verb+MATMUL+ function in
+\FORTRAN\ 90.  The matrix inversions are not implemented \perse, but
+are rather done by solving the matrix equation $A\cdot X=B$ using a
+bespoke subroutine \verb+axeqb_reduce+ in the code which implements a
+simplified version of Gauss-Jordan elimination with pivoting (but not
+$LDU$ factorisation) \cite{NR92}.  The eigenvalues of the
+(non-symmetric) matrix required for the HNC free energy are found by
+calling \verb+DGEEV+ in the \LAPACK\ library.
 
 The Ng acceleration scheme is implemented by keeping track of a number
 of previous iterations (typically 6), recycling the storage.  Thus the
@@ -1274,8 +1275,7 @@ let me know!
 
 The thermodynamic quantities in section \ref{sec:thermo} are all
 evaluated by standard trapezium rules, applied to the integrals given
-therein.  The eigenvalues of the (non-symmetric) matrix required for the HNC
-free energy are found by calling \verb+DGEEV+  in the \LAPACK\ library.
+therein.  
 
 If scripting with \python\ note that the \python\ array index is one
 less than the \FORTRAN\ array index.  This conversion is seamlessly
@@ -1444,7 +1444,7 @@ $c'_{\mu\nu}$ given $e'_{\mu\nu}$, but using the Ng acceleration scheme.
 %
 \item\verb+conv_test+ -- Check convergence in iterative schemes by
   calculating the difference (saved in \verb+error+) between the
-  current and immediately preceeding $c'_{\mu\nu}$.
+  current and immediately preceding $c'_{\mu\nu}$.
 %
 \item\verb+make_pair_functions+ -- from \Eqref{eq:hrs}.  The
   choice to present $h_{\mu\nu}$ rather $g_{\mu\nu}$ is made because
@@ -1458,7 +1458,7 @@ $c'_{\mu\nu}$ given $e'_{\mu\nu}$, but using the Ng acceleration scheme.
   \ref{sec:thermo}.
 %
 \item\verb+hnc_kspace_integrals+ -- specialised calculation of
-  reciprocal space integrals in HNC free energy (called
+  reciprocal space integrals in section \ref{subsec:aex} (called
   by \verb+make_thermodynamics+).
 %
 \item\verb+write_params+ -- Write out basic information.  Often useful
@@ -1651,38 +1651,39 @@ The following quantities are available after a call to
 %
 \item\verb+cf_mf+\,, \verb+cf_gc+\,, \verb+cf_xc+ -- The mean-field,
   contact, and correlation contributions respectively, to the virial
-  route compressibility factor $\beta p/\rho$ (thus $\pex$ is the sum
+  route compressibility factor $\beta p/\rho$ (thus $\beta\pex$ is the sum
   of these multiplied by $\rho$).
 %
 \item\verb+comp+\,, \verb+comp_xc+ -- The compressibility
   $\partial(\beta p)/\partial\rho$ (not to be confused with the
   above), and the correlation contribution to the same.
 %
-\item\verb+uv+\,, \verb+uv_mf+\,, \verb+uv_corrn+ -- Internal energy
-  density $\beta U/V$ (excluding kinetic contribution), with mean
-  field and correlation contributions.
+\item\verb+uex+\,, \verb+uex_mf+\,, \verb+uex_corrn+ -- Excess internal energy
+  density $\beta\uex$ (\ie\ excluding kinetic contribution); mean
+  field and correlation terms.
 %
 \end{itemize}
 %
 The following are calculated only for the HNC closure.
 \begin{itemize}
 %
-\item\verb+aex_rs+\,, \verb+aex_rl+ -- The correlation and mean field
+\item\verb+aex_rs+\,, \verb+aex_rl+ -- The short and long range
   ($v\lr$ term) pieces of the real space contribution to the excess
   free energy density.
 %
-\item\verb+aex_kd+\,, \verb+aex_ks+\,, \verb+aex_kl+ -- The determinant,
-  correlation (trace), and mean field (trace, $v\lr$ term) pieces of the
-  reciprocal space contribution to the excess free energy density.
+\item\verb+aex_kd+\,, \verb+aex_ks+\,, \verb+aex_kl+ -- The
+  determinant, and trace broken into short and long range ($v\lr$
+  term) pieces, for the reciprocal space contribution to the excess
+  free energy density.
 %
 \item\verb+aex+ -- The total excess free energy density
-  $\beta\aex=\beta\Aex/V$ (the sum of all the above).
+  $\beta\aex$ (sum of all the above).
 %
 \item\verb+muex(:)+ -- Chemical potentials, \verb+muex(mu)+ contains
   $\beta\muex_\mu$
 %
 \item\verb+deficit+ -- The quantity $\aex - \sum_{\mu}\rho_\mu
-  \muex_\mu + \pex$ (which should vanish).  This is a certificate of
+  \muex_\mu + \pex$ (which should vanish).  This can be viewed as a certificate of
   the numerical discretisation error.
 %
 \end{itemize}
@@ -1765,7 +1766,7 @@ w.rho[0] = rho = 3.0
 w.hnc_solve()
 print('rho =', rho, ' A =', A)
 print('pressure =', w.press)
-print('energy density =', w.uv)
+print('energy density =', w.uex)
 \end{verbatim}
 %
 with the result
@@ -1843,7 +1844,9 @@ def cr_press(drho):
 Points to note are that a trapezium rule is used for the numerical
 integration, and the routine actually integrates the excess
 compressibility since the ideal contribution to the pressure is
-trivially $\rho$.  When the \verb+cr_press+ routine finishes, the
+trivially $\rho$.\\
+
+When the \verb+cr_press+ routine finishes, the
 system is in the same state as it started, with the thermodynamics
 completely solved.  So for example
 %
@@ -1876,13 +1879,13 @@ One can calculate the pressure \via\ the energy route, but this really
 involves the calculation of the free energy.  One standard way this
 can be done is by coupling constant integration.  The basic result can
 be derived by differentiating the fundamental expression
-$e^{-\beta\Aex} = \int\!d\Omega\,e^{-\beta V}$ with respect to a
-parameter in the potential $V$.  For instance for standard
-single-component DPD, ${\partial\Aex}/{\partial A}={U}/{A}$ where $U$
+$e^{-\beta\Aex} = \int\!d\Omega\,e^{-\beta \phi}$ with respect to a
+parameter in the potential $\phi$.  For instance for standard
+single-component DPD, ${\partial\aex}/{\partial A}={\uex}/{A}$ where $U$
 is the internal energy.  Thus
 %
 \begin{equation}
-\frac{\beta \Aex}{V}=\int_0^A\frac{dA'}{A'}\,\frac{\beta U_{A'}}{V}
+{\beta \aex}=\int_0^A\frac{dA'}{A'}\,\beta\uex_{A'}
 \label{eq:fint}
 \end{equation}
 %
@@ -1899,17 +1902,17 @@ def energy_aex(dA):
         w.arep[0,0] = dA * (i + 1.0)
         w.dpd_potential()
         w.hnc_solve()
-        curr = w.uv_xc / w.arep[0,0]
+        curr = w.uex_xc / w.arep[0,0]
         aex_xc = aex_xc + 0.5*dA*(prev + curr)
         prev = curr
-    return w.uv_mf + aex_xc
+    return w.uex_mf + aex_xc
 \end{verbatim}
 %
 Points to note are again that this implements a trapezium rule, and
 that the actual integration is carried out for the correlation
-contribution for which $U/A$ vanishes as $A\to0$.  The mean field
+contribution for which $\uex/A$ vanishes as $A\to0$.  The mean field
 contribution to the internal energy is strictly proportional to $A$,
-so it passes unscathed through \Eqref{eq:fint} to contribute
+so it passes unscathed through \Eqref{eq:fint} to contribute additively
 to the free energy.
 
 For the HNC specifically, we could also calculate the free energy by
@@ -1938,7 +1941,7 @@ w.arep[0,0] = 25.0
 w.dpd_potential()
 print('energy aex =', energy_aex(0.1))
 print('mu aex     =', mu_aex(0.05))
-print('aex        =', w.aex)
+print('direct aex =', w.aex)
 \end{verbatim}
 %
 (the last of these uses the built-in free energy evaluation for HNC), giving
@@ -1946,7 +1949,7 @@ print('aex        =', w.aex)
 \begin{verbatim}
 energy aex = 15.9476521676
 mu aex     = 15.9481839257
-aex        = 15.947542189636641
+direct aex = 15.947542189636641
 \end{verbatim}
 %
 We see that all three routes agree to the third decimal place, which
@@ -1954,6 +1957,8 @@ is a good test of numerical discretisation error (the absolute HNC
 deficit is $2.6\times10^{-4}$).  The above examples in sections
 \ref{sec:vrp}--\ref{sec:feng} have been coded up as
 \verb+examples.py+.
+
+\newpage
 
 \subsection{Further examples}
 
@@ -1975,17 +1980,15 @@ deficit is $2.6\times10^{-4}$).  The above examples in sections
   \Refcite{WSG01}, and with independently done Monte-Carlo simulations
   using trial particle identity swaps.
 %
-\item\verb+vlm_fig2_compare.py+ -- Compute the log activity,
-  $\log_{10}\gamma_\infty = (\muex_1 - \muex_0) / \ln 10$, in the infinite
-  dilution limit for a binary DPD fluid, and compare to empirical fit
-  $0.144 \times \Delta a$ as in Fig.~2 in \Refcite{VLN13}.  The fit
-  is derived by these authors from Monte-Carlo trial particle
-  insertion simulations (\ala\ Widom).  Note this is essentially the
-  same calculation as the preceding example except that $a=106.5$ in
-  \Refcite{VLN13}, rather than $a=25$.  For such a large base
-  repulsion amplitude, HNC doesn't converge from a cold start, and
-  this example illustrates the trick of warming up the solver by
-  ramping $a$ up in stages.
+\item\verb+vlm_fig2_compare.py+ -- Compute $\log_{10}\gamma_\infty =
+  (\muex_1 - \muex_0) / \ln 10$ in the infinite dilution limit for a
+  binary DPD fluid, and compare to the empirical fit $0.144 \times
+  \Delta a$ as in Fig.~2 in \Refcite{VLN13}.  The fit is derived by
+  these authors from Monte-Carlo trial particle (Widom) insertions.
+  This is essentially the same calculation as the preceding example
+  except that $a=106.5$.  For such a large base repulsion amplitude,
+  HNC doesn't converge from a cold start, and this example illustrates
+  the trick of warming up the solver by ramping $a$ up in stages.
 %
 \item\verb+x_dmu_compare.py+ -- In an unpublished extension to the
   above two examples $\muex_1-\muex_0$ is plotted as a function of the
@@ -1993,12 +1996,10 @@ deficit is $2.6\times10^{-4}$).  The above examples in sections
   $\rho_1=x\rho$, for $a=25$ and $\Delta a=5$ (one cannot have $\Delta
   a$ too large otherwise an underlying demixing transition causes HNC
   to fail).  The results are compared to data from Monte-Carlo (MC)
-  trial particle identity swap simulations.  The agreement between HNC
+  trial particle identity swaps.  The agreement between HNC
   and MC is excellent, including the small deviation from linearity.
   The near-exact linear dependence can be represented by $\chi (1 -
-  2x)$ where $\chi$ is the Flory $\chi$-parameter.  This is the basic
-  reason why DPD is so good at representing fluid mixtures which fit
-  Flory-Huggins (regular solution) theory.
+  2x)$ where $\chi$ is the Flory $\chi$-parameter.
 %
 \item\verb+hm_fig4-2_compare.py+ solves for the virial and
   compressibility route pressure for the MSA and HNC, for hard
@@ -2022,7 +2023,8 @@ deficit is $2.6\times10^{-4}$).  The above examples in sections
   \verb+--help+.
 %
 \item\verb+rpm_oneoff.py+\,, \verb+hs_oneoff.py+ are similar drivers
-  for the RPM and hard sphere systems.
+  for the RPM and hard sphere systems.  Use \verb+--show+ in these to
+  get a graphical output.
 %
 \item \verb+driver1-4.f90+\,, \verb+driver3.py+ are retained
   for regression testing.

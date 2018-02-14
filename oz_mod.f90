@@ -111,7 +111,7 @@ module wizard
        & aex_kl, aex_kd,    & !    --- '' ---
        & aex_ks, aex,       & ! -- '' --, and final excess free energy density
        & deficit,           & ! excess free energy deficit (see docs)
-       & uv, uv_mf, uv_xc     ! energy density total and contributions
+       & uex, uex_mf, uex_xc  ! energy density total and contributions
 
   ! (*) sigma is used both for the long-range Coulomb smearing length
   ! for the soft potentials, and for hard core diameter for RPM models
@@ -1472,7 +1472,7 @@ contains
     ! Now we do the energy density.  First the mean-field
     ! contribution.
 
-    uv_mf = rhotot * sum(rhoxx(:) * tu(:))
+    uex_mf = rhotot * sum(rhoxx(:) * tu(:))
 
     ! Evaluate t_ij = 2 pi int_0^inf U_ij h_ij r^2 dr.  Note that with
     ! a hard core the contribution from the inner end-point is halved
@@ -1495,11 +1495,11 @@ contains
 
     ! The extra contribution is sum_ij rho x_i x_j t_ij
 
-    uv_xc = rhotot * sum(rhoxx(:) * t(:))
+    uex_xc = rhotot * sum(rhoxx(:) * t(:))
 
     ! This is the final energy density.
 
-    uv = uv_mf + uv_xc
+    uex = uex_mf + uex_xc
 
     ! Finally do the free energy and chemical potentials for HNC
 
@@ -1683,11 +1683,11 @@ contains
     print *, 'Pressure (virial route) = ', press
     print *, 'Compressibility: correlation contribution = ', comp_xc
     print *, 'Compressibility: total = ', comp
-    print *, 'Internal energy density: mean field contribution = ', uv_mf
-    print *, 'Internal energy density: correlation contribution = ', uv_xc
-    print *, 'Internal energy density = ', uv
-    print *, 'Internal energy density / 3 = ', uv / 3.0_dp
-    print *, 'Internal energy per particle = ', uv / sum(rho(:))
+    print *, 'Internal energy density: mean field contribution = ', uex_mf
+    print *, 'Internal energy density: correlation contribution = ', uex_xc
+    print *, 'Internal energy density = ', uex
+    print *, 'Internal energy density / 3 = ', uex / 3.0_dp
+    print *, 'Internal energy per particle = ', uex / sum(rho(:))
 
     if (closure_type.eq.HNC_CLOSURE) then
        do i = 1, ncomp
@@ -1698,8 +1698,8 @@ contains
        print *, 'HNC: k-space, log(det),   aex_kd = ', aex_kd
        print *, 'HNC: k-space, tr (short), aex_ks = ', aex_ks
        print *, 'HNC: k-space, tr (long),  aex_kl = ', aex_kl
-       print *, 'HNC: total,               aex = ', aex
-       print *, 'HNC: sum rho muex - pex       = ', sum(rho(:) * muex(:)) - pex
+       print *, 'HNC: total free energy density = ', aex
+       print *, 'HNC: sum rho muex - pex        = ', sum(rho(:)*muex(:))-pex
        print *, 'HNC: deficit = ', deficit
      end if
 
