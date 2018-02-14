@@ -655,8 +655,8 @@ Let $U$ be the internal energy.  Per particle, the excess internal
 energy is
 %
 \begin{equation}
-\frac{\Uex}{V}=2\pi\rho\,{\textstyle \sum_{\mu\nu}}\,\rho x_\mu x_\nu 
-\int_{d_{\mu\nu}}^\infty\!\!dr\, r^2\, v_{\mu\nu}(r)\,g_{\mu\nu}(r)
+\frac{\beta \Uex}{V}=2\pi\rho\,{\textstyle \sum_{\mu\nu}}\,\rho x_\mu x_\nu 
+\int_{d_{\mu\nu}}^\infty\!\!dr\, r^2\, \beta v_{\mu\nu}(r)\,g_{\mu\nu}(r)
 \end{equation}
 %
 (\cf\ Eq. (2.5.20) in \Refcite{HM06}).  Again this can be split into
@@ -709,16 +709,17 @@ can be written as
   \end{split}
 \end{equation}
 %
-The first (real space) term in this is simplified from the literature
+The first (real space) term has been simplified from the literature
 expressions (\cf\ Eq.~(5.1) in \Refcite{Hir60} or Eq.~(30) in
-\Refcite{LB94}), by assuming the HNC closure \Eqref{eq:hncnd}.  The
+\Refcite{LB94}), by inserting the HNC closure \Eqref{eq:hncnd}.  The
 second (reciprocal space) term is couched in terms of the $R$ and
 $\tilde C$ matrices introduced in \Eqref{eq:oz2}: $R$ as a diagonal
 matrix with entries $\rho_\mu=\rho_\mu=\rho x_\mu$ and ${\tilde C}$ is
-the matrix with entries ${\tilde c}_{\mu\lambda}$.  For the real space
-part we make the usual split so that $\beta\aex{}^{,1} = (\rho/2)\,
-{\textstyle \sum_{\mu\nu}}\,\rho x_\mu x_\nu t^{\mathrm{A}}_{\mu\nu}$
-where
+the matrix with entries ${\tilde c}_{\mu\lambda}$.
+
+For the real space part,
+$\beta\aex{}^{,1} = (\rho/2)\, {\textstyle \sum_{\mu\nu}}\,\rho x_\mu
+x_\nu t^{\mathrm{A}}_{\mu\nu}$ where
 %
 \begin{equation}
   t^{\mathrm{A}}_{\mu\nu}={4\pi}\int_0^\infty\!\!dr\,r^2\,
@@ -814,12 +815,17 @@ distance $\rc$.
 %
 Unlike the short range part there is no consensus on the best choice
 for the long range interaction although the differences can always be
-adsorbed into a redefinition of the short range potential.  The \emph{default}
-choice of Gaussian charges can be supported for a range of practical
-reasons \cite{WVA+13, WV14}.  The Gaussian charges have size
-$\sim\sigma$ and a density distribution $(2\pi\sigma^2)^{-3/2}
-\exp({-r^2/2\sigma^2})$.  The corresponding interaction satisfies the
-SYM condition and is given by
+adsorbed into a redefinition of the short range potential.\footnote{By
+  writing $\beta {\tilde v}\lr(k)=4\pi\lB
+  k^{-2}(1+k^2\sigma^2/n)^{-n}$, there is a natural hierarchy going
+  from Bessel ($n=1$), approximate ($n=2$) and exact ($n=4$) Slater,
+  Gaussian ($n\to\infty$).}
+
+The \emph{default} choice of Gaussian charges can be supported for a
+range of practical reasons \cite{WVA+13, WV14}.  The Gaussian charges
+have size $\sim\sigma$ and a density distribution
+$(2\pi\sigma^2)^{-3/2} \exp({-r^2/2\sigma^2})$.  The corresponding
+interaction satisfies the SYM condition and is given by
 %
 \begin{equation}
 v_{\mu\nu}\lr(r)=z_\mu z_\nu v\lr(r)\,,\quad
@@ -944,7 +950,8 @@ expression for the interaction potential, for which we have
 \end{equation}
 %
 \begin{equation}
-\beta {\tilde v}\lr(k)=\frac{4\pi\lB}{k^2}\times\frac{1}{(1+k^2/4\varbeta^2)^2}\,.
+  \beta {\tilde v}\lr(k)=\frac{4\pi\lB}{k^2}
+  \times\frac{1}{(1+k^2/4\varbeta^2)^2}\,.
 \end{equation}
 %
 These actually corresponds to a charge density $\varbeta^2
@@ -974,7 +981,8 @@ expressions for the interaction between such charges \cite{WV14},
 \end{equation}
 %
 \begin{equation}
-\beta {\tilde v}\lr(k)=\frac{4\pi\lB}{k^2}\times\frac{1}{(1+k^2\lambda^2/4)^4}\,.
+  \beta {\tilde v}\lr(k)=\frac{4\pi\lB}{k^2}
+  \times\frac{1}{(1+k^2\lambda^2/4)^4}\,.
 \end{equation}
 %
 The equivalent Gaussian smearing length for these exact expressions is
@@ -982,11 +990,6 @@ $\sigma=\lambda$.  Originally, Gon\-z\'a\-lez-Melchor
 \etal\ \cite{GM+06} mistakenly set $\varbeta=1/\lambda$ in
 \Eqref{eq:slaterapprox}, but setting
 $\varbeta=5/(8\lambda)$ matches the values of $\beta v\lr(0)$.
-
-Note that by writing $\beta {\tilde v}\lr(k)=4\pi\lB
-k^{-2}(1+k^2\sigma^2/n)^{-n}$, there is a natural hierarchy going from
-Bessel ($n=1$), to approximate Slater ($n=2$), to exact Slater
-($n=4$), and to Gaussian ($n\to\infty$).
 
 \subsection{URPM and softened URPM potential}
 \label{sec:softURPM}
@@ -1010,8 +1013,10 @@ and the long range part is
 %
 where typically $\sigmap>\sigma$ (in the case $\sigmap=\sigma$ we have
 the original URPM which is also contained in the DPD potential
-described above).  The potential in reciprocal space and the
-derivatives follow \mutmut\ from the DPD case.  In the alternative
+described above).  The value at $r=0$, the potential in reciprocal
+space, and the derivatives follow \mutmut\ from the DPD case.
+
+In the alternative
 approach we retain the SYM condition so that the long range part is
 given by \Eqref{eq:dpdvlr} and the short range part is
 %
@@ -1264,9 +1269,8 @@ let me know!
 
 The thermodynamic quantities in section \ref{sec:thermo} are all
 evaluated by standard trapezium rules, applied to the integrals given
-therein.  The eigenvalues of the matrix required for the HNC
-free energy are found by calling \verb+DGEEV+  in the \LAPACK\ library
-(general purpose, since the matrix is not symmetric).
+therein.  The eigenvalues of the (non-symmetric) matrix required for the HNC
+free energy are found by calling \verb+DGEEV+  in the \LAPACK\ library.
 
 If scripting with \python\ note that the \python\ array index is one
 less than the \FORTRAN\ array index.  This conversion is seamlessly
@@ -1280,9 +1284,9 @@ The code is presented as a suite of functions in a \FORTRAN\ 90
 module.  Thus it typically needs a driver code, which can be written
 in \FORTRAN\ 90 or in \python\ with the use of \verb+f2py+ (see
 examples below).  Thermodynamic integration schemes, for example the
-compressibility route to the equation of state, are not implemented
-here.  Rather the philosophy has been to make the solution of the
-basic integral equation problem as fast and robust as possible.
+compressibility route to the equation of state, are not implemented.
+Rather the philosophy has been to focus on robustly solving the basic
+integral equation problem.
 
 \subsection{Routines}
 %
@@ -1301,11 +1305,11 @@ basic integral equation problem as fast and robust as possible.
   multiple times.  The optional integer parameter indicates whether
   the potential should be initialised with Gaussian charges
   (\verb+1+), Bessel charges (\verb+2+), linear (Groot) charges
-  (\verb+3+), Slater charges with exact interaction (\verb+4+), or
-  Slater charges with approximate interaction (\verb+5+).  The linear
-  case (\verb+3+) is currently incomplete in the sense that the
-  thermodynamics is not calculated correctly.  If omitted, the
-  \verb+charge_type+ defaults to Gaussian (\verb+1+).
+  (\verb+3+), Slater charges with approximate interaction (\verb+4+),
+  Slater charges with exact interaction (\verb+5+).  The linear case
+  (\verb+3+) is currently incomplete in the sense that the
+  thermodynamics is not calculated.  If omitted, the
+  \verb+charge_type+ defaults to Gaussian.
 %
 \item\verb+urpm_potential(use_ushort)+ -- Sets up the ultrasoft
   restricted primitive model (URPM) potential with optional softening
@@ -1389,7 +1393,7 @@ basic integral equation problem as fast and robust as possible.
   call to \verb+initialise+ sets $\href_{\mu\nu}=0$, thus
   \verb+exp_refine+ is suitable for immediate use with soft potentials
   without hard cores.  To use \verb+exp_refine+ for potentials with
-  hard cores we need to calculate and save the reference state, for example
+  hard cores, calculate and save the reference state, for example
   in \FORTRAN\ 90:
 %
 \begin{verbatim}
@@ -1525,7 +1529,7 @@ convergence (usually safe to leave at default 100).
   potentials; hard core diameter $\sigma$ in the case of the RPM or
   hard sphere potentials.
 %
-\item\verb+kappa+ -- parameter $\kappa$ (default $-$1.0) in the
+\item\verb+kappa+ -- parameter $\kappa$ (default $-1$) in the
   softened RPM potential.  A negative value is interpreted as
   $\kappa\to\infty$ and generates the vanilla RPM.
 %
@@ -1535,15 +1539,15 @@ convergence (usually safe to leave at default 100).
 \item\verb+rgroot+ -- linear (Groot) charge smearing range $R$
   (default 1.0) in the DPD potential (\verb+charge_type = 3+).
 %
+\item\verb+beta+ -- Slater charge smearing parameter $\varbeta$
+  (default 1.0) in the DPD potential with approximate interaction
+  (\verb+charge_type = 4+).  One would usually calculate this as
+  $\varbeta=1/\lambda$, or (better) $\varbeta=5/(8\lambda)$.
+%
 \item\verb+lbda+ -- Slater charge smearing length $\lambda$ (default
   1.0) in the DPD potential with exact interaction
-  (\verb+charge_type = 4+).  The name is truncated because
+  (\verb+charge_type = 5+).  The name is truncated because
   \verb+lambda+ is a reserved word in python.
-%
-\item\verb+beta+ -- Slater charge smearing parameter $\beta$
-  (default 1.0) in the DPD potential with approximate interaction
-  (\verb+charge_type = 5+).  One would usually calculate this from
-  $\beta=1/\lambda$, or (better) $\beta=5/(8\lambda)$.
 %
 \item\verb+rho(:)+ -- An array of size \verb+ncomp+ where
   \verb+rho(mu)+ is the density $\rho_\mu$.  All entries default to
@@ -1559,7 +1563,7 @@ convergence (usually safe to leave at default 100).
 %
 \item\verb+arep(:, :)+ -- An array of size
   \verb+ncomp+$\times$\verb+ncomp+ where \verb+arep(mu, nu)+ is
-  $A_{\mu\nu}$.  Note that only elements above the diagonal are used,
+  $A_{\mu\nu}$.  Only elements above the diagonal are used,
   \eg\ \verb+arep(1,2)+, \verb+arep(1,3)+, and \verb+arep(2,3)+.  {\bf
     Elements below the diagonal are ignored}, \cf\ the matrix in
   \Eqref{eq:mat}.  All entries default to zero after a call to
@@ -1610,7 +1614,7 @@ convergence (usually safe to leave at default 100).
   problem in the case that \verb+return_code+ is non-zero.  The
   message is printed out anyway unless the \verb+silent+ flag is set.
   Note that in \python\ a returned string appears as fixed
-  length binary array and needs massaging to get into a printable
+  length binary array and needs massaging to get into a usable
   form, thus for example:
 %
 \begin{verbatim}
@@ -1618,8 +1622,8 @@ convergence (usually safe to leave at default 100).
 from oz import wizard as w
 ...
 if w.return_code: 
-    print('Error: %s' % str(w.error_msg, 'utf-8').strip())
-    exit()
+    msg = str(w.error_msg, 'utf-8').strip()
+    raise Exception(msg)
 \end{verbatim}
 %
 \item\verb+closure_name+\,, \verb+model_name+\,, \verb+version+ --
@@ -1642,7 +1646,8 @@ The following quantities are available after a call to
 %
 \item\verb+cf_mf+\,, \verb+cf_gc+\,, \verb+cf_xc+ -- The mean-field,
   contact, and correlation contributions respectively, to the virial
-  route compressibility factor $\beta p/\rho$.
+  route compressibility factor $\beta p/\rho$ (thus $\pex$ is the sum
+  of these multiplied by $\rho$).
 %
 \item\verb+comp+\,, \verb+comp_xc+ -- The compressibility
   $\partial(\beta p)/\partial\rho$ (not to be confused with the
@@ -1681,14 +1686,13 @@ The following internal variables may be useful.
 %
 \begin{itemize}
 %
-\item\verb+c(:, :, 1)+ and \verb+e(:, :, 1)+ -- After a successful
+\item\verb+c(:, :, 1)+\,, \verb+e(:, :, 1)+ -- After a successful
   call to one of the main solver routines, these contain the most
   converged solution, such that for example \verb+c(i, s, 1)+ contains
-  $c'_{\mu\nu}(r_i)$, where \verb+s+ is the species pair index as in
-  \Eqref{eq:ij}.  Remember to subtract $\beta v\lr_{\mu\nu}$ if
-  comparing these functions to literature results for $c_{\mu\nu}$.
+  $c'_{\mu\nu}(r_i)$ ($=c_{\mu\nu}+\beta v_{\mu\nu}\lr$), where
+  \verb+s+ is the species pair index as in \Eqref{eq:ij}.
 %
-\item\verb+ck(:, :)+ and \verb+ek(:, :)+ -- Arrays containing the
+\item\verb+ck(:, :)+\,, \verb+ek(:, :)+ -- Arrays containing the
   Fourier-transformed offset direct and indirect correlation
   functions, such that for example \verb+ck(j, s)+ contains ${\tilde
     c}_{\mu\nu}\myprime(k_j)$ where \verb+s+ is the species pair
@@ -1699,15 +1703,15 @@ The following internal variables may be useful.
   $\href_{\mu\nu}(r_i)$ where \verb+s+ is the species pair index. Used
   by \verb+exp_refine+ and \verb+oz_solve2+.
 %
-\item\verb+ushort(:, :)+ and \verb+ulong(:, :)+ -- Arrays containing
-  the potential, such that \verb+ushort(i, s)+ contains $\beta
-  v'_{\mu\nu}(r_i)$ and \verb+ulong(i, s)+ contains $\beta
-  v\lr_{\mu\nu}(r_i)$, where \verb+s+ is the species index.
+\item\verb+ushort(:, :)+\,, \verb+ulong(:, :)+ --
+  Arrays containing the potential, such that \verb+ushort(i, s)+
+  contains $\beta v'_{\mu\nu}(r_i)$ and \verb+ulong(i, s)+ contains
+  $\beta v\lr_{\mu\nu}(r_i)$, where \verb+s+ is the species index.
 %
 \item\verb+expnegus(:, :)+ -- A similar array containing $\exp(-\beta
   v'_{\mu\nu})$.
 %
-\item\verb+dushort(:, :)+ and \verb+dulong(:, :)+ -- Similar arrays
+\item\verb+dushort(:, :)+\,, \verb+dulong(:, :)+ -- Similar arrays
   containing the derivatives of the potential, $\partial(\beta
   v'_{\mu\nu})/\partial r$ and $\partial(\beta v\lr_{\mu\nu})/\partial
   r$.
@@ -1717,8 +1721,11 @@ The following internal variables may be useful.
   contains $\beta{\tilde v}\lr_{\mu\nu}(k_j)$, where \verb+s+ is the
   species index.
 %
-\item \verb+pi+\,, \verb+twopi+\,, \verb+fourpi+ --- Available for convenience
-($=\pi, 2\pi, 4\pi$).
+\item\verb+u0(:)+ -- Long range potential at overlap, 
+  \verb+u0(mu)+ contains $\beta v_{\mu\mu}\lr(0)$.
+%
+\item \verb+pi+\,, \verb+twopi+\,, \verb+fourpi+ --- Available for
+  convenience ($=\pi, 2\pi, 4\pi$).
 %
 \end{itemize}
 
@@ -1860,22 +1867,21 @@ $A=25$.  So the error from discretising the isotherm is here $\alt2$\%.
 \subsection{Free energy}
 \label{sec:feng}
 %
-One can continue in the same vein, to calculate the pressure \via\ the
-energy route, but this really involves the calculation of the free
-energy.  This can be done by coupling constant integration.  The basic
-result can be derived by differentiating the fundamental expression
+One can calculate the pressure \via\ the energy route, but this really
+involves the calculation of the free energy.  One standard way this
+can be done is by coupling constant integration.  The basic result can
+be derived by differentiating the fundamental expression
 $e^{-\beta\Aex} = \int\!d\Omega\,e^{-\beta V}$ with respect to a
 parameter in the potential $V$.  For instance for standard
-single-component DPD, ${\partial\Aex}/{\partial A}={\langle
-  V\rangle}/{A}$ where $\langle V\rangle\equiv U$ is the internal
-energy.  Thus
+single-component DPD, ${\partial\Aex}/{\partial A}={U}/{A}$ where $U$
+is the internal energy.  Thus
 %
 \begin{equation}
-\Aex=\int_0^A\frac{dA'}{A'}\,\langle V\rangle_{A'}
+\frac{\beta \Aex}{V}=\int_0^A\frac{dA'}{A'}\,\frac{\beta U_{A'}}{V}
 \label{eq:fint}
 \end{equation}
 %
-which should be evaluated along an isochore (constant density line).
+can be evaluated along an isochore (constant density line).
 The following \python\ routine uses this to compute the excess free
 energy
 %
@@ -1939,9 +1945,10 @@ aex        = 15.947542189636641
 \end{verbatim}
 %
 We see that all three routes agree to the third decimal place, which
-is a good test of convergence (the absolute HNC deficit is
-$2.6\times10^{-4}$).  Sections \ref{sec:vrp}--\ref{sec:feng} have been
-coded up as \verb+examples.py+.
+is a good test of numerical discretisation error (the absolute HNC
+deficit is $2.6\times10^{-4}$).  The above examples in sections
+\ref{sec:vrp}--\ref{sec:feng} have been coded up as
+\verb+examples.py+.
 
 \subsection{Further examples}
 
@@ -2012,16 +2019,9 @@ coded up as \verb+examples.py+.
 \item\verb+surpm_oneoff.py+ and \verb+surpm_gr.py+ report various
   aspects of solutions for the softened URPM model. 
 %
-\item\verb+urpm_wertheim_*.*+ are scripts to solve the URPM
-  coexistence problem using HNC for the high density phase boundary
-  and Wertheim theory with a softened URPM reference fluid (solved by
-  HNC) for the low density phase boundary.  For more details and
-  sample results see comments in the scripts.
-%
-\item Sundry items: \verb+driver2-4.f90+ and \verb+urpm.f90+ are
-  sample FORTRAN 90 driver routines, retained for regression testing,
-  as is \verb+driver3.py+; and \verb+fftw_test.f90+ is test code to
-  comprehend how FFTW works.
+\item Sundry items: \verb+driver1-4.f90+ are sample FORTRAN 90 driver
+  routines, retained for regression testing, as is \verb+driver3.py+;
+  and \verb+fftw_test.f90+ is test code to comprehend how FFTW works.
 %
 \end{itemize}
 

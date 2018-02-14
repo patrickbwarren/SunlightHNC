@@ -109,7 +109,7 @@ module wizard
        & comp, comp_xc,     & ! compressibility, and excess
        & aex_rl, aex_rs,    & ! contributions to HNC excess free energy density
        & aex_kl, aex_kd,    & !    --- '' ---
-       & aex_ks, aex,       & !    --- '' ---, and final excess free energy density
+       & aex_ks, aex,       & ! -- '' --, and final excess free energy density
        & deficit,           & ! excess free energy deficit (see docs)
        & uv, uv_mf, uv_xc     ! energy density total and contributions
 
@@ -124,12 +124,9 @@ module wizard
        & tp(:),             & ! mean field pressure contribution
        & tu(:),             & ! mean field energy contribution
        & tl(:),             & ! mean field long range potential
-       & t0(:),             & ! r = 0 of long range potential (diagonal)
        & muex(:),           & ! chemical potential array
        & c(:, :, :),        & ! direct correlation functions (dcfs)
        & e(:, :, :),        & ! indirect correlation functions (icfs)
-       & c0(:, :),          & ! backup direct correlation functions
-       & e0(:, :),          & ! backup indirect correlation functions
        & h0(:, :),          & ! reference total correlation functions
        & hr(:, :, :),       & ! current total correlation functions
        & hc(:, :),          & ! current contact values
@@ -142,6 +139,7 @@ module wizard
        & ulong(:, :),       & ! long range potential in real space
        & dulong(:, :),      & ! derivative of the same
        & ulongk(:, :),      & ! long range potential in reciprocal space
+       & u0(:),             & ! r = 0 of long range potential (diagonal)
        & r(:), k(:),        & ! r and k grids
        & fftwx(:), fftwy(:)   ! arrays for fast discrete sine transform
 
@@ -161,11 +159,8 @@ contains
     allocate(tp(nfnc))
     allocate(tu(nfnc))
     allocate(tl(nfnc))
-    allocate(t0(ncomp))
     allocate(c(ng-1, nfnc, nps))
     allocate(e(ng-1, nfnc, nps))
-    allocate(c0(ng-1, nfnc))
-    allocate(e0(ng-1, nfnc))
     allocate(h0(ng-1, nfnc))
     allocate(hr(ng-1, ncomp, ncomp))
     allocate(hc(ncomp, ncomp))
@@ -178,6 +173,7 @@ contains
     allocate(ulong(ng-1, nfnc))
     allocate(dulong(ng-1, nfnc))
     allocate(ulongk(ng-1, nfnc))
+    allocate(u0(ncomp))
     allocate(r(ng-1))
     allocate(k(ng-1))
     allocate(fftwx(ng-1))
@@ -283,9 +279,8 @@ contains
 ! Gaussian-smeared Coulomb part.  A factor beta = 1/kT is implicit in
 ! these definitions.  The parameter charge_type is Gaussian (1 -
 ! default), Bessel (2), Groot (3), Slater (exact) (4), Slater
-! (approximate) (5).  These can be selected agnostically of the number
-! scheme by using the defined integer constants DPD_GAUSSIAN_CHARGES
-! etc.
+! (approximate) (5) (use the defined integer constants
+! DPD_GAUSSIAN_CHARGES etc for these).
   
   subroutine dpd_potential(charge_type)
     implicit none
@@ -405,8 +400,7 @@ contains
     end if
 
     ! Slater charge smearing as in Gonzales-Melchor et al, [JCP v125,
-    ! 224107 (2006)] with original approximate expression (here
-    ! translated into reciprocal space).
+    ! 224107 (2006)] with original approximate expression.
 
     if (ctype .eq. DPD_SLATER_APPROX_CHARGES) then
 
@@ -446,7 +440,7 @@ contains
 
     ! The r = 0 diagonal parts of the long range potential
     
-    t0(:) = z(:)**2 * ulong0
+    u0(:) = z(:)**2 * ulong0
     
     ! Generate auxiliary function
 
@@ -529,7 +523,7 @@ contains
 
     ! The r = 0 diagonal parts of the long range potential
     
-    t0(:) = z(:)**2 * lb / (sigma * rootpi)
+    u0(:) = z(:)**2 * lb / (sigma * rootpi)
     
     ! Generate auxiliary function
 
@@ -621,14 +615,15 @@ contains
             & + (1/(2.0_dp*kappa**2) - sigma**2/3.0_dp) * erfc(kappa*sigma) )
        tu(2) = pi*lb * ( sigma * exp(-kappa**2*sigma**2) / (kappa*rootpi) &
             & + (1/(2.0_dp*kappa**2) - sigma**2) * erfc(kappa*sigma) )
-       if (.not.uuflag) then ! off SYM condition; missing last term added in v1.11
+       if (.not.uuflag) then ! off SYM condition;
+          ! missing last term added in v1.11
           tl(2) = pi*lb / kappa**2 - 2.0_dp*pi*lb*sigma**2 / 3.0_dp
        end if
     end if
 
     ! The r = 0 diagonal parts of the long range potential
     
-    t0(:) = z(:)**2 * lb / sigma
+    u0(:) = z(:)**2 * lb / sigma
     
     if (.not.uuflag) then
        model_type = RPM_WITHOUT_USHORT
@@ -665,7 +660,7 @@ contains
     tp = 0.0_dp
     tu = 0.0_dp
     tl = 0.0_dp
-    t0 = 0.0_dp
+    u0 = 0.0_dp
     
     model_type = HARD_SPHERES
     model_name = 'hard spheres'
@@ -1660,7 +1655,7 @@ contains
     
     aex_kd = prefac * deltak * sum(lndet(:) * k(:)**2)
     aex_ks = prefac * deltak * sum(tr(:) * k(:)**2)
-    aex_kl = - 0.5_dp * sum(rho(:) * t0(:))
+    aex_kl = - 0.5_dp * sum(rho(:) * u0(:))
 
   end subroutine hnc_kspace_integrals
 

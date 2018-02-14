@@ -32,10 +32,11 @@ w.ncomp = 3
 
 w.initialise()
 
-w.lb = 200.0
+w.sigma = 0.5
+w.lb = 20.0
 w.arep[:,:] = 25.0
 w.arep[0, 1] = 30.0
-w.arep[0, 2] = 35.0
+w.arep[0, 2] = 27.0
 w.arep[1, 2] = 20.0
 w.z[0] = 1
 w.z[1] = -1
