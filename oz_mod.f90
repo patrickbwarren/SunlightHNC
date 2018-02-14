@@ -1686,8 +1686,8 @@ contains
     print *, 'Internal energy density: mean field contribution = ', uv_mf
     print *, 'Internal energy density: correlation contribution = ', uv_xc
     print *, 'Internal energy density = ', uv
+    print *, 'Internal energy density / 3 = ', uv / 3.0_dp
     print *, 'Internal energy per particle = ', uv / sum(rho(:))
-    print *, 'Internal energy per particle / 3 = ', uv / (3.0_dp * sum(rho(:)))
 
     if (closure_type.eq.HNC_CLOSURE) then
        do i = 1, ncomp

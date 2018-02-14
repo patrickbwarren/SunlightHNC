@@ -86,6 +86,8 @@ lrhi = m.log(rhohi)
 x = []
 y = [[] for i in range(6)]
 
+print('\nBe patient...this takes a while to run!\n\n')
+
 for i in range(npt):
     lr = lrlo + (lrhi - lrlo) * i / (npt - 1.0)
     rho = m.exp(lr)
@@ -93,13 +95,15 @@ for i in range(npt):
     w.rho[0] = 0.5 * rho
     w.rho[1] = 0.5 * rho
     w.hnc_solve()
-    y[0].append(-w.un)
+    y[0].append(-w.uv/rho)
     y[1].append(1.0 + w.cf_gc + w.cf_xc)
-    print("%i\t%f\t%f\t%f\t%g\tHNC" % (i, m.sqrt(rho), w.un, w.cf_gc, w.error))
+    print("%i\t%f\t%f\t%f\t%g\tHNC" %
+          (i, m.sqrt(rho), w.uv/rho, w.cf_gc, w.error))
     w.msa_solve()
-    y[2].append(-w.un)
+    y[2].append(-w.uv/rho)
     y[3].append(1.0 + w.cf_gc + w.cf_xc)
-    print("%i\t%f\t%f\t%f\t%g\tMSA" % (i, m.sqrt(rho), w.un, w.cf_gc, w.error))
+    print("%i\t%f\t%f\t%f\t%g\tMSA" %
+          (i, m.sqrt(rho), w.uv/rho, w.cf_gc, w.error))
 
 for i in range(npt):
     rho = x[i]**2
@@ -112,16 +116,17 @@ for i in range(npt):
     w.rpm_potential()
     w.msa_solve()
     w.exp_refine()
-    y[4].append(-w.un)
+    y[4].append(-w.uv/rho)
     y[5].append(1.0 + w.cf_gc + w.cf_xc)
-    print("%i\t%f\t%f\t%f\t%g\tEXP" % (i, m.sqrt(rho), w.un, w.cf_gc, w.error))
+    print("%i\t%f\t%f\t%f\t%g\tEXP" %
+          (i, m.sqrt(rho), w.uv/rho, w.cf_gc, w.error))
 
 import matplotlib.pyplot as plt
 
 plt.plot(xdat, nundat, 'ro', label='Rasaiah et al (1972): -U/N')
 plt.plot(xdat, compdat, 'co', label='Rasaiah et al (1972): p')
-plt.plot(x, y[0], 'b-', label='HNC')
-plt.plot(x, y[1], 'b-')
+plt.plot(x, y[0], 'k-', label='HNC')
+plt.plot(x, y[1], 'k-')
 plt.plot(x, y[2], 'b--', label='MSA')
 plt.plot(x, y[3], 'b--')
 plt.plot(x[0:npt], y[4], 'r--', label='EXP')

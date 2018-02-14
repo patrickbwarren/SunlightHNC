@@ -24,8 +24,9 @@
 # You should have received a copy of the GNU General Public License
 # along with SunlightDPD.  If not, see <http://www.gnu.org/licenses/>.
 
-# Compute log_10 activity in infinite dilution limit for a binary DPD
-# fluid and compare to 0.144 * Delta A
+# Compute log_10 activity in the infinite dilution limit for a binary 
+# fluid and compare to empirical fit 0.144 * Delta A, as in Fig 2 of
+# Vishnyakov, Lee and Neimark, J. Phys. Chem. Lett. 4, 797 (2013).
 
 from math import log
 from oz import wizard as w

@@ -65,6 +65,8 @@ y4 = []
 hnc_p_xc = hnc_prev = 0.0
 msa_p_xc = msa_prev = 0.0
 
+print('\nBe patient...this takes a while to run!\n\n')
+
 for i in range(npt):
     rho = drho * (i + 1.0)
     eta = w.pi * rho * w.sigma**3 / 6.0

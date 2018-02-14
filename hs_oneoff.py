@@ -28,8 +28,8 @@ from oz import wizard as w
 parser = argparse.ArgumentParser(description='hard spheres one off calculator')
 
 parser.add_argument('--ncomp', action='store', default=1, type=int, help='number of components (species) (default 2)')
-parser.add_argument('--ng', action='store', default=65536, type=int, help='number of grid points (default 4096)')
-parser.add_argument('--deltar', action='store', default=0.001, type=float, help='grid spacing (default 0.01)')
+parser.add_argument('--ng', action='store', default='65536', help='number of grid points (default 65536)')
+parser.add_argument('--deltar', action='store', default=1e-3, type=float, help='grid spacing (default 1e-3)')
 parser.add_argument('--alpha', action='store', default=0.2, type=float, help='Picard mixing fraction (default 0.2)')
 parser.add_argument('--npic', action='store', default=6, type=int, help='number of Picard steps (default 6)')
 
@@ -49,14 +49,12 @@ parser.add_argument('--verbose', action='store_true', help='more output')
 args = parser.parse_args()
 
 w.ncomp = args.ncomp
-w.ng = args.ng
+w.ng = eval(args.ng)
 w.deltar = args.deltar
 w.alpha = args.alpha
 w.npic = args.npic
 
 w.initialise()
-
-# print(w.c.shape)
 
 w.sigma = args.sigma
 

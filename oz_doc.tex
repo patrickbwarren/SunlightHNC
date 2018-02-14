@@ -47,6 +47,9 @@
 \newcommand{\ansatz}{{ansatz}}
 \newcommand{\perse}{\latin{per se}}
 
+\newcommand{\french}[1]{\emph{#1}}
+\newcommand{\ala}{\french{\`a la}}
+
 \newcommand{\half}{{\textstyle\frac{1}{2}}}
 
 \newcommand{\alt}{\lesssim}
@@ -762,7 +765,9 @@ The corresponding chemical potentials are
     \Bigl(\>{}\equiv\ln\gamma_\mu\>\Bigr)
 \end{equation}
 %
-(\cf\ section II\,C in \Refcite{Vrbka09}).  We
+(\cf\ section II\,C in \Refcite{Vrbka09}).  This 
+also defines the activity $\gamma_\mu$.  
+We
 write this result as $\beta\muex_\mu = {\textstyle \sum_{\nu}}\,\rho x_\nu
 t^{\mathrm{M}}_{\mu\nu}$ where
 %
@@ -1677,8 +1682,8 @@ The following are calculated only for the HNC closure.
   $\beta\muex_\mu$
 %
 \item\verb+deficit+ -- The quantity $\aex - \sum_{\mu}\rho_\mu
-  \muex_\mu + \pex$ which should vanish (indicative of numerical
-  discretisation error).
+  \muex_\mu + \pex$ (which should vanish).  This is a certificate of
+  the numerical discretisation error.
 %
 \end{itemize}
 %
@@ -1958,29 +1963,41 @@ deficit is $2.6\times10^{-4}$).  The above examples in sections
   and compare with data from Fig.~4 of \Refcite{GW97}.  The agreement
   is very good.
 %
-\item\verb+wsg_fig5_compare.py+ -- The free energy difference $\Delta
-  F$ between a system of $N-1$ A particles and a B particle, and a
-  pure system of $N$ A particles (as a function of $\Delta A$, where
-  $A_{00}=A_{11}=25$, $A_{01}=25+\Delta A$), was introduced in
-  \Refcite{WSG01} and is representative of an effective $\chi$ value.
-  Here, the free energy change is calculated as $\Delta
-  F=\muex_1-\muex_0$ in a two component problem with the mole fraction
-  of the second species set to zero ($\rho_0=3$ and $\rho_1=0$).  The
-  results are compared with data from Fig.~5 of \Refcite{WSG01}, and
-  with separate accurate Monte-Carlo simulations using trial particle
-  identity swap moves. 
+\item\verb+wsg_fig5_compare.py+ -- Compute the free energy difference
+  between a system of $N-1$ A particles and a B particle, and a pure
+  system of $N$ A particles, as a function of $\Delta a$, where
+  $A_{00}=A_{11}=a$, $A_{01}=a+\Delta a$, and $a=25$.  This concept
+  was introduced in \Refcite{WSG01} and is representative of an
+  effective $\chi$ value.  Here, the free energy change is calculated
+  as $\muex_1-\muex_0$ in a two component problem with the mole
+  fraction of the second species set to zero ($\rho_0=3$ and
+  $\rho_1=0$).  The results are compared with data from Fig.~5 of
+  \Refcite{WSG01}, and with independently done Monte-Carlo simulations
+  using trial particle identity swaps.
 %
-\item\verb+x_dmu_compare.py+ -- In an unpublished extension to
-  \Refcite{WSG01}, $\Delta F=\muex_1-\muex_0$ is plotted as a function
-  of the mole fraction $x$ in a mixture where $\rho_0=(1-x)\rho$ and
-  $\rho_1=x\rho$, for $\Delta A=5$ (one cannot have $\Delta A$ too
-  large otherwise an underlying demixing transition causes HNC to
-  fail).  The results are compared to accurate Monte-Carlo (MC)
-  simulations.  The agreement between HNC and MC is excellent,
-  including the small deviation from linearity.  The near-exact linear
-  dependence can be represented by $\Delta F = \chi (1 - 2x)$ where
-  $\chi$ is the Flory $\chi$-parameter.  This is the basic reason why
-  DPD is so good at representing fluid mixtures which fit
+\item\verb+vlm_fig2_compare.py+ -- Compute the log activity,
+  $\log_{10}\gamma_\infty = (\muex_1 - \muex_0) / \ln 10$, in the infinite
+  dilution limit for a binary DPD fluid, and compare to empirical fit
+  $0.144 \times \Delta a$ as in Fig.~2 in \Refcite{VLN13}.  The fit
+  is derived by these authors from Monte-Carlo trial particle
+  insertion simulations (\ala\ Widom).  Note this is essentially the
+  same calculation as the preceding example except that $a=106.5$ in
+  \Refcite{VLN13}, rather than $a=25$.  For such a large base
+  repulsion amplitude, HNC doesn't converge from a cold start, and
+  this example illustrates the trick of warming up the solver by
+  ramping $a$ up in stages.
+%
+\item\verb+x_dmu_compare.py+ -- In an unpublished extension to the
+  above two examples $\muex_1-\muex_0$ is plotted as a function of the
+  mole fraction $x$ in a mixture where $\rho_0=(1-x)\rho$ and
+  $\rho_1=x\rho$, for $a=25$ and $\Delta a=5$ (one cannot have $\Delta
+  a$ too large otherwise an underlying demixing transition causes HNC
+  to fail).  The results are compared to data from Monte-Carlo (MC)
+  trial particle identity swap simulations.  The agreement between HNC
+  and MC is excellent, including the small deviation from linearity.
+  The near-exact linear dependence can be represented by $\chi (1 -
+  2x)$ where $\chi$ is the Flory $\chi$-parameter.  This is the basic
+  reason why DPD is so good at representing fluid mixtures which fit
   Flory-Huggins (regular solution) theory.
 %
 \item\verb+hm_fig4-2_compare.py+ solves for the virial and
@@ -1993,35 +2010,24 @@ deficit is $2.6\times10^{-4}$).  The above examples in sections
   RPM and compares with Monte-Carlo data, as in Fig 10.2 of
   \Refcite{HM06}.  See comments in file for more details.
 %
-\item\verb+urpm_oneoff.py+ and \verb+urpm_scan.py+ are a pair of
-  driver routines for solving the ultrasoft restricted primitive model
-  (URPM) \cite{WVA+13}, including the possibility of a neutral solvent
-  species.  The first routine can be used for one-off calculations of
-  structure and thermodynamics at a chosen state point.  The second
-  routine is intended to scan a range of densities to zero in on the
-  Kirkwood transition between pure exponential and damped oscillatory
-  behaviour in the tails of the total correlation functions.  Both
-  routines are driven by command line options, via the \verb+argparse+
-  module.  To see the available options use \verb+--help+.  The option
-  \verb+--ncomp+ selects between the pure URPM case (\verb+--ncomp=2+,
-  default) and the solvated URPM case (\verb+--ncomp=3+).
+\item\verb+urpm_oneoff.py+\,, \verb+urpm_scan.py+ solve the ultrasoft
+  restricted primitive model (URPM) \cite{WVA+13}, including the
+  possibility of a neutral solvent species.  The first can be
+  used for one-off calculations of structure and thermodynamics at a
+  chosen state point.  The second is intended to scan a range
+  of densities to locate the Kirkwood line (transition between pure
+  exponential and damped oscillatory behaviour in the tails of
+  $h_{\mu\nu}$).  Both routines are driven by command line options,
+  via the \verb+argparse+ module.  To see the available options use
+  \verb+--help+.
 %
-\item\verb+rpm_oneoff.py+ is a similar driver routine for exploring
-  the RPM.
+\item\verb+rpm_oneoff.py+\,, \verb+hs_oneoff.py+ are similar drivers
+  for the RPM and hard sphere systems.
 %
-\item\verb+hs_oneoff.py+ is a similar driver routine for exploring
-  hard spheres.
+\item \verb+driver1-4.f90+\,, \verb+driver3.py+ are retained
+  for regression testing.
 %
-\item\verb+urpm_press.py+ and \verb+urpm_targp.py+ are auxiliary
-  scripts targetted at the high density URPM phase boundary where HNC
-  still has a solution even at $\lB\gtrsim100$.
-%
-\item\verb+surpm_oneoff.py+ and \verb+surpm_gr.py+ report various
-  aspects of solutions for the softened URPM model. 
-%
-\item Sundry items: \verb+driver1-4.f90+ are sample FORTRAN 90 driver
-  routines, retained for regression testing, as is \verb+driver3.py+;
-  and \verb+fftw_test.f90+ is test code to comprehend how FFTW works.
+\item \verb+fftw_test.f90+ is test code for the fast Fourier transform library.
 %
 \end{itemize}
 
@@ -2213,6 +2219,11 @@ If the indicated operations are carried out, one indeed recovers
 \bibitem{WSG01} C.~M.~Wijmans, B.~Smit and R.~D.~Groot, ``Phase
   behavior of monomeric mixtures and polymer solutions with soft
   interaction potentials'', J.\ Chem.\ Phys.\ {\bf114}, 7644 (2001).
+
+\bibitem{VLN13} A.~Vishnyakov, M.~T.~Lee and A.~V.~Neimark,
+  ``Prediction of the critical micelle concentration of nonionic
+  surfactants by dissipative particle dynamics simulations'',
+  J.\ Phys.\ Chem.\ Lett. {\bf4}, 797 (2013).
 
 \bibitem{WL72} E.~Waisman and J.~L.~Lebowitz, ``Mean spherical model
   integral equation for charged hard spheres. II Results'',

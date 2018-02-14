@@ -29,7 +29,7 @@ from oz import wizard as w
 parser = argparse.ArgumentParser(description='URPM one off calculator')
 
 parser.add_argument('--ncomp', action='store', default=2, type=int, help='number of components (species) (default 2)')
-parser.add_argument('--ng', action='store', default=4096, type=int, help='number of grid points (default 4096)')
+parser.add_argument('--ng', action='store', default='4096', help='number of grid points (default 4096)')
 parser.add_argument('--deltar', action='store', default=0.01, type=float, help='grid spacing (default 0.01)')
 parser.add_argument('--alpha', action='store', default=0.2, type=float, help='Picard mixing fraction (default 0.2)')
 parser.add_argument('--npic', action='store', default=6, type=int, help='number of Picard steps (default 6)')
@@ -55,8 +55,8 @@ parser.add_argument('--exp', action='store_true', help='use EXP refinement')
 
 args = parser.parse_args()
 
-w.ng = args.ng
 w.ncomp = args.ncomp
+w.ng = eval(args.ng)
 w.deltar = args.deltar
 w.alpha = args.alpha
 w.npic = args.npic
