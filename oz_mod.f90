@@ -1517,7 +1517,7 @@ contains
        aex_rs = 0.5_dp * rhotot * sum(rhoxx(:) * t(:))
        aex_rl = 0.5_dp * rhotot * sum(rhoxx(:) * tl(:))
        
-       ! Call out to compute the k-space to excess free energy
+       ! Call out to compute the reciprocal space contributions
 
        call hnc_kspace_integrals
 
@@ -1563,21 +1563,22 @@ contains
 
   end subroutine make_thermodynamics
 
-  ! Calculate all the contributions to the HNC free energy.  Note that
-  ! c = c' - Ulong, and ck is available after a call to OZ solver.
+  ! Calculate the reciprocal space contributions to the HNC free
+  ! energy.  Note that c = c' - Ulong, and ck is available after a
+  ! call to OZ solver.
 
   subroutine hnc_kspace_integrals
     implicit none
     integer :: i, j, ij, ik, info
     real(kind=dp) :: prefac, &
-         & cmat(ncomp, ncomp), umat(ncomp, ncomp), &
+         & csubumat(ncomp, ncomp), &
          & rhomat(ncomp, ncomp), unita(ncomp, ncomp), &
          & m(ncomp, ncomp), wr(ncomp), wi(ncomp), &
          & lndet(ng-1), tr(ng-1)
     integer, parameter :: lwork = 100
     real(kind=dp) :: work(lwork)
     
-    ! Calculate the short range trace part in k-space
+    ! Calculate the short range trace fn in k-space
     
     tr = 0.0_dp   
     do i = 1, ncomp
@@ -1585,7 +1586,7 @@ contains
        tr(:) = tr(:) + rho(i) * ck(:, ij)
     end do
     
-    ! Calculate log(det) part in k-space
+    ! Calculate log(det) fn in k-space
     
     if (ncomp .eq. 1) then ! One-component case
 
@@ -1608,22 +1609,21 @@ contains
        do ik = 1, ng-1
 
           ! Unpack the reciprocal space functions into matrices.
+          ! Calculate C - beta UL first.
 
           do j = 1, ncomp
              do i = 1, j
                 ij = i + j*(j-1)/2
-                cmat(i, j) = ck(ik, ij)
-                umat(i, j) = ulongk(ik, ij)
+                csubumat(i, j) = ck(ik, ij) - ulongk(ik, ij)
                 if (i.lt.j) then
-                   cmat(j, i) = cmat(i, j)
-                   umat(j, i) = umat(i, j)
+                   csubumat(j, i) = csubumat(i, j)
                 end if
              end do
           end do
 
           ! Construct M = I - R . (C - beta UL)
 
-          m = unita - matmul(rhomat, cmat - umat)
+          m = unita - matmul(rhomat, csubumat)
 
           ! Find the eigenvalues of M (which is _not_ symmetric)
 
@@ -1649,7 +1649,8 @@ contains
 
     ! Finally the contribution is the integral of ln(det) + trace.
     ! The long range contribution in the trace is taken care of
-    ! analytically.
+    ! analytically as it resolves to the r = 0 value of the long range
+    ! potential (see documentation).
     
     prefac = 1.0_dp / (fourpi * pi)
     
@@ -1686,8 +1687,8 @@ contains
     print *, 'Internal energy density: mean field contribution = ', uex_mf
     print *, 'Internal energy density: correlation contribution = ', uex_xc
     print *, 'Internal energy density = ', uex
-    print *, 'Internal energy density / 3 = ', uex / 3.0_dp
     print *, 'Internal energy per particle = ', uex / sum(rho(:))
+    print *, 'Internal energy per particle / 3 = ', uex / (3.0_dp*sum(rho(:)))
 
     if (closure_type.eq.HNC_CLOSURE) then
        do i = 1, ncomp
