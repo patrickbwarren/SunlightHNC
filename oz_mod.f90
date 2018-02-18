@@ -189,7 +189,7 @@ contains
 
     ! Make grids
 
-    deltak = pi / (dble(ng) * deltar)
+    deltak = pi / (real(ng, kind=dp) * deltar)
 
     r = (/ (i*deltar, i=1, ng-1) /)
     k = (/ (i*deltak, i=1, ng-1) /)
