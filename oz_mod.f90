@@ -277,11 +277,10 @@ contains
 ! Build the potential arrays, with parameters rc and arep(:,:) for the
 ! short-range DPD repulsion, and lb, sigma and z(:) for the long-range
 ! Gaussian-smeared Coulomb part.  A factor beta = 1/kT is implicit in
-! these definitions.  The parameter charge_type is Gaussian (1 -
-! default), Bessel (2), Groot (3), Slater (exact) (4), Slater
-! (approximate) (5) (use the defined integer constants
-! DPD_GAUSSIAN_CHARGES etc for these).
-  
+! these definitions.  The parameter charge_type is (default) 1 =
+! Gaussian, 2 = Bessel, 3 = Groot (linear), 4 = Slater (approx), 5 =
+! Slater (exact).  But use the defined integer constants for these!
+
   subroutine dpd_potential(charge_type)
     implicit none
     integer, intent(in), optional :: charge_type
