@@ -4,7 +4,7 @@
 # related to the dissipative particle dynamics (DPD) simulation
 # method.
 
-# Copyright (c) 2009-2017 Unilever UK Central Resources Ltd
+# Copyright (c) 2009-2018 Unilever UK Central Resources Ltd
 # (Registered in England & Wales, Company No 29140; Registered
 # Office: Unilever House, Blackfriars, London, EC4P 4BQ, UK).
 
@@ -23,18 +23,21 @@
 
 import argparse
 import numpy as np
+import math as m
 import matplotlib.pyplot as plt
 from oz import wizard as w
 
 parser = argparse.ArgumentParser(description='RPM one off calculator')
 
+parser.add_argument('--ncomp', action='store', default=2, type=int, help='number of components (species) (default 2)')
 parser.add_argument('--ng', action='store', default='65536', help='number of grid points (default 65536)')
 parser.add_argument('--deltar', action='store', default=1e-3, type=float, help='grid spacing (default 1e-3)')
 parser.add_argument('--alpha', action='store', default=0.2, type=float, help='Picard mixing fraction (default 0.2)')
 parser.add_argument('--npic', action='store', default=6, type=int, help='number of Picard steps (default 6)')
 
 parser.add_argument('--sigma', action='store', default=1.0, type=float, help='hard core diameter (default 1.0)')
-parser.add_argument('--rho', action='store', default=0.1, type=float, help='total charge density (default 0.1)')
+parser.add_argument('--rho', action='store', default=0.5, type=float, help='total hard sphere density (default 0.5)')
+parser.add_argument('--rhoz', action='store', default=0.1, type=float, help='total ion density (default 0.1)')
 parser.add_argument('--lb', action='store', default=1.0, type=float, help='Bjerrum length (default 1.0)')
 parser.add_argument('--kappa', action='store', default=-1.0, type=float, help='softening parameter (default off)')
 parser.add_argument('--ushort', action='store_true', help='use U_short in potential')
@@ -49,11 +52,15 @@ parser.add_argument('--nwarm', action='store', default=1, type=int, help='number
 parser.add_argument('--dump', action='store_true', help='write out g(r)')
 parser.add_argument('--show', action='store_true', help='plot results')
 
+parser.add_argument('--eps', action='store', default=1e-20, type=float, help='floor for log tails (default 1e-20)')
+parser.add_argument('--tail', action='store_true', help='plot showing tails of pair functions')
+parser.add_argument('--all', action='store_true', help='include solvent pair functions')
+
 parser.add_argument('--verbose', action='store_true', help='more output')
 
 args = parser.parse_args()
 
-w.ncomp = 2
+w.ncomp = args.ncomp
 w.ng = eval(args.ng)
 w.deltar = args.deltar
 w.alpha = args.alpha
@@ -64,8 +71,11 @@ w.initialise()
 w.sigma = args.sigma
 w.kappa = args.kappa
 
-w.rho[0] = 0.5 * args.rho
-w.rho[1] = 0.5 * args.rho
+w.rho[0] = 0.5 * args.rhoz
+w.rho[1] = 0.5 * args.rhoz
+
+if w.ncomp == 3:
+    w.rho[2] = args.rho - args.rhoz
 
 if args.verbose:
     w.write_params()
@@ -130,7 +140,7 @@ elif args.show:
 
     plt.figure(1)
 
-    plt.subplot(2, 2, 1)
+    plt.subplot(2, 2, 1) # pair functions
 
     plt.title('%s solution, error = %0.1g' % (str(w.closure_name, 'utf-8'),
                                               w.error))
@@ -140,14 +150,14 @@ elif args.show:
     plt.plot(w.r[0:imax], 1.0 + w.hr[0:imax, 0, 1], label="$g_{12}(r)$")
     plt.legend(loc='lower right')
     
-    plt.subplot(2, 2, 2)
+    plt.subplot(2, 2, 2) # structure factors
 
     jmax = int(args.skcut / w.deltak)
     plt.plot(w.k[:jmax], snn[:jmax], label='$S_{NN}(k)$')
     plt.plot(w.k[:jmax], szz[:jmax], label='$S_{ZZ}(k)$')
     plt.legend(loc='lower right')
 
-    plt.subplot(2, 2, 3)
+    plt.subplot(2, 2, 3) # direct correlation functions
     
     plt.plot(w.r[0:imax],
              0.5*(w.c[0:imax, 0, 0]-w.ulong[0:imax, 0]+w.c[0:imax, 1, 0]
@@ -161,16 +171,43 @@ elif args.show:
     
     plt.subplot(2, 2, 4)
 
-    jmax = int(args.skcut*3 / w.deltak)
-    plt.plot(w.k[0:jmax],w.ek[0:jmax, 0]+w.ck[0:jmax, 0],
-             label="${\\tilde h}_{11}(k)$")
-    plt.plot(w.k[0:jmax],w.ek[0:jmax, 1]+w.ck[0:jmax, 1],
-             label="${\\tilde h}_{12}(k)$")
-#    plt.plot(w.k[0:jmax],
-#             1.0 + w.rho[0]*(w.ek[0:jmax, 0]+w.ck[0:jmax, 0]
-#                             -w.ek[0:jmax, 1]-w.ck[0:jmax, 1]), label="$\\ne 0$ !") 
-#    plt.plot(w.k[0:jmax],w.ck[0:jmax, 0],label="${\\tilde c}_{11}$")
-#    plt.plot(w.k[0:jmax],w.ck[0:jmax, 1],label="${\\tilde c}_{12}$")
-    plt.legend(loc='lower right')
-    
+    if args.tail: # plot log10(r h(r)) versus r
+        
+        plt.plot(w.r[:], 
+                 list(map(lambda x, y: m.log10(args.eps + m.fabs(x*y)), w.hr[:, 0, 0], w.r[:])), 
+                 label="$r|h_{11}|$")
+
+        plt.plot(w.r[:], 
+                 list(map(lambda x, y: m.log10(args.eps + m.fabs(x*y)), w.hr[:, 0, 1], w.r[:])), 
+                 label="$r|h_{12}|$")
+
+        plt.plot(w.r[:], 
+                 list(map(lambda x, y: m.log10(args.eps + m.fabs(x*y)), w.hr[:, 1, 1], w.r[:])), 
+                 label=" $r|h_{22}|$")
+
+        if args.all:
+
+            plt.plot(w.r[:], 
+                     list(map(lambda x, y: m.log10(args.eps + m.fabs(x*y)), w.hr[:, 0, 2], w.r[:])), 
+                     label="r|h_{13}|")
+
+            plt.plot(w.r[:], 
+                     list(map(lambda x, y: m.log10(args.eps + m.fabs(x*y)), w.hr[:, 1, 2], w.r[:])), 
+                     label="$r|h_{23}|$")
+
+            plt.plot(w.r[:], 
+                     list(map(lambda x, y: m.log10(args.eps + m.fabs(x*y)), w.hr[:, 2, 2], w.r[:])), 
+                     label="$r|h_{33}|$")
+
+        plt.legend(loc='upper right')
+
+    else: # fourier transformed pair functions
+
+        jmax = int(args.skcut*3 / w.deltak)
+        plt.plot(w.k[0:jmax],w.ek[0:jmax, 0]+w.ck[0:jmax, 0],
+                 label="${\\tilde h}_{11}(k)$")
+        plt.plot(w.k[0:jmax],w.ek[0:jmax, 1]+w.ck[0:jmax, 1],
+                 label="${\\tilde h}_{12}(k)$")
+        plt.legend(loc='lower right')
+        
     plt.show()

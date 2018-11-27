@@ -1328,9 +1328,10 @@ integral equation problem.
 \item\verb+rpm_potential(use_ushort)+ -- Sets up the restricted
   primitive model (RPM) with optional softening as described in
   section \ref{sec:softRPM}.  This routine can be called multiple
-  times.  It checks that \verb+ncomp = 2+ and forces $z_1=1$ and
-  $z_2=-1$.  The optional logical parameter works the same way as in
-  the URPM potential.
+  times.  It checks that \verb+ncomp = 2+ or \verb+ncomp = 3+ and
+  forces $z_1=1$, $z_2=-1$, and $z_3=0$ as required (so the third
+  component is neutral hard spheres).  The optional logical parameter
+  works the same way as in the URPM potential.
 %
 \item\verb+hs_potential+ -- Sets up hard sphere potentials for an
   arbitrary number of components, with common diameter \verb+sigma+.
@@ -1958,7 +1959,7 @@ deficit is $2.6\times10^{-4}$).  The above examples in sections
 \ref{sec:vrp}--\ref{sec:feng} have been coded up as
 \verb+examples.py+.
 
-\newpage
+%\newpage
 
 \subsection{Further examples}
 

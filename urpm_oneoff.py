@@ -4,7 +4,7 @@
 # related to the dissipative particle dynamics (DPD) simulation
 # method.
 
-# Copyright (c) 2009-2017 Unilever UK Central Resources Ltd
+# Copyright (c) 2009-2018 Unilever UK Central Resources Ltd
 # (Registered in England & Wales, Company No 29140; Registered
 # Office: Unilever House, Blackfriars, London, EC4P 4BQ, UK).
 
@@ -53,6 +53,9 @@ parser.add_argument('--skcut', action='store', default=15.0, type=float, help='k
 parser.add_argument('--rpa', action='store_true', help='use RPA (default HNC)')
 parser.add_argument('--exp', action='store_true', help='use EXP refinement')
 
+parser.add_argument('--dump', action='store_true', help='write out g(r)')
+parser.add_argument('--show', action='store_true', help='plot results')
+
 args = parser.parse_args()
 
 w.ncomp = args.ncomp
@@ -95,7 +98,8 @@ if (w.ncomp > 2): w.rho[2] = args.rho - w.rho[0] - w.rho[1]
 
 eps = 1e-20
 
-w.write_params()
+if not args.dump:
+    w.write_params()
 
 if (args.rpa or args.exp): w.rpa_solve()
 else: w.hnc_solve()
@@ -104,80 +108,98 @@ if args.exp: w.exp_refine()
 
 if w.return_code: exit()
 
-w.write_thermodynamics()
-
-# code plots log10(r h(r)) versus r
-
-import matplotlib.pyplot as plt
-
-plt.figure(1)
-
-plt.subplot(2, 2, 1)
-
-plt.title('%s solution, error = %0.1g' % (str(w.closure_name, 'utf-8'), w.error))
-
-plt.plot(w.r[:], 
-         list(map(lambda x, y: m.log10(eps + m.fabs(x*y)), w.hr[:, 0, 0], w.r[:])), 
-         label="$+\!+$")
-
-plt.plot(w.r[:], 
-         list(map(lambda x, y: m.log10(eps + m.fabs(x*y)), w.hr[:, 0, 1], w.r[:])), 
-         label="$+ -$")
-
-plt.plot(w.r[:], 
-         list(map(lambda x, y: m.log10(eps + m.fabs(x*y)), w.hr[:, 1, 1], w.r[:])), 
-         label=" $- -$")
-
-if (w.ncomp == 3):
-
-    plt.plot(w.r[:], 
-             list(map(lambda x, y: m.log10(eps + m.fabs(x*y)), w.hr[:, 0, 2], w.r[:])), 
-             label="$+0$")
-
-    plt.plot(w.r[:], 
-             list(map(lambda x, y: m.log10(eps + m.fabs(x*y)), w.hr[:, 1, 2], w.r[:])), 
-             label="$-\,0$")
-
-    plt.plot(w.r[:], 
-             list(map(lambda x, y: m.log10(eps + m.fabs(x*y)), w.hr[:, 2, 2], w.r[:])), 
-             label="$0\,0$")
-
-plt.legend(loc='upper right')
-plt.xlabel('$r$')
-plt.ylabel('$\log_{10}|rh|$')
-
-plt.subplot(2, 2, 2)
-
-imax = int(args.grcut / w.deltar)
-
-plt.plot(w.r[0:imax], 1.0 + w.hr[0:imax, 0, 0], label="$+\!+$")
-plt.plot(w.r[0:imax], 1.0 + w.hr[0:imax, 0, 1], label="$+ -$")
-plt.plot(w.r[0:imax], 1.0 + w.hr[0:imax, 1, 1], label=" $- -$")
-
-if (w.ncomp == 3):
-    plt.plot(w.r[0:imax], 1.0 + w.hr[0:imax, 0, 2], label="$+0$")
-    plt.plot(w.r[0:imax], 1.0 + w.hr[0:imax, 1, 2], label="$-\,0$")
-    plt.plot(w.r[0:imax], 1.0 + w.hr[0:imax, 2, 2], label="$0\,0$")
-
-plt.legend(loc='upper right')
-plt.xlabel('$r$')
-plt.ylabel('$g(r)$')
+if not args.dump:
+    w.write_thermodynamics()
 
 # density-density structure factor
 
-ddsf = np.sum(np.sum(w.sk, axis=2), axis=1) / np.sum(w.rho)
+snn = np.sum(np.sum(w.sk, axis=2), axis=1) / np.sum(w.rho)
 
 # charge-charge structure factor (notice how elegant this is :-)
 
-ccsf = np.dot(np.dot(w.z, w.sk), w.z) / np.sum(w.rho)
+szz = np.dot(np.dot(w.z, w.sk), w.z) / np.dot(w.z**2, w.rho)
 
-plt.subplot(2, 2, 3)
+if args.dump:
 
-jmax = int(args.skcut / w.deltak)
-plt.plot(w.k[:jmax], ddsf[:jmax], label='$S_{NN}$')
-plt.plot(w.k[:jmax], ccsf[:jmax], label='$S_{ZZ}$')
-plt.legend(loc='lower right')
-plt.xlabel('$k$')
-plt.ylabel('$S(k)$')
+    if w.ncomp == 3:
+        
+        for i in range(w.ng-1):
+            print("%g\t%g\t%g\t%g\t%g\t%g\t%g\tHR" % (w.r[i], w.hr[i, 0, 0], w.hr[i, 0, 1], w.hr[i, 1, 1],
+                                                      w.hr[i, 0, 2], w.hr[i, 1, 2], w.hr[i, 2, 2]))
+    else:
+    
+        for i in range(w.ng-1):
+            print("%g\t%g\t%g\t%g\tHR" % (w.r[i], w.hr[i, 0, 0], w.hr[i, 0, 1], w.hr[i, 1, 1]))
 
-plt.show()
+    for i in range(w.ng-1):
+        print("%g\t%g\t%g\tSK" % (w.k[i], snn[i], szz[i]))
+
+elif args.show:
+    
+    # code plots log10(r h(r)) versus r
+
+    import matplotlib.pyplot as plt
+
+    plt.figure(1)
+
+    plt.subplot(2, 2, 1) # pair functions
+
+    plt.title('%s solution, error = %0.1g' % (str(w.closure_name, 'utf-8'), w.error))
+
+    imax = int(args.grcut / w.deltar)
+
+    plt.plot(w.r[0:imax], 1.0 + w.hr[0:imax, 0, 0], label="$+\!+$")
+    plt.plot(w.r[0:imax], 1.0 + w.hr[0:imax, 0, 1], label="$+ -$")
+    plt.plot(w.r[0:imax], 1.0 + w.hr[0:imax, 1, 1], label=" $- -$")
+
+    if (w.ncomp == 3):
+        plt.plot(w.r[0:imax], 1.0 + w.hr[0:imax, 0, 2], label="$+0$")
+        plt.plot(w.r[0:imax], 1.0 + w.hr[0:imax, 1, 2], label="$-\,0$")
+        plt.plot(w.r[0:imax], 1.0 + w.hr[0:imax, 2, 2], label="$0\,0$")
+
+    plt.legend(loc='upper right')
+    plt.xlabel('$r$')
+    plt.ylabel('$g(r)$')
+
+    plt.subplot(2, 2, 2) # structure factors
+
+    jmax = int(args.skcut / w.deltak)
+    plt.plot(w.k[:jmax], snn[:jmax], label='$S_{NN}$')
+    plt.plot(w.k[:jmax], szz[:jmax], label='$S_{ZZ}$')
+    plt.legend(loc='lower right')
+    plt.xlabel('$k$')
+    # plt.ylabel('$S(k)$')
+
+    plt.subplot(2, 2, 3) # plot log10 r h(r) to show tails
+
+    plt.plot(w.r[:], 
+             list(map(lambda x, y: m.log10(eps + m.fabs(x*y)), w.hr[:, 0, 0], w.r[:])), 
+             label="$+\!+$")
+
+    plt.plot(w.r[:], 
+             list(map(lambda x, y: m.log10(eps + m.fabs(x*y)), w.hr[:, 0, 1], w.r[:])), 
+             label="$+ -$")
+
+    plt.plot(w.r[:], 
+             list(map(lambda x, y: m.log10(eps + m.fabs(x*y)), w.hr[:, 1, 1], w.r[:])), 
+             label=" $- -$")
+
+    if (w.ncomp == 3):
+
+        plt.plot(w.r[:], 
+                 list(map(lambda x, y: m.log10(eps + m.fabs(x*y)), w.hr[:, 0, 2], w.r[:])), 
+                 label="$+0$")
+
+        plt.plot(w.r[:], 
+                 list(map(lambda x, y: m.log10(eps + m.fabs(x*y)), w.hr[:, 1, 2], w.r[:])), 
+                 label="$-\,0$")
+
+        plt.plot(w.r[:], 
+                 list(map(lambda x, y: m.log10(eps + m.fabs(x*y)), w.hr[:, 2, 2], w.r[:])), 
+                 label="$0\,0$")
+
+    plt.legend(loc='upper right')
+    plt.xlabel('$r$')
+    plt.ylabel('$\log_{10}|rh|$')
+
+    plt.show()

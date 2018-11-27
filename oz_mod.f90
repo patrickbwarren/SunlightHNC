@@ -540,9 +540,11 @@ contains
 
 ! Build the potential arrays for the softened RPM (charged hard
 ! spheres) with parameters lb, sigma and kappa.  This expects ncomp =
-! 2, and will set z(1) = 1, z(2) = -1, and hard core diameters to
-! sigma.  The parameter (0 or 1) controls whether ushort is used or
-! not.  Using kappa < 0 implies the pure RPM case (kappa -> infinity).
+! 2 or 3, and will set z(1) = 1, z(2) = -1, and z(3) = 0 if required,
+! and hard core diameters to sigma.  The parameter (0 or 1) controls
+! whether ushort is used or not.  Using kappa < 0 implies the pure RPM
+! case (kappa -> infinity).  The case ncomp = 3 corresponds to the RPM
+! in the presence of a neutral hard sphere solvent.
 
   subroutine rpm_potential(use_ushort)
     implicit none
@@ -552,17 +554,28 @@ contains
 
     if (present(use_ushort)) uuflag = use_ushort
 
-    if (ncomp.ne.2) then
+    if (ncomp.eq.1 .or. ncomp.gt.3) then
        return_code = MISMATCH_ERROR
-       error_msg = 'mismatch ncomp <> 2 in rpm_potential'
+       error_msg = 'mismatch ncomp <> 2 or 3 in rpm_potential'
        if (.not.silent) print *, '** error: ', error_msg
        return
     end if
 
     z(1) = 1.0_dp
     z(2) = -1.0_dp
+    if (ncomp.eq.3) then
+       z(3) = 0.0_dp
+    end if
 
     diam = sigma
+
+    ! Zero everything to start with, as for hard spheres
+
+    ulong = 0.0_dp
+    ulongk = 0.0_dp
+    dulong = 0.0_dp
+    ushort = 0.0_dp
+    dushort = 0.0_dp
 
     irc = nint(sigma / deltar)
 
@@ -598,7 +611,7 @@ contains
        dulong(:,2) = - dulong(:,1)
     end if
 
-    ! Generate auxiliary function
+    ! Generate auxiliary function - this is where HS diam implemented
 
     expnegus = exp(-ushort)
     expnegus(1:irc, :) = 0.0_dp
@@ -635,6 +648,7 @@ contains
   end subroutine rpm_potential
 
 ! Build the potential arrays for hard spheres with diameter sigma.
+! This works for arbitrary numbers of components.
 
   subroutine hs_potential
     implicit none
