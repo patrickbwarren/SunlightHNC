@@ -23,8 +23,6 @@
 
 import argparse
 import numpy as np
-import math as m
-import matplotlib.pyplot as plt
 from oz import wizard as w
 
 parser = argparse.ArgumentParser(description='RPM one off calculator')
@@ -97,12 +95,14 @@ for i in range(args.nwarm):
     else:
         w.hnc_solve()
     s = str(w.closure_name, 'utf-8').strip()
-    print('rho = %g \tlb = %g \tkappa = %g \t%s error = %g' % (np.sum(w.rho), w.lb, w.kappa, s, w.error))
+    print('rhoz = %g \trho = %g \tlb = %g \tkappa = %g \t%s error = %g' %
+          (w.rho[0]+w.rho[1], np.sum(w.rho), w.lb, w.kappa, s, w.error))
 
 if args.exp:
     w.exp_refine()
     s = str(w.closure_name, 'utf-8').strip()
-    print('rho = %g \tlb = %g \tkappa = %g \t%s error = %g' % (np.sum(w.rho), w.lb, w.kappa, s, w.error))
+    print('rhoz = %g \trho = %g \tlb = %g \tkappa = %g \t%s error = %g' %
+          (w.rho[0]+w.rho[1], np.sum(w.rho), w.lb, w.kappa, s, w.error))
 
 if w.return_code: exit()
 
@@ -138,6 +138,9 @@ if args.dump:
 
 elif args.show:
 
+    import math as m
+    import matplotlib.pyplot as plt
+
     plt.figure(1)
 
     plt.subplot(2, 2, 1) # pair functions
@@ -172,31 +175,41 @@ elif args.show:
     plt.subplot(2, 2, 4)
 
     if args.tail: # plot log10(r h(r)) versus r
+
+        sumrhoz2 = np.sum(list(map(lambda rho, z: rho*z*z, w.rho, w.z))) # ionic strength
+        lD = 1.0 / m.sqrt(4*w.pi*w.lb*sumrhoz2) # debye length
         
-        plt.plot(w.r[:], 
-                 list(map(lambda x, y: m.log10(args.eps + m.fabs(x*y)), w.hr[:, 0, 0], w.r[:])), 
+        print("ionic strength sum rho z^2 = %g" % sumrhoz2)
+        print("Debye length lD = %g" % lD)
+
+        plt.plot(w.r[:],
+                 list(map(lambda x, y: m.log10(args.eps + m.fabs(x*y)), w.hr[:, 0, 0], w.r[:])),
                  label="$r|h_{11}|$")
 
-        plt.plot(w.r[:], 
-                 list(map(lambda x, y: m.log10(args.eps + m.fabs(x*y)), w.hr[:, 0, 1], w.r[:])), 
+        plt.plot(w.r[:],
+                 list(map(lambda x, y: m.log10(args.eps + m.fabs(x*y)), w.hr[:, 0, 1], w.r[:])),
                  label="$r|h_{12}|$")
 
-        plt.plot(w.r[:], 
-                 list(map(lambda x, y: m.log10(args.eps + m.fabs(x*y)), w.hr[:, 1, 1], w.r[:])), 
+        plt.plot(w.r[:],
+                 list(map(lambda x, y: m.log10(args.eps + m.fabs(x*y)), w.hr[:, 1, 1], w.r[:])),
                  label=" $r|h_{22}|$")
+
+        plt.plot(w.r[:],
+                 list(map(lambda x: m.log10(args.eps + m.exp(-x/lD)), w.r[:])),
+                 label=" $e^{-\kappa r}$", linestyle='--', color='black')
 
         if args.all:
 
-            plt.plot(w.r[:], 
-                     list(map(lambda x, y: m.log10(args.eps + m.fabs(x*y)), w.hr[:, 0, 2], w.r[:])), 
+            plt.plot(w.r[:],
+                     list(map(lambda x, y: m.log10(args.eps + m.fabs(x*y)), w.hr[:, 0, 2], w.r[:])),
                      label="r|h_{13}|")
 
-            plt.plot(w.r[:], 
-                     list(map(lambda x, y: m.log10(args.eps + m.fabs(x*y)), w.hr[:, 1, 2], w.r[:])), 
+            plt.plot(w.r[:],
+                     list(map(lambda x, y: m.log10(args.eps + m.fabs(x*y)), w.hr[:, 1, 2], w.r[:])),
                      label="$r|h_{23}|$")
 
-            plt.plot(w.r[:], 
-                     list(map(lambda x, y: m.log10(args.eps + m.fabs(x*y)), w.hr[:, 2, 2], w.r[:])), 
+            plt.plot(w.r[:],
+                     list(map(lambda x, y: m.log10(args.eps + m.fabs(x*y)), w.hr[:, 2, 2], w.r[:])),
                      label="$r|h_{33}|$")
 
         plt.legend(loc='upper right')

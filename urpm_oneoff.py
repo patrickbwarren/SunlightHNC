@@ -22,7 +22,6 @@
 # along with SunlightDPD.  If not, see <http://www.gnu.org/licenses/>.
 
 import argparse
-import math as m
 import numpy as np
 from oz import wizard as w
 
@@ -138,6 +137,7 @@ elif args.show:
     
     # code plots log10(r h(r)) versus r
 
+    import math as m
     import matplotlib.pyplot as plt
 
     plt.figure(1)
