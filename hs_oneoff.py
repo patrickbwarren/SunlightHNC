@@ -22,7 +22,6 @@
 # along with SunlightDPD.  If not, see <http://www.gnu.org/licenses/>.
 
 import argparse
-import matplotlib.pyplot as plt
 from oz import wizard as w
 
 parser = argparse.ArgumentParser(description='hard spheres one off calculator')
@@ -32,6 +31,8 @@ parser.add_argument('--ng', action='store', default='65536', help='number of gri
 parser.add_argument('--deltar', action='store', default=1e-3, type=float, help='grid spacing (default 1e-3)')
 parser.add_argument('--alpha', action='store', default=0.2, type=float, help='Picard mixing fraction (default 0.2)')
 parser.add_argument('--npic', action='store', default=6, type=int, help='number of Picard steps (default 6)')
+parser.add_argument('--nps', action='store', default=6, type=int, help='length of history array (default 6)')
+parser.add_argument('--maxsteps', action='store', default=100, type=int, help='number of iterations (default 100)')
 
 parser.add_argument('--sigma', action='store', default=1.0, type=float, help='hard core diameter (default 1.0)')
 
@@ -44,6 +45,9 @@ parser.add_argument('--msa', action='store_true', help='use MSA (default HNC)')
 parser.add_argument('--dump', action='store_true', help='write out g(r)')
 parser.add_argument('--show', action='store_true', help='plot results')
 
+parser.add_argument('--eps', action='store', default=1e-20, type=float, help='floor for log tails (default 1e-20)')
+parser.add_argument('--tail', action='store_true', help='plot showing tails of pair functions')
+
 parser.add_argument('--verbose', action='store_true', help='more output')
 
 args = parser.parse_args()
@@ -53,6 +57,8 @@ w.ng = eval(args.ng)
 w.deltar = args.deltar
 w.alpha = args.alpha
 w.npic = args.npic
+w.nps = args.nps
+w.maxsteps = args.maxsteps
 
 w.initialise()
 
@@ -90,6 +96,9 @@ if args.dump:
 
 elif args.show:
 
+    import math as m
+    import matplotlib.pyplot as plt
+
     plt.figure(1)
 
     plt.subplot(2, 2, 1)
@@ -113,9 +122,19 @@ elif args.show:
     
     plt.subplot(2, 2, 4)
 
-    jmax = int(args.skcut*3 / w.deltak)
-    plt.plot(w.k[0:jmax], w.ek[0:jmax, 0]+w.ck[0:jmax, 0], label="${\\tilde h}(k)$")
-    plt.legend(loc='lower right')
+    if args.tail: # plot log10(r h(r)) versus r
+
+        plt.plot(w.r[:],
+                 list(map(lambda x, y: m.log10(args.eps + m.fabs(x*y)), w.hr[:, 0, 0], w.r[:])),
+                 label="$r|h_{11}|$")
+
+        plt.legend(loc='upper right')
+
+    else:
+
+        jmax = int(args.skcut*3 / w.deltak)
+        plt.plot(w.k[0:jmax], w.ek[0:jmax, 0]+w.ck[0:jmax, 0], label="${\\tilde h}(k)$")
+        plt.legend(loc='lower right')
     
     plt.show()
 

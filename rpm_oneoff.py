@@ -82,7 +82,7 @@ w.diam[1, 1] = diam[1]
 
 if w.ncomp == 3:
     w.diam[0, 2] = 0.5*(diam[0] + diam[2])
-    w.diam[1, 2] = 0.5*(diam[0] + diam[2])
+    w.diam[1, 2] = 0.5*(diam[1] + diam[2])
     w.diam[2, 2] = diam[2]
 
 w.rho[0] = 0.5 * args.rhoz
@@ -168,6 +168,11 @@ elif args.show:
     imax = int(args.grcut / w.deltar)
     plt.plot(w.r[0:imax], 1.0 + w.hr[0:imax, 0, 0], label="$g_{11}(r)$")
     plt.plot(w.r[0:imax], 1.0 + w.hr[0:imax, 0, 1], label="$g_{12}(r)$")
+    plt.plot(w.r[0:imax], 1.0 + w.hr[0:imax, 1, 1], label="$g_{22}(r)$")
+    if args.all:
+        plt.plot(w.r[0:imax], 1.0 + w.hr[0:imax, 0, 2], label="$g_{13}(r)$")
+        plt.plot(w.r[0:imax], 1.0 + w.hr[0:imax, 1, 2], label="$g_{23}(r)$")
+        plt.plot(w.r[0:imax], 1.0 + w.hr[0:imax, 2, 2], label="$g_{33}(r)$")
     plt.legend(loc='lower right')
     
     plt.subplot(2, 2, 2) # structure factors
@@ -219,7 +224,7 @@ elif args.show:
 
             plt.plot(w.r[:],
                      list(map(lambda x, y: m.log10(args.eps + m.fabs(x*y)), w.hr[:, 0, 2], w.r[:])),
-                     label="r|h_{13}|")
+                     label="$r|h_{13}|$")
 
             plt.plot(w.r[:],
                      list(map(lambda x, y: m.log10(args.eps + m.fabs(x*y)), w.hr[:, 1, 2], w.r[:])),
