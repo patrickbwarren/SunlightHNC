@@ -199,8 +199,12 @@ elif args.show:
     if args.tail: # plot log10(r h(r)) versus r
 
         sumrhoz2 = np.sum(list(map(lambda rho, z: rho*z*z, w.rho, w.z))) # ionic strength
-        lD = 1.0 / m.sqrt(4*w.pi*w.lb*sumrhoz2) # debye length
-        
+
+        if sumrhoz2 > 0 and w.lb > 0:
+            lD = 1.0 / m.sqrt(4*w.pi*w.lb*sumrhoz2) # debye length
+        else:
+            lD = 0
+
         print("ionic strength sum rho z^2 = %g" % sumrhoz2)
         print("Debye length lD = %g" % lD)
 
@@ -216,9 +220,10 @@ elif args.show:
                  list(map(lambda x, y: m.log10(args.eps + m.fabs(x*y)), w.hr[:, 1, 1], w.r[:])),
                  label=" $r|h_{22}|$")
 
-        plt.plot(w.r[:],
-                 list(map(lambda x: m.log10(args.eps + m.exp(-x/lD)), w.r[:])),
-                 label=" $e^{-\kappa r}$", linestyle='--', color='black')
+        if lD > 0:
+            plt.plot(w.r[:],
+                     list(map(lambda x: m.log10(args.eps + m.exp(-x/lD)), w.r[:])),
+                     label=" $e^{-\kappa r}$", linestyle='--', color='black')
 
         if args.all:
 
