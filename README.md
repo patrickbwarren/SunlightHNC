@@ -1,5 +1,7 @@
 ## General purpose HNC code
 
+*Pre-release version 1.13 allows dissimilar sphere diameters in the RPM and hard sphere potentials*
+
 The current release is version 1.12.
 
 Version 1.12 adds direct calculation of HNC free energy (see documentation).
