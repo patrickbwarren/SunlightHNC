@@ -120,7 +120,8 @@ module wizard
        & rho(:),            & ! density array
        & z(:),              & ! valence array
        & arep(:, :),        & ! repulsion amplitude array
-       & diam(:),           & ! hard core diameter array
+       & dd(:),             & ! hard core diameter array
+       & diam(:, :),        & ! ditto, pairwise
        & tp(:),             & ! mean field pressure contribution
        & tu(:),             & ! mean field energy contribution
        & tl(:),             & ! mean field long range potential
@@ -155,7 +156,8 @@ contains
     allocate(z(ncomp))
     allocate(muex(ncomp))
     allocate(arep(ncomp, ncomp))
-    allocate(diam(nfnc))
+    allocate(diam(ncomp, ncomp))
+    allocate(dd(nfnc))
     allocate(tp(nfnc))
     allocate(tu(nfnc))
     allocate(tl(nfnc))
@@ -183,8 +185,9 @@ contains
 
     rho = 0.0_dp
     arep = 0.0_dp
-    z = 0.0_dp
     diam = 0.0_dp
+    z = 0.0_dp
+    dd = 0.0_dp
     h0 = 0.0_dp
 
     ! Make grids
@@ -261,8 +264,19 @@ contains
        else
           print *, ' lb = ', lb, ' sigma = ', sigma, ' kappa = ', kappa
        end if
+       print *, ' valencies, z = ', z
+       print *, 'hard core diameter array'
+       do i = 1, ncomp
+          print *, ' ', diam(i, :)
+       end do
+       print *, ' hard sphere diameters, dd = ', dd
     else if (model_type.eq.HARD_SPHERES) then
        print *, 'Hard sphere potential with sigma = ', sigma
+       print *, 'hard core diameter array'
+       do i = 1, ncomp
+          print *, ' ', diam(i, :)
+       end do
+       print *, ' hard sphere diameters, dd = ', dd
     else
        print *, 'Undefined potential'
     end if
@@ -548,7 +562,7 @@ contains
 
   subroutine rpm_potential(use_ushort)
     implicit none
-    integer :: irc
+    integer :: i, j, ij, irc
     logical, intent(in), optional :: use_ushort
     logical :: uuflag = .false.
 
@@ -563,11 +577,23 @@ contains
 
     z(1) = 1.0_dp
     z(2) = -1.0_dp
-    if (ncomp.eq.3) then
-       z(3) = 0.0_dp
-    end if
+    if (ncomp.eq.3) z(3) = 0.0_dp
 
-    diam = sigma
+    ! Set the diameters from an array, or sigma if none are preset.
+    ! The remaining logic means sigma, if not set, is set to the
+    ! smallest diameter
+
+    if (any(diam.gt.0.0_dp)) then
+       do j = 1, ncomp
+          do i = 1, j
+             ij = i + j*(j-1)/2
+             dd(ij) = diam(i, j)
+          end do
+       end do
+       if (sigma.eq.0.0_dp) sigma = minval(dd)
+    else
+       dd = sigma
+    end if
 
     ! Zero everything to start with, as for hard spheres
 
@@ -614,7 +640,11 @@ contains
     ! Generate auxiliary function - this is where HS diam implemented
 
     expnegus = exp(-ushort)
-    expnegus(1:irc, :) = 0.0_dp
+
+    do ij = 1, nfnc
+       irc = nint(dd(ij) / deltar)
+       expnegus(1:irc, ij) = 0.0_dp
+    end do
 
     ! These are the analytic contributions to the thermodynamics.
 
@@ -652,9 +682,20 @@ contains
 
   subroutine hs_potential
     implicit none
-    integer :: irc
+    integer :: i, j, ij, irc
 
-    diam = sigma
+    ! Set the hard core diameters from an array, or sigma if none are pre-set
+
+    if (any(diam.gt.0.0_dp)) then
+       do j = 1, ncomp
+          do i = 1, j
+             ij = i + j*(j-1)/2
+             dd(ij) = diam(i, j)
+          end do
+       end do
+    else
+       dd = sigma
+    end if
 
     ulong = 0.0_dp
     ulongk = 0.0_dp
@@ -662,11 +703,14 @@ contains
     ushort = 0.0_dp
     dushort = 0.0_dp
 
-    ! This is the only place the hard sphere diameter enters
+    ! This is where the hard sphere diameters enter
 
-    irc = nint(sigma / deltar)
-    expnegus(1:irc, :) = 0.0_dp
-    expnegus(irc+1:ng-1, :) = 1.0_dp
+    expnegus = 1.0_dp
+
+    do ij = 1, nfnc
+       irc = nint(dd(ij) / deltar)
+       expnegus(1:irc, ij) = 0.0_dp
+    end do
 
     ! These are the analytic contributions to the thermodynamics.
 
@@ -1105,7 +1149,7 @@ contains
     i1 = mod(istep-1, nps) + 1
     i0 = i1 - 1; if (i0.eq.0) i0 = nps
     do i = 1, nfnc
-       irc = nint(diam(i) / deltar) ! Only work inside the hard core
+       irc = nint(dd(i) / deltar) ! Only work inside the hard core
        c(1:irc,i,i1) = alpha * (  - e(1:irc,i,i0) - 1.0_dp ) &
             & + (1.0_dp - alpha) * c(1:irc,i,i0)
     end do
@@ -1141,7 +1185,7 @@ contains
     a(:,:) = 0.0_dp
     x(:) = 0.0_dp
     do icp = 1, nfnc
-       irc = nint(diam(icp) / deltar) ! Only work inside the hard core
+       irc = nint(dd(icp) / deltar) ! Only work inside the hard core
        do j = 1, irc
           aux = - 1.0_dp
           do j1 = 1, nd
@@ -1169,7 +1213,7 @@ contains
        return
     end if
     do icp = 1, nfnc
-       irc = nint(diam(icp) / deltar) ! Only work inside the hard core
+       irc = nint(dd(icp) / deltar) ! Only work inside the hard core
        do j = 1, irc
           aux = e(j,icp,i0)
           do j1 = 1, nd
@@ -1198,7 +1242,7 @@ contains
     integer :: i, i1, p, irc
     return_code = NO_ERROR
     do i = 1, nfnc
-       irc = nint(diam(i) / deltar) ! Reset everywhere outwith hard core
+       irc = nint(dd(i) / deltar) ! Reset everywhere outwith hard core
        do p = 1, nps
           c(irc+1:ng-1,i,p) = - ushort(irc+1:ng-1,i)
        end do
@@ -1206,7 +1250,7 @@ contains
     istep = 1
     if (cold_start) then
        do i = 1, nfnc
-          irc = nint(diam(i) / deltar) ! Only initialise inside the hard core
+          irc = nint(dd(i) / deltar) ! Only initialise inside the hard core
           c(1:irc,i,1) = - 1.0_dp
        end do
        cold_start = .false.
@@ -1358,13 +1402,13 @@ contains
     do j = 1, ncomp
        do i = 1, j
           ij = i + j*(j-1)/2
-          if (diam(ij).gt.0.0_dp) then
-             irc = nint(diam(ij) / deltar)
+          if (dd(ij).gt.0.0_dp) then
+             irc = nint(dd(ij) / deltar)
              r1 = r(irc+1)
              r2 = r(irc+2)
              h1 = c(irc+1, ij, 1) + e(irc+1, ij, 1)
              h2 = c(irc+2, ij, 1) + e(irc+2, ij, 1)
-             hc(i, j) = ( (h1 - h2) * diam(i) + h2 * r1 - h1 * r2 ) / (r1 - r2)
+             hc(i, j) = ( (h1 - h2) * dd(ij) + h2 * r1 - h1 * r2 ) / (r1 - r2)
           else
              hc(i, j) = 0.0_dp
           end if
@@ -1423,8 +1467,8 @@ contains
     ! contributes half.
 
     do i = 1, nfnc
-       if (diam(i).gt.0.0_dp) then
-          irc = nint(diam(i) / deltar)
+       if (dd(i).gt.0.0_dp) then
+          irc = nint(dd(i) / deltar)
           t(i) =  - twopi * deltar * sum((dushort(irc+2:,i)+dulong(irc+2:,i)) &
                & * (c(irc+2:,i,1) + e(irc+2:,i,1)) * r(irc+2:)**3) / 3.0_dp &
                & - 0.5_dp * twopi * deltar * ((dushort(irc+1,i) &
@@ -1445,14 +1489,14 @@ contains
     ! from the two nearest outside points.
 
     do i = 1, nfnc
-       if (diam(i).gt.0.0_dp) then
-          irc = nint(diam(i) / deltar)
+       if (dd(i).gt.0.0_dp) then
+          irc = nint(dd(i) / deltar)
           r1 = r(irc+1)
           r2 = r(irc+2)
           h1 = c(irc+1,i,1) + e(irc+1,i,1)
           h2 = c(irc+2,i,1) + e(irc+2,i,1)
-          hc = ( (h1 - h2) * diam(i) + h2 * r1 - h1 * r2 ) / (r1 - r2)
-          t(i) = twopi * diam(i)**3 * (1.0_dp + hc) / 3.0_dp
+          hc = ( (h1 - h2) * dd(i) + h2 * r1 - h1 * r2 ) / (r1 - r2)
+          t(i) = twopi * dd(i)**3 * (1.0_dp + hc) / 3.0_dp
        else
           t(i) = 0.0_dp
        end if
@@ -1493,8 +1537,8 @@ contains
     ! contribution from both ends vanishes.
 
     do i = 1, nfnc
-       if (diam(i).gt.0.0_dp) then
-          irc = nint(diam(i) / deltar)
+       if (dd(i).gt.0.0_dp) then
+          irc = nint(dd(i) / deltar)
           t(i) = twopi * deltar * sum((ushort(irc+2:,i) + ulong(irc+2:,i)) &
                & * (c(irc+2:,i,1) + e(irc+2:,i,1)) * r(irc+2:)**2) & 
                & + 0.5_dp * twopi * deltar * ((ushort(irc+1,i) &

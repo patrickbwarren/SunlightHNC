@@ -27,7 +27,7 @@ from oz import wizard as w
 
 parser = argparse.ArgumentParser(description='hard spheres one off calculator')
 
-parser.add_argument('--ncomp', action='store', default=1, type=int, help='number of components (species) (default 2)')
+parser.add_argument('--ncomp', action='store', default=1, type=int, help='number of components (species) (default 1)')
 parser.add_argument('--ng', action='store', default='65536', help='number of grid points (default 65536)')
 parser.add_argument('--deltar', action='store', default=1e-3, type=float, help='grid spacing (default 1e-3)')
 parser.add_argument('--alpha', action='store', default=0.2, type=float, help='Picard mixing fraction (default 0.2)')

@@ -32,8 +32,11 @@ parser.add_argument('--ng', action='store', default='65536', help='number of gri
 parser.add_argument('--deltar', action='store', default=1e-3, type=float, help='grid spacing (default 1e-3)')
 parser.add_argument('--alpha', action='store', default=0.2, type=float, help='Picard mixing fraction (default 0.2)')
 parser.add_argument('--npic', action='store', default=6, type=int, help='number of Picard steps (default 6)')
+parser.add_argument('--nps', action='store', default=6, type=int, help='length of history array (default 6)')
+parser.add_argument('--maxsteps', action='store', default=100, type=int, help='number of iterations (default 100)')
 
-parser.add_argument('--sigma', action='store', default=1.0, type=float, help='hard core diameter (default 1.0)')
+parser.add_argument('--diam', action='store', default='[1,1,1]', help='hard core diameters (default [1,1,1])')
+parser.add_argument('--sigma', action='store', default=0.0, type=float, help='inner core diameter (default 0.0)')
 parser.add_argument('--rho', action='store', default=0.5, type=float, help='total hard sphere density (default 0.5)')
 parser.add_argument('--rhoz', action='store', default=0.1, type=float, help='total ion density (default 0.1)')
 parser.add_argument('--lb', action='store', default=1.0, type=float, help='Bjerrum length (default 1.0)')
@@ -63,11 +66,24 @@ w.ng = eval(args.ng)
 w.deltar = args.deltar
 w.alpha = args.alpha
 w.npic = args.npic
+w.nps = args.nps
+w.maxsteps = args.maxsteps
 
 w.initialise()
 
 w.sigma = args.sigma
 w.kappa = args.kappa
+
+diam = eval(args.diam)
+
+w.diam[0, 0] = diam[0]
+w.diam[0, 1] = 0.5*(diam[0] + diam[1])
+w.diam[1, 1] = diam[1]
+
+if w.ncomp == 3:
+    w.diam[0, 2] = 0.5*(diam[0] + diam[2])
+    w.diam[1, 2] = 0.5*(diam[0] + diam[2])
+    w.diam[2, 2] = diam[2]
 
 w.rho[0] = 0.5 * args.rhoz
 w.rho[1] = 0.5 * args.rhoz
@@ -90,6 +106,7 @@ if args.exp:
 for i in range(args.nwarm):
     w.lb = (i + 1.0) / args.nwarm * args.lb
     w.rpm_potential(args.ushort)
+    if w.verbose: w.write_params()
     if args.msa:
         w.msa_solve()
     else:

@@ -1076,19 +1076,19 @@ hidden inside the hard core, this choice forces the offset functions
 $c'_{\mu\nu}$ and $e'_{\mu\nu}$ to try to compensate, giving rise to
 numerical discretisation artefacts (note that the actual direct and
 indirect correlation functions, $c_{\mu\nu}$ and $e_{\mu\nu}$, are
-non-vanishing and finite inside the hard core region).  Numerically
-much better is to chose the long range potential such that it is
-bounded inside the hard cores.  By far the simplest choice is a
+non-vanishing and finite inside the hard cores).  Numerically much
+better is to chose the long range potential such that it is bounded
+inside an inner hard core region.  By far the simplest choice is a
 truncated Coulomb law,
 %
 \begin{equation}
   \beta v\lr(r)=\Bigl\{\begin{array}{ll}
   \lB/\sigma & r\le\sigma\,,\\
   \lB/r & r > \sigma\,,
-  \end{array}\quad \beta v\lr(0)=\frac{\lB}{\sigma}\,.
+  \end{array}\quad \beta v\lr(0)=\frac{\lB}{\sigma}\,.\label{eq:rpmhc}
 \end{equation}
 %
-This does least damage to the potential outside the hard core so we
+This does least damage to the potential outside the hard cores so we
 can continue to use our simple definition of $e^{-\beta v'}$ above.
 With this choice, the Fourier transform is easily shown to be
 %
@@ -1331,7 +1331,16 @@ integral equation problem.
   times.  It checks that \verb+ncomp = 2+ or \verb+ncomp = 3+ and
   forces $z_1=1$, $z_2=-1$, and $z_3=0$ as required (so the third
   component is neutral hard spheres).  The optional logical parameter
-  works the same way as in the URPM potential.
+  works the same way as in the URPM potential.  The hard core
+  diameters are either taken from the array \verb+diam(:, :)+, or if
+  these are all zero they are set to a common value \verb+sigma+.  The
+  parameter \verb+sigma+ itself is used for the \emph{inner} core
+  diameter which features in the definition of $v\lr$ in
+  \Eqref{eq:rpmhc}. Thus, by setting \verb+sigma+ and separately
+  \verb+diam(:, :)+, one can implement models with dissimilar hard
+  sphere radii, or even non-additive hard sphere models.  For
+  convenience if \verb+sigma+ was zero (\ie\ the initial default) then it
+  is re-set to the minimum of \verb+diam(:, :)+.
 %
 \item\verb+hs_potential+ -- Sets up hard sphere potentials for an
   arbitrary number of components, with common diameter \verb+sigma+.
@@ -1532,8 +1541,8 @@ convergence (usually safe to leave at default 100).
 %
 \item\verb+sigma+ -- smearing length $\sigma$ (default 1.0) in the
   case of Gaussian or Bessel charges in the DPD potential and URPM
-  potentials; hard core diameter $\sigma$ in the case of the RPM or
-  hard sphere potentials.
+  potentials; default or inner core diameter $\sigma$ in the case of
+  the RPM, or hard sphere potentials.
 %
 \item\verb+kappa+ -- parameter $\kappa$ (default $-1$) in the
   softened RPM potential.  A negative value is interpreted as
@@ -1563,16 +1572,20 @@ convergence (usually safe to leave at default 100).
   \verb+z(mu)+ is the valence $z_\mu$.  All entries default to
   zero after a call to \verb+initialise+.
 %
-\item\verb+diam(:)+ -- An array of size \verb+ncomp+ where
-  \verb+diam(mu)+ is the hard core diameter $d_\mu$.  All entries
-  default to zero after a call to \verb+initialise+.
+\item\verb+diam(:, :)+ -- An array of size
+  \verb+ncomp+$\times$\verb+ncomp+ where \verb+diam(mu, nu)+ is the
+  hard core core diameter $\sigma_{\mu\nu}$ (currently used for RPM
+  and HS potentials).  Only elements above the diagonal are used,
+  \eg\ \verb+diam(1,2)+, \verb+diam(1,3)+, and \verb+diam(2,3)+.
+  Elements below the diagonal are ignored.  All entries default to
+  zero after a call to \verb+initialise+.
 %
 \item\verb+arep(:, :)+ -- An array of size
-  \verb+ncomp+$\times$\verb+ncomp+ where \verb+arep(mu, nu)+ is
-  $A_{\mu\nu}$.  Only elements above the diagonal are used,
-  \eg\ \verb+arep(1,2)+, \verb+arep(1,3)+, and \verb+arep(2,3)+.  {\bf
-    Elements below the diagonal are ignored}, \cf\ the matrix in
-  \Eqref{eq:mat}.  All entries default to zero after a call to
+  \verb+ncomp+$\times$\verb+ncomp+ where \verb+arep(mu, nu)+ is the
+  pairwise repulsion amplitude $A_{\mu\nu}$ used in the DPD potential.
+  Only elements above the diagonal are used, \eg\ \verb+arep(1,2)+,
+  \verb+arep(1,3)+, and \verb+arep(2,3)+.  Elements below the diagonal
+  are ignored.  All entries default to zero after a call to
   \verb+initialise+.
 %
 \end{itemize}
@@ -1684,8 +1697,8 @@ The following are calculated only for the HNC closure.
   $\beta\muex_\mu$
 %
 \item\verb+deficit+ -- The quantity $\aex - \sum_{\mu}\rho_\mu
-  \muex_\mu + \pex$ (which should vanish).  This can be viewed as a certificate of
-  the numerical discretisation error.
+  \muex_\mu + \pex$ (which should vanish).  This can be viewed as a
+  certificate of the numerical discretisation error.
 %
 \end{itemize}
 %
