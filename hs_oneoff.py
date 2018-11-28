@@ -53,7 +53,7 @@ parser.add_argument('--verbose', action='store_true', help='more output')
 args = parser.parse_args()
 
 w.ncomp = args.ncomp
-w.ng = eval(args.ng)
+w.ng = eval(args.ng.replace('^', '**')) # catch 2^10 etc
 w.deltar = args.deltar
 w.alpha = args.alpha
 w.npic = args.npic

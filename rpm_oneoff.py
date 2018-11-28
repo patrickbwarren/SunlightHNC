@@ -21,6 +21,15 @@
 # You should have received a copy of the GNU General Public License
 # along with SunlightDPD.  If not, see <http://www.gnu.org/licenses/>.
 
+# Note on diameter setting
+# first three entries are HS diameters z = +1, -1, 0
+# [1,1,1] is equivalent to default, [1,1,0.8] is solvent of smaller spheres
+# next three entries are the pairwise (+-), (+0), (-0) hard core distances
+# [1,1,0] would be RPM + gas of points (not much interest)
+# [1,1,0,1,0.9] is RPM + excluded volume points (Asakura-Oosawa model)
+# or equivalently --diam="[1,1,0,1,(1+0.8)/2]" at q = 0.8 (size ratio)
+# can also set --sigma=1 with this as the charged spheres have unit diameter
+
 import argparse
 import numpy as np
 from oz import wizard as w
@@ -35,8 +44,8 @@ parser.add_argument('--npic', action='store', default=6, type=int, help='number 
 parser.add_argument('--nps', action='store', default=6, type=int, help='length of history array (default 6)')
 parser.add_argument('--maxsteps', action='store', default=100, type=int, help='number of iterations (default 100)')
 
-parser.add_argument('--diam', action='store', default='[1,1,1]', help='hard core diameters (default [1,1,1])')
-parser.add_argument('--sigma', action='store', default=0.0, type=float, help='inner core diameter (default 0.0)')
+parser.add_argument('--diam', action='store', default='[1]', help='hard core diameters (default [1])')
+parser.add_argument('--sigma', action='store', default=0.0, type=float, help='inner core diameter (default min diam)')
 parser.add_argument('--rho', action='store', default=0.5, type=float, help='total hard sphere density (default 0.5)')
 parser.add_argument('--rhoz', action='store', default=0.1, type=float, help='total ion density (default 0.1)')
 parser.add_argument('--lb', action='store', default=1.0, type=float, help='Bjerrum length (default 1.0)')
@@ -54,7 +63,7 @@ parser.add_argument('--dump', action='store_true', help='write out g(r)')
 parser.add_argument('--show', action='store_true', help='plot results')
 
 parser.add_argument('--eps', action='store', default=1e-20, type=float, help='floor for log tails (default 1e-20)')
-parser.add_argument('--tail', action='store_true', help='plot showing tails of pair functions')
+parser.add_argument('--tail', action='store_true', help='plot tails of pair functions')
 parser.add_argument('--all', action='store_true', help='include solvent pair functions')
 
 parser.add_argument('--verbose', action='store_true', help='more output')
@@ -62,12 +71,13 @@ parser.add_argument('--verbose', action='store_true', help='more output')
 args = parser.parse_args()
 
 w.ncomp = args.ncomp
-w.ng = eval(args.ng)
+w.ng = eval(args.ng.replace('^', '**')) # catch 2^10 etc
 w.deltar = args.deltar
 w.alpha = args.alpha
 w.npic = args.npic
 w.nps = args.nps
 w.maxsteps = args.maxsteps
+w.verbose = args.verbose
 
 w.initialise()
 
@@ -76,24 +86,27 @@ w.kappa = args.kappa
 
 diam = eval(args.diam)
 
+if len(diam) == 1: diam.append(diam[0])
+
 w.diam[0, 0] = diam[0]
 w.diam[0, 1] = 0.5*(diam[0] + diam[1])
 w.diam[1, 1] = diam[1]
 
 if w.ncomp == 3:
+    if len(diam) == 2: diam.append(0.5*(diam[0] + diam[1]))
     w.diam[0, 2] = 0.5*(diam[0] + diam[2])
     w.diam[1, 2] = 0.5*(diam[1] + diam[2])
     w.diam[2, 2] = diam[2]
+
+if len(diam) == 4: w.diam[0, 1] = diam[3]
+if len(diam) == 5: w.diam[0, 2] = w.diam[1, 2] = diam[4]
+if len(diam) == 6: w.diam[1, 2] = diam[5]
 
 w.rho[0] = 0.5 * args.rhoz
 w.rho[1] = 0.5 * args.rhoz
 
 if w.ncomp == 3:
     w.rho[2] = args.rho - args.rhoz
-
-if args.verbose:
-    w.write_params()
-    w.verbose = True
 
 if args.exp:    
     w.hs_potential()
@@ -131,7 +144,7 @@ if not args.dump:
 # (notice how elegant this is :-)
 
 snn = np.sum(np.sum(w.sk, axis=2), axis=1) / np.sum(w.rho)
-szz = np.dot(np.dot(w.z, w.sk), w.z) / np.sum(w.rho)
+szz = np.dot(np.dot(w.z, w.sk), w.z) / np.sum(w.rho * w.z**2)
 
 if args.dump:
 
@@ -198,7 +211,7 @@ elif args.show:
 
     if args.tail: # plot log10(r h(r)) versus r
 
-        sumrhoz2 = np.sum(list(map(lambda rho, z: rho*z*z, w.rho, w.z))) # ionic strength
+        sumrhoz2 = np.sum(w.rho * w.z**2) # ionic strength
 
         if sumrhoz2 > 0 and w.lb > 0:
             lD = 1.0 / m.sqrt(4*w.pi*w.lb*sumrhoz2) # debye length
