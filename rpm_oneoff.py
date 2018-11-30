@@ -37,7 +37,7 @@ from oz import wizard as w
 parser = argparse.ArgumentParser(description='RPM one off calculator')
 
 parser.add_argument('--ncomp', action='store', default=2, type=int, help='number of components (species) (default 2)')
-parser.add_argument('--ng', action='store', default='65536', help='number of grid points (default 65536)')
+parser.add_argument('--ng', action='store', default='65536', help='number of grid points (default 2^16 = 65536)')
 parser.add_argument('--deltar', action='store', default=1e-3, type=float, help='grid spacing (default 1e-3)')
 parser.add_argument('--alpha', action='store', default=0.2, type=float, help='Picard mixing fraction (default 0.2)')
 parser.add_argument('--npic', action='store', default=6, type=int, help='number of Picard steps (default 6)')
@@ -85,6 +85,9 @@ w.sigma = args.sigma
 w.kappa = args.kappa
 
 diam = eval(args.diam)
+
+if not isinstance(diam, list):
+    diam = [diam]
 
 if len(diam) == 1: diam.append(diam[0])
 
