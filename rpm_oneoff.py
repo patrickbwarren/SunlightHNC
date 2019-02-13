@@ -142,8 +142,9 @@ if args.exp:
     w.hs_potential()
     w.msa_solve()
     w.save_reference()
-    s = str(w.closure_name, 'utf-8').strip()
-    print('rho = %g \thard spheres \t%s error = %g' % (np.sum(w.rho), s, w.error))
+    if not args.dump:
+        s = str(w.closure_name, 'utf-8').strip()
+        print('rho = %g \thard spheres \t%s error = %g' % (np.sum(w.rho), s, w.error))
     args.msa = True
 
 for i in range(args.nwarm):
@@ -154,15 +155,17 @@ for i in range(args.nwarm):
         w.msa_solve()
     else:
         w.hnc_solve()
-    s = str(w.closure_name, 'utf-8').strip()
-    print('rhoz = %g \trho = %g \tlb = %g \tkappa = %g \t%s error = %g' %
-          (w.rho[0]+w.rho[1], np.sum(w.rho), w.lb, w.kappa, s, w.error))
+    if not args.dump:
+        s = str(w.closure_name, 'utf-8').strip()
+        print('rhoz = %g \trho = %g \tlb = %g \tkappa = %g \t%s error = %g' %
+              (w.rho[0]+w.rho[1], np.sum(w.rho), w.lb, w.kappa, s, w.error))
 
 if args.exp:
     w.exp_refine()
-    s = str(w.closure_name, 'utf-8').strip()
-    print('rhoz = %g \trho = %g \tlb = %g \tkappa = %g \t%s error = %g' %
-          (w.rho[0]+w.rho[1], np.sum(w.rho), w.lb, w.kappa, s, w.error))
+    if not args.dump:
+        s = str(w.closure_name, 'utf-8').strip()
+        print('rhoz = %g \trho = %g \tlb = %g \tkappa = %g \t%s error = %g' %
+              (w.rho[0]+w.rho[1], np.sum(w.rho), w.lb, w.kappa, s, w.error))
 
 if w.return_code: exit()
 
@@ -211,7 +214,7 @@ elif args.show:
         plt.plot(w.r[0:imax], 1.0 + w.hr[0:imax, 0, 0], label="$g_{11}(r)$")
         plt.plot(w.r[0:imax], 1.0 + w.hr[0:imax, 0, 1], label="$g_{12}(r)$")
         plt.plot(w.r[0:imax], 1.0 + w.hr[0:imax, 1, 1], label="$g_{22}(r)$")
-        if args.all:
+        if w.ncomp > 2 and args.all:
             plt.plot(w.r[0:imax], 1.0 + w.hr[0:imax, 0, 2], label="$g_{13}(r)$")
             plt.plot(w.r[0:imax], 1.0 + w.hr[0:imax, 1, 2], label="$g_{23}(r)$")
             plt.plot(w.r[0:imax], 1.0 + w.hr[0:imax, 2, 2], label="$g_{33}(r)$")
@@ -252,7 +255,7 @@ elif args.show:
         else:
             lD = 0
         print("ionic strength sum rho z^2 = %g" % sumrhoz2)
-        print("Debye length lD = %g" % lD)
+        print("Debye length lD = %g, kappa sigma = %g" % (lD, w.sigma/lD))
         plt.plot(w.r[:],
                  list(map(lambda x, y: m.log10(args.eps + m.fabs(x*y)), w.hr[:, 0, 0], w.r[:])),
                  label="$r|h_{11}|$")
@@ -266,7 +269,7 @@ elif args.show:
             plt.plot(w.r[:],
                      list(map(lambda x: m.log10(args.eps + m.exp(-x/lD)), w.r[:])),
                      label=" $e^{-\kappa r}$", linestyle='--', color='black')
-        if args.all:
+        if w.ncomp > 2 and args.all:
             plt.plot(w.r[:],
                      list(map(lambda x, y: m.log10(args.eps + m.fabs(x*y)), w.hr[:, 0, 2], w.r[:])),
                      label="$r|h_{13}|$")

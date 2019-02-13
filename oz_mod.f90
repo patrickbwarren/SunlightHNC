@@ -1718,7 +1718,7 @@ contains
   end subroutine hnc_kspace_integrals
 
   subroutine write_thermodynamics
-    integer :: i
+    integer :: i, j
 
     if (closure_type.eq.NO_CLOSURE) then
        print *, 'No closure = no thermodynamics'
@@ -1746,6 +1746,12 @@ contains
     print *, 'Internal energy density = ', uex
     print *, 'Internal energy per particle = ', uex / sum(rho(:))
     print *, 'Internal energy per particle / 3 = ', uex / (3.0_dp*sum(rho(:)))
+
+    do i = 1, ncomp
+       do j = i, ncomp
+          print *, 'Contact g', i, j, ' = 1 + ', hc(i, j), ' = ', 1 + hc(i, j)
+       end do
+    end do
 
     if (closure_type.eq.HNC_CLOSURE) then
        do i = 1, ncomp
