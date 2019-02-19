@@ -25,12 +25,20 @@ F90 = gfortran
 FFLAGS = -Wall -fbounds-check
 LIBFLAGS =  -L/usr/lib -llapack -lfftw3
 INCFLAGS = -I/usr/include/
+PDFL = pdflatex -synctex=1
 
 DRIVERS = driver1 driver2 driver3 driver4
 
 default: oz.so
 
-all : $(DRIVERS) urpm fftw_test oz.so
+all : $(DRIVERS) fftw_test oz.so
+
+docs : oz_doc.pdf
+
+oz_doc.pdf : oz_doc.tex gofr.png sofk.png
+	$(PDFL) oz_doc.tex
+	$(PDFL) oz_doc.tex
+	$(PDFL) oz_doc.tex
 
 drivers : $(DRIVERS)
 
@@ -50,9 +58,6 @@ driver3 : driver3.o oz_mod.o
 driver4 : driver4.o oz_mod.o
 	$(F90) -o $@ $^ $(LIBFLAGS)
 
-urpm : urpm.o oz_mod.o
-	$(F90) -o $@ $^ $(LIBFLAGS)
-
 fftw_test : fftw_test.o
 	$(F90) -o $@ $^ $(LIBFLAGS)
 
@@ -64,10 +69,8 @@ driver2.o : driver2.f90 oz_mod.o
 driver3.o : driver3.f90 oz_mod.o
 driver4.o : driver4.f90 oz_mod.o
 
-urpm.o : urpm.f90 oz_mod.o
-
 clean:
 	rm -f *~
 	rm -f *.pyf *.mod *.o *.so
 	rm -f oz_doc.aux oz_doc.toc oz_doc.log
-	rm -f $(DRIVERS) urpm fftw_test
+	rm -f $(DRIVERS) fftw_test
