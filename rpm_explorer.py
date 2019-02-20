@@ -24,7 +24,7 @@
 # You should have received a copy of the GNU General Public License
 # along with SunlightDPD.  If not, see <http://www.gnu.org/licenses/>.
 
-# Run as default (--ncomp=2) for RPM without solvent
+# By default (--ncomp=2) this is for RPM without solvent
 # Run with --ncomp=3 for solvent primitive model
 
 import argparse
@@ -36,11 +36,13 @@ from matplotlib.widgets import Slider, Button, RadioButtons
 from oz import wizard as w
 from numpy import pi as π
 
-parser = argparse.ArgumentParser(description='RPM interactive HNC solver')
+parser = argparse.ArgumentParser(description='Interactive RPM explorer')
 
 parser.add_argument('--ncomp', action='store', default=2, type=int, help='number of components (species) (default 2)')
+
 parser.add_argument('--ng', action='store', default='16384', help='number of grid points (default 2^14 = 16384)')
 parser.add_argument('--deltar', action='store', default=1e-3, type=float, help='grid spacing (default 1e-3)')
+
 parser.add_argument('--alpha', action='store', default=0.2, type=float, help='Picard mixing fraction (default 0.2)')
 parser.add_argument('--npic', action='store', default=6, type=int, help='number of Picard steps (default 6)')
 parser.add_argument('--nps', action='store', default=6, type=int, help='length of history array (default 6)')
@@ -51,8 +53,8 @@ parser.add_argument('--sigma', action='store', default=0.0, type=float, help='in
 parser.add_argument('--rhoz', action='store', default='0.1', help='total ion density (default 0.1)')
 parser.add_argument('--rhos', action='store', default='0.4', help='added solvent density (default 0.4)')
 parser.add_argument('--lb', action='store', default='1.0', help='Bjerrum length (default 1.0)')
-parser.add_argument('--ushort', action='store_true', help='use U_short in potential')
-parser.add_argument('--individual', action='store_true', help='show individual h(r)')
+parser.add_argument('--swap', action='store_true', help='swap representations of h(r)')
+parser.add_argument('--flip', action='store_true', help='flip signs h(r)')
 
 parser.add_argument('--rmax', action='store', default=15.0, type=float, help='maximum radial distance')
 
@@ -101,14 +103,65 @@ if len(diam) == 6: w.diam[1, 2] = diam[5]
 w.rpm_potential()
 
 rhoz_init = eval(args.rhoz.replace('^', '**')) # total charged species density
+rhos_init = eval(args.rhos.replace('^', '**')) # added solvent density
 
-if w.ncomp == 3:
-    rhos_init = eval(args.rhos.replace('^', '**')) # added solvent density
+def solve(rhoz, rhos):
+    """solve the structure at the given densities, and return a text message"""
+    w.rho[0] = rhoz/2
+    w.rho[1] = rhoz/2
+    if w.ncomp == 3:
+        w.rho[2] = rhos
+    w.hnc_solve()
+    if w.return_code: exit()
+
+def selector(individual):
+    """return a list according to  (hnn, hzz) and (h00, h01) representations"""
+    if individual:
+        return [[1, 0, 'g', 'h00'], [0, 1, 'b', 'h01']]
+    else:
+        return [[0.5, 0.5, 'k', '(h00+h01)/2'], [0.5, -0.5, 'r', '(h00-h01)/2']]
+
+def update(val):
+    """update state point from sliders, recompute, and replot"""
+    w.lb = 1 / tstar_slider.val
+    w.rpm_potential()
+    rhoz = 10**rhoz_slider.val
+    if rhos_slider:
+        rhos = 10**rhos_slider.val
+    else:
+        rhos = rhos_init
+    solve(rhoz, rhos)
+    replot()
+
+def get_ann_txt():
+    """get a string for annotating the plot"""
+    rhoz = w.rho[0] + w.rho[1]
+    if w.ncomp == 2:
+        msg = 'T* = %5.2f  ρz = %8.3f  HNC err = %0.1g' % (1/w.lb, rhoz, w.error)
+    else:
+        rhos = w.rho[2]
+        msg = 'T* = %5.2f  ρz = %8.3f  ρs = %8.3f  HNC err = %0.1g' % (1/w.lb, rhoz, rhos, w.error)
+    return msg
+
+def replot():
+    """replot the lines and annotate"""
+    for i, (p, q, color, text) in enumerate(selector(args.swap)):
+        r = w.r[imin:imax]
+        if args.flip:
+            rh = r * (p*w.hr[imin:imax, 0, 0] + q*w.hr[imin:imax, 0, 1])
+        else:
+            rh = - r * (p*w.hr[imin:imax, 0, 0] + q*w.hr[imin:imax, 0, 1])
+        rh[rh < 0] = 1e-20
+        line[i].set_ydata(np.log10(rh))
+    ann.set_text(get_ann_txt())
+    fig.canvas.draw_idle()
+
+# Set up the plot
 
 fig, ax = plt.subplots()
 plt.subplots_adjust(left=0.25, bottom=0.30)
 
-ax.set_xlim([0, args.rmax])
+ax.set_xlim([1, args.rmax])
 ax.set_ylim([-12, 1])
 ax.set_xticks(list(range(0, int(5+args.rmax+0.5), 5)))
 ax.set_yticks(list(range(-12, 2, 1)))
@@ -118,70 +171,23 @@ ax.set_ylabel('log10 r h(r)')
 imin = int(1.0 / w.deltar)
 imax = int(args.rmax / w.deltar)
 
-def update(val):
-    w.lb = 1 / tstar_slider.val
-    w.rpm_potential()
-    rhoz = 10**rhoz_slider.val
-    if rhos_slider:
-        rhos = 10**rhos_slider.val
-    w.rho[0] = rhoz/2
-    w.rho[1] = rhoz/2
-    if w.ncomp == 3:
-        w.rho[2] = rhos
-    w.hnc_solve()
-    if w.return_code: exit()
-    if w.ncomp == 2:
-        ann_txt = 'T* = %5.2f  ρz = %8.3f  HNC err = %0.1g' % (1/w.lb, rhoz, w.error)
+line = [None, None]
+label = [None, None]
+
+solve(rhoz_init, rhos_init)
+ann = ax.annotate(get_ann_txt(), xy=(0.02, 1.02), xycoords='axes fraction')
+
+for i, (p, q, color, text) in enumerate(selector(args.swap)):
+    r = w.r[imin:imax]
+    if args.flip:
+        rh = r * (p*w.hr[imin:imax, 0, 0] + q*w.hr[imin:imax, 0, 1])
     else:
-        ann_txt = 'T* = %5.2f  ρz = %8.3f  ρs = %8.3f  HNC err = %0.1g' % (1/w.lb, rhoz, rhos, w.error)
-    if args.individual:
-        for i in [0, 1]:
-            r = w.r[imin:imax]
-            rh = - r * w.hr[imin:imax, 0, i]
-            rh[rh < 0] = 1e-20
-            l[i].set_ydata(np.log10(rh))
-    else:
-        for i, s in enumerate([1, -1]):
-            r = w.r[imin:imax]
-            rh = - r * (w.hr[imin:imax, 0, 0] + s*w.hr[imin:imax, 0, 1]) / 2
-            rh[rh < 0] = 1e-20
-            l[i].set_ydata(np.log10(rh))
-    ann.set_text(ann_txt)
-    fig.canvas.draw_idle()
+        rh = - r * (p*w.hr[imin:imax, 0, 0] + q*w.hr[imin:imax, 0, 1])
+    rh[rh < 0] = 1e-20
+    line[i], = ax.plot(r, np.log10(rh), color+'-')
+    label[i] = ax.annotate(text, xy=(0.2+0.4*i, 0.95), color=color, xycoords='axes fraction')
 
-w.rho[0] = rhoz_init/2
-w.rho[1] = rhoz_init/2
-if w.ncomp == 3:
-    w.rho[2] = rhos_init
-
-w.hnc_solve()
-
-if w.return_code: exit()
-
-if w.ncomp == 2:
-    ann_txt = 'T* = %5.2f  ρz = %8.3f  HNC err = %0.1g' % (1/w.lb, rhoz_init, w.error)
-else:
-    ann_txt = 'T* = %5.2f  ρz = %8.3f  ρs = %8.3f  HNC err = %0.1g' % (1/w.lb, rhoz_init, rhos_init, w.error)
-
-l = [None, None]
-lab = [None, None]
-
-if args.individual:
-    for i, (color, text) in enumerate(zip(['g', 'b'], ['h00', 'h01'])):
-        r = w.r[imin:imax]
-        rh = - r * w.hr[imin:imax, 0, i]
-        rh[rh < 0] = 1e-20
-        l[i], = ax.plot(r, np.log10(rh), color+'-')
-        lab[i] = ax.annotate(text, xy=(0.2+0.4*i, 0.95), color=color, xycoords='axes fraction')
-else:
-    for i, (s, color, text) in enumerate(zip([1, -1], ['k', 'r'], ['(h00+h01)/2', '(h00-h01)/2'])):
-        r = w.r[imin:imax]
-        rh = - r * (w.hr[imin:imax, 0, 0] + s*w.hr[imin:imax, 0, 1]) / 2
-        rh[rh < 0] = 1e-20
-        l[i], = ax.plot(r, np.log10(rh), color+'-')
-        lab[i] = ax.annotate(text, xy=(0.2+0.4*i, 0.95), color=color, xycoords='axes fraction')
-
-ann = ax.annotate(ann_txt, xy=(0.02, 1.02), xycoords='axes fraction')
+# Set up sliders for lB, rho_z, and rho_s if required
 
 ax_tstar = plt.axes([0.25, 0.05, 0.65, 0.03], facecolor='PaleTurquoise')
 tstar_slider = Slider(ax_tstar, 'T*', 0.2, 2.0, valinit=1/lb_init, valstep=0.01)
@@ -198,23 +204,32 @@ if w.ncomp == 3:
 else:
     rhos_slider = None
 
+# Set up buttons
+
+def flip(event):
+    """flip signs of h"""
+    args.flip = not args.flip
+    replot()
+
+ax_flip = plt.axes([0.05, 0.25, 0.1, 0.03])
+flip_button = Button(ax_flip, 'flip', color='PaleTurquoise', hovercolor='0.975')
+flip_button.on_clicked(flip)
+
 def swap(event):
-    args.individual = not args.individual
-    if args.individual:
-        list = zip(['g', 'b'], ['h00', 'h01'])
-    else:
-        list = zip(['k', 'r'], ['(h00+h01)/2', '(h00-h01)/2'])
-    for i, (color, text) in enumerate(list):
-        l[i].set_color(color)
-        lab[i].set_color(color)
-        lab[i].set_text(text)
-    update(None)
+    """swap between (hnn, hzz) and (h00, h01) representations"""
+    args.swap = not args.swap
+    for i, (p, q, color, text) in enumerate(selector(args.swap)):
+        line[i].set_color(color)
+        label[i].set_color(color)
+        label[i].set_text(text)
+    replot()
 
 ax_swap = plt.axes([0.05, 0.20, 0.1, 0.03])
 swap_button = Button(ax_swap, 'swap', color='PaleTurquoise', hovercolor='0.975')
 swap_button.on_clicked(swap)
 
 def reset(event):
+    """reset all slider positions"""
     tstar_slider.reset()
     rhoz_slider.reset()
     if rhos_slider:
@@ -225,6 +240,7 @@ reset_button = Button(ax_reset, 'reset', color='PaleTurquoise', hovercolor='0.97
 reset_button.on_clicked(reset)
 
 def dump(event):
+    """write state point (T*, rho_z, kappa, [rho_s]) to std out"""
     rhoz = w.rho[0] + w.rho[1]
     kappa = m.sqrt(4*π*rhoz*w.lb)
     if w.ncomp == 2:
