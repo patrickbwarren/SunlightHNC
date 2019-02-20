@@ -27,6 +27,16 @@
 # By default (--ncomp=2) this is for RPM without solvent
 # Run with --ncomp=3 for solvent primitive model
 
+# The following correspond to the Fig 1 insets in Coupette et al., PRL 121, 075501 (2018)
+# For this lB = 0.7 nm, sigma = 0.3 nm, [salt] = 1 M, and [solvent] = 10 M and 40 M.
+# Note the use of computed values for lB/sigma and rho*sigma^3.  Also 1 M = 0.602 molecules per nm^3
+# For the salt, NaCl --> Na+ and Cl-, and rhoz = [Na+] + [Cl-] = 2 [NaCl], hence the factor 2 in --rhoz
+
+# python3 rpm_explorer.py --ncomp=3 --lb=0.7/0.3 --rhoz=2*0.602*0.3^3 --rhos=10*0.602*0.3^3
+# python3 rpm_explorer.py --ncomp=3 --lb=0.7/0.3 --rhoz=2*0.602*0.3^3 --rhos=40*0.602*0.3^3
+
+# Add --diam='[0.25/0.3,0.3373/0.3,1]' to reproduce the size-asymmetric model shown in Fig S1.
+
 import argparse
 import numpy as np
 import math as m
@@ -54,7 +64,7 @@ parser.add_argument('--rhoz', action='store', default='0.1', help='total ion den
 parser.add_argument('--rhos', action='store', default='0.4', help='added solvent density (default 0.4)')
 parser.add_argument('--lb', action='store', default='1.0', help='Bjerrum length (default 1.0)')
 parser.add_argument('--swap', action='store_true', help='swap representations of h(r)')
-parser.add_argument('--flip', action='store_true', help='flip signs h(r)')
+parser.add_argument('--neg', action='store_true', help='invert sign of h(r)')
 
 parser.add_argument('--rmax', action='store', default=15.0, type=float, help='maximum radial distance')
 
@@ -106,7 +116,7 @@ rhoz_init = eval(args.rhoz.replace('^', '**')) # total charged species density
 rhos_init = eval(args.rhos.replace('^', '**')) # added solvent density
 
 def solve(rhoz, rhos):
-    """solve the structure at the given densities, and return a text message"""
+    """solve the structure at the given densities"""
     w.rho[0] = rhoz/2
     w.rho[1] = rhoz/2
     if w.ncomp == 3:
@@ -122,14 +132,11 @@ def selector(individual):
         return [[0.5, 0.5, 'k', '(h00+h01)/2'], [0.5, -0.5, 'r', '(h00-h01)/2']]
 
 def update(val):
-    """update state point from sliders, recompute, and replot"""
+    """update state point from sliders, solve, and replot"""
     w.lb = 1 / tstar_slider.val
     w.rpm_potential()
     rhoz = 10**rhoz_slider.val
-    if rhos_slider:
-        rhos = 10**rhos_slider.val
-    else:
-        rhos = rhos_init
+    rhos = 10**rhos_slider.val if rhos_slider else rhos_init
     solve(rhoz, rhos)
     replot()
 
@@ -144,19 +151,17 @@ def get_ann_txt():
     return msg
 
 def replot():
-    """replot the lines and annotate"""
+    """replot the lines and re-annotate"""
     for i, (p, q, color, text) in enumerate(selector(args.swap)):
         r = w.r[imin:imax]
-        if args.flip:
-            rh = r * (p*w.hr[imin:imax, 0, 0] + q*w.hr[imin:imax, 0, 1])
-        else:
-            rh = - r * (p*w.hr[imin:imax, 0, 0] + q*w.hr[imin:imax, 0, 1])
+        sgn = 1.0 if args.neg else -1.0 # double negative intentional
+        rh = sgn * r * (p*w.hr[imin:imax, 0, 0] + q*w.hr[imin:imax, 0, 1])
         rh[rh < 0] = 1e-20
         line[i].set_ydata(np.log10(rh))
     ann.set_text(get_ann_txt())
     fig.canvas.draw_idle()
 
-# Set up the plot
+# Set up the plot area
 
 fig, ax = plt.subplots()
 plt.subplots_adjust(left=0.25, bottom=0.30)
@@ -168,24 +173,41 @@ ax.set_yticks(list(range(-12, 2, 1)))
 ax.set_xlabel('r / σ', labelpad=-10)
 ax.set_ylabel('log10 r h(r)')
 
+# report on diameters
+
+txt = 'diams : %0.2f %0.2f' % (w.diam[0, 0], w.diam[1, 1])
+
+if w.ncomp == 3:
+    txt = txt + ' %0.2f' % w.diam[2, 2]
+
+txt = txt + ' excess : %0.2f' % (w.diam[0, 1] - 0.5*(w.diam[0, 0] + w.diam[1, 1]))
+
+if w.ncomp == 3:
+    txt = txt + ' %0.2f' % (w.diam[0, 2] - 0.5*(w.diam[0, 0] + w.diam[2, 2]))
+    txt = txt + ' %0.2f' % (w.diam[1, 2] - 0.5*(w.diam[1, 1] + w.diam[2, 2]))
+
+ax.annotate(txt, xy=(0.02, 1.08), xycoords='axes fraction')
+
+# solve and make initial plot
+
 imin = int(1.0 / w.deltar)
 imax = int(args.rmax / w.deltar)
 
-line = [None, None]
-label = [None, None]
+line = [None, None] # will contain the data for the lines
+label = [None, None] # will contain the labels for the lines
 
 solve(rhoz_init, rhos_init)
 ann = ax.annotate(get_ann_txt(), xy=(0.02, 1.02), xycoords='axes fraction')
 
+style = 'dashed' if args.neg else 'solid'
+
 for i, (p, q, color, text) in enumerate(selector(args.swap)):
     r = w.r[imin:imax]
-    if args.flip:
-        rh = r * (p*w.hr[imin:imax, 0, 0] + q*w.hr[imin:imax, 0, 1])
-    else:
-        rh = - r * (p*w.hr[imin:imax, 0, 0] + q*w.hr[imin:imax, 0, 1])
+    sgn = 1.0 if args.neg else -1.0 # double negative intentional
+    rh = sgn * r * (p*w.hr[imin:imax, 0, 0] + q*w.hr[imin:imax, 0, 1])
     rh[rh < 0] = 1e-20
-    line[i], = ax.plot(r, np.log10(rh), color+'-')
-    label[i] = ax.annotate(text, xy=(0.2+0.4*i, 0.95), color=color, xycoords='axes fraction')
+    line[i], = ax.plot(r, np.log10(rh), color+'-', linestyle=style)
+    label[i] = ax.annotate(text, xy=(0.2+0.3*i, 0.92), color=color, xycoords='axes fraction')
 
 # Set up sliders for lB, rho_z, and rho_s if required
 
@@ -206,14 +228,17 @@ else:
 
 # Set up buttons
 
-def flip(event):
-    """flip signs of h"""
-    args.flip = not args.flip
+def flip_sign(event):
+    """invert signs of h"""
+    args.neg = not args.neg
+    style = 'dashed' if args.neg else 'solid'
+    [ line[i].set_linestyle(style) for i in [0, 1] ]
+    flip_button.label.set_text('-ve' if args.neg else '+ve')
     replot()
 
 ax_flip = plt.axes([0.05, 0.25, 0.1, 0.03])
-flip_button = Button(ax_flip, 'flip', color='PaleTurquoise', hovercolor='0.975')
-flip_button.on_clicked(flip)
+flip_button = Button(ax_flip, '-ve' if args.neg else '+ve', color='PaleTurquoise', hovercolor='0.975')
+flip_button.on_clicked(flip_sign)
 
 def swap(event):
     """swap between (hnn, hzz) and (h00, h01) representations"""
