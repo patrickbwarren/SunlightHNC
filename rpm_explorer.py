@@ -81,6 +81,8 @@ w.nps = args.nps
 w.maxsteps = args.maxsteps
 w.verbose = args.verbose
 
+solvent = (w.ncomp == 3)
+
 w.initialise()
 
 w.lb = lb_init = eval(args.lb)
@@ -98,7 +100,7 @@ w.diam[0, 0] = diam[0]
 w.diam[0, 1] = 0.5*(diam[0] + diam[1])
 w.diam[1, 1] = diam[1]
 
-if w.ncomp == 3: # solvent spheres
+if solvent:
     if len(diam) == 2: diam.append(0.5*(diam[0] + diam[1]))
     w.diam[0, 2] = 0.5*(diam[0] + diam[2])
     w.diam[1, 2] = 0.5*(diam[1] + diam[2])
@@ -119,7 +121,7 @@ def solve(rhoz, rhos):
     """solve the structure at the given densities"""
     w.rho[0] = rhoz/2
     w.rho[1] = rhoz/2
-    if w.ncomp == 3:
+    if solvent:
         w.rho[2] = rhos
     w.hnc_solve()
     if w.return_code: exit()
@@ -127,9 +129,9 @@ def solve(rhoz, rhos):
 def selector(individual):
     """return a list according to  (hnn, hzz) and (h00, h01) representations"""
     if individual:
-        return [[1, 0, 'g', 'h00'], [0, 1, 'b', 'h01']]
+        return [[0.5, 0, 0.5, 'g', '(h00+h11)/2'], [0, 1, 0, 'b', 'h01']]
     else:
-        return [[0.5, 0.5, 'k', '(h00+h01)/2'], [0.5, -0.5, 'r', '(h00-h01)/2']]
+        return [[0.25, 0.5, 0.25, 'k', '(h00+2h01+h11)/4'], [0.25, -0.5, 0.25, 'r', '(h00-2h01+h11)/4']]
 
 def update(val):
     """update state point from sliders, solve, and replot"""
@@ -152,12 +154,17 @@ def get_ann_txt():
 
 def replot():
     """replot the lines and re-annotate"""
-    for i, (p, q, color, text) in enumerate(selector(args.swap)):
+    for i, (w00, w01, w11, color, text) in enumerate(selector(args.swap)):
         r = w.r[imin:imax]
         sgn = 1.0 if args.neg else -1.0 # double negative intentional
-        rh = sgn * r * (p*w.hr[imin:imax, 0, 0] + q*w.hr[imin:imax, 0, 1])
+        rh = sgn * r * (w00*w.hr[imin:imax, 0, 0] + w01*w.hr[imin:imax, 0, 1] + w11*w.hr[imin:imax, 1, 1])
         rh[rh < 0] = 1e-20
-        line[i].set_ydata(np.log10(rh))
+        if line[i]: # if line[i] is not None then reset the y data.
+            line[i].set_ydata(np.log10(rh))
+        else: # plotting for the first time
+            style = 'dashed' if args.neg else 'solid'
+            line[i], = ax.plot(r, np.log10(rh), color+'-', linestyle=style)
+            label[i] = ax.annotate(text, xy=(0.2+0.4*i, 0.92), color=color, xycoords='axes fraction')
     ann.set_text(get_ann_txt())
     fig.canvas.draw_idle()
 
@@ -171,18 +178,18 @@ ax.set_ylim([-12, 1])
 ax.set_xticks(list(range(0, int(5+args.rmax+0.5), 5)))
 ax.set_yticks(list(range(-12, 2, 1)))
 ax.set_xlabel('r / σ', labelpad=-10)
-ax.set_ylabel('log10 r h(r)')
+ax.set_ylabel('log10[- r h(r)]')
 
 # report on diameters
 
 txt = 'diams : %0.2f %0.2f' % (w.diam[0, 0], w.diam[1, 1])
 
-if w.ncomp == 3:
+if solvent:
     txt = txt + ' %0.2f' % w.diam[2, 2]
 
 txt = txt + ' excess : %0.2f' % (w.diam[0, 1] - 0.5*(w.diam[0, 0] + w.diam[1, 1]))
 
-if w.ncomp == 3:
+if solvent:
     txt = txt + ' %0.2f' % (w.diam[0, 2] - 0.5*(w.diam[0, 0] + w.diam[2, 2]))
     txt = txt + ' %0.2f' % (w.diam[1, 2] - 0.5*(w.diam[1, 1] + w.diam[2, 2]))
 
@@ -196,18 +203,10 @@ imax = int(args.rmax / w.deltar)
 line = [None, None] # will contain the data for the lines
 label = [None, None] # will contain the labels for the lines
 
-solve(rhoz_init, rhos_init)
 ann = ax.annotate(get_ann_txt(), xy=(0.02, 1.02), xycoords='axes fraction')
 
-style = 'dashed' if args.neg else 'solid'
-
-for i, (p, q, color, text) in enumerate(selector(args.swap)):
-    r = w.r[imin:imax]
-    sgn = 1.0 if args.neg else -1.0 # double negative intentional
-    rh = sgn * r * (p*w.hr[imin:imax, 0, 0] + q*w.hr[imin:imax, 0, 1])
-    rh[rh < 0] = 1e-20
-    line[i], = ax.plot(r, np.log10(rh), color+'-', linestyle=style)
-    label[i] = ax.annotate(text, xy=(0.2+0.3*i, 0.92), color=color, xycoords='axes fraction')
+solve(rhoz_init, rhos_init)
+replot()
 
 # Set up sliders for lB, rho_z, and rho_s if required
 
@@ -219,7 +218,7 @@ ax_rhoz = plt.axes([0.25, 0.10, 0.65, 0.03], facecolor='PaleTurquoise')
 rhoz_slider = Slider(ax_rhoz, 'ρ_z', -3, 0, valinit=m.log10(rhoz_init))
 rhoz_slider.on_changed(update)
 
-if w.ncomp == 3:
+if solvent:
     ax_rhos = plt.axes([0.25, 0.15, 0.65, 0.03], facecolor='PaleTurquoise')
     rhos_slider = Slider(ax_rhos, 'ρ_s', -3, 0, valinit=m.log10(rhos_init))
     rhos_slider.on_changed(update)
@@ -243,7 +242,7 @@ flip_button.on_clicked(flip_sign)
 def swap(event):
     """swap between (hnn, hzz) and (h00, h01) representations"""
     args.swap = not args.swap
-    for i, (p, q, color, text) in enumerate(selector(args.swap)):
+    for i, (w00, w01, w11, color, text) in enumerate(selector(args.swap)):
         line[i].set_color(color)
         label[i].set_color(color)
         label[i].set_text(text)
