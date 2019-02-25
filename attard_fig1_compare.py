@@ -75,8 +75,6 @@ w.lb = lb / d
 
 w.rpm_potential()
 
-# plt.xkcd()
-
 fig, (ax1, ax2) = plt.subplots(1, 2)
 
 ax1.set_xlim([5, 20]) # horizontal axis will be in Å
@@ -95,7 +93,7 @@ ax2.set_title('log10 h(r)')
 
 imin = int(1.0 / w.deltar)
 
-styles = ['-', '--', ':']
+styles = ['k-', 'r--', 'b:']
 
 for i, (conc, style) in enumerate(zip(concs, styles)):
 
@@ -118,8 +116,8 @@ for i, (conc, style) in enumerate(zip(concs, styles)):
 
     imax = int(4.0 / w.deltar)
     
-    ax1.plot(w.r[imin:imax] * d / Å, w.hr[imin:imax, 0, 0], 'k'+style)
-    ax1.plot(w.r[imin:imax] * d / Å, w.hr[imin:imax, 0, 1], 'k'+style)
+    ax1.plot(w.r[imin:imax] * d / Å, w.hr[imin:imax, 0, 0], style)
+    ax1.plot(w.r[imin:imax] * d / Å, w.hr[imin:imax, 0, 1], style)
 
     # In Attard's figure the line for 0.5 M is surely h_{+-}
 
@@ -132,7 +130,7 @@ for i, (conc, style) in enumerate(zip(concs, styles)):
 
     h[h < 0] = 1e-20 # chop off negative regions
 
-    ax2.plot(w.r[imin:imax] * d / Å, np.log10(h), 'k'+style)
+    ax2.plot(w.r[imin:imax] * d / Å, np.log10(h), style)
 
     # The commented out variant plots r h for both ++ and +- functions
 

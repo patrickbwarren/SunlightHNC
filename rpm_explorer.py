@@ -112,6 +112,8 @@ if len(diam) == 4: w.diam[0, 1] = diam[3]
 if len(diam) == 5: w.diam[0, 2] = w.diam[1, 2] = diam[4]
 if len(diam) == 6: w.diam[1, 2] = diam[5]
 
+w.sigma = args.sigma
+
 w.rpm_potential()
 
 rhoz_init = eval(args.rhoz.replace('^', '**')) # total charged species density
@@ -136,6 +138,7 @@ def selector(individual):
 def update(val):
     """update state point from sliders, solve, and replot"""
     w.lb = 1 / tstar_slider.val
+    w.sigma = args.sigma
     w.rpm_potential()
     rhoz = 10**rhoz_slider.val
     rhos = 10**rhos_slider.val if rhos_slider else rhos_init
@@ -210,16 +213,18 @@ replot()
 
 # Set up sliders for lB, rho_z, and rho_s if required
 
-ax_tstar = plt.axes([0.25, 0.05, 0.65, 0.03], facecolor='PaleTurquoise')
+control_color = 'powderblue'
+
+ax_tstar = plt.axes([0.25, 0.05, 0.65, 0.03], facecolor=control_color)
 tstar_slider = Slider(ax_tstar, 'T*', 0.2, 2.0, valinit=1/lb_init, valstep=0.01)
 tstar_slider.on_changed(update)
 
-ax_rhoz = plt.axes([0.25, 0.10, 0.65, 0.03], facecolor='PaleTurquoise')
+ax_rhoz = plt.axes([0.25, 0.10, 0.65, 0.03], facecolor=control_color)
 rhoz_slider = Slider(ax_rhoz, 'ρ_z', -3, 0, valinit=m.log10(rhoz_init))
 rhoz_slider.on_changed(update)
 
 if solvent:
-    ax_rhos = plt.axes([0.25, 0.15, 0.65, 0.03], facecolor='PaleTurquoise')
+    ax_rhos = plt.axes([0.25, 0.15, 0.65, 0.03], facecolor=control_color)
     rhos_slider = Slider(ax_rhos, 'ρ_s', -3, 0, valinit=m.log10(rhos_init))
     rhos_slider.on_changed(update)
 else:
@@ -236,7 +241,7 @@ def flip_sign(event):
     replot()
 
 ax_flip = plt.axes([0.05, 0.25, 0.1, 0.03])
-flip_button = Button(ax_flip, '-ve' if args.neg else '+ve', color='PaleTurquoise', hovercolor='0.975')
+flip_button = Button(ax_flip, '-ve' if args.neg else '+ve', color=control_color, hovercolor='0.975')
 flip_button.on_clicked(flip_sign)
 
 def swap(event):
@@ -249,7 +254,7 @@ def swap(event):
     replot()
 
 ax_swap = plt.axes([0.05, 0.20, 0.1, 0.03])
-swap_button = Button(ax_swap, 'swap', color='PaleTurquoise', hovercolor='0.975')
+swap_button = Button(ax_swap, 'swap', color=control_color, hovercolor='0.975')
 swap_button.on_clicked(swap)
 
 def reset(event):
@@ -260,7 +265,7 @@ def reset(event):
         rhos_slider.reset()
 
 ax_reset = plt.axes([0.05, 0.15, 0.1, 0.03])
-reset_button = Button(ax_reset, 'reset', color='PaleTurquoise', hovercolor='0.975')
+reset_button = Button(ax_reset, 'reset', color=control_color, hovercolor='0.975')
 reset_button.on_clicked(reset)
 
 def dump(event):
@@ -273,14 +278,14 @@ def dump(event):
         print('%g\t%g\t%g\t%g' % (1/w.lb, rhoz, kappa, w.rho[2]))
 
 ax_dump = plt.axes([0.05, 0.10, 0.1, 0.03])
-dump_button = Button(ax_dump, 'dump', color='PaleTurquoise', hovercolor='0.975')
+dump_button = Button(ax_dump, 'dump', color=control_color, hovercolor='0.975')
 dump_button.on_clicked(dump)
 
 def quit(event):
     exit(0)
 
 ax_quit = plt.axes([0.05, 0.05, 0.1, 0.03])
-quit_button = Button(ax_quit, 'quit', color='PaleTurquoise', hovercolor='0.975')
+quit_button = Button(ax_quit, 'quit', color=control_color, hovercolor='0.975')
 quit_button.on_clicked(quit)
 
 plt.show()
