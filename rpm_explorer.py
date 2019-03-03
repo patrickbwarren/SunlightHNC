@@ -11,7 +11,7 @@
 # (Registered in England & Wales, Company No 29140; Registered
 # Office: Unilever House, Blackfriars, London, EC4P 4BQ, UK).
 
-# Parts of ZoomPan was adapted from
+# ZoomPan was adapted from
 # https://stackoverflow.com/questions/11551049/matplotlib-plot-zooming-with-scroll-wheel
 # copyright (c) remains with the original authors.
 
@@ -153,10 +153,10 @@ def get_ann_txt():
     """get a string for annotating the plot"""
     rhoz = w.rho[0] + w.rho[1]
     if w.ncomp == 2:
-        msg = 'T* = %5.2f  ρz = %8.3f  HNC err = %0.1g' % (1/w.lb, rhoz, w.error)
+        msg = 'T* = %5.3f  ρz = %8.4f  HNC err = %0.1g' % (1/w.lb, rhoz, w.error)
     else:
         rhos = w.rho[2]
-        msg = 'T* = %5.2f  ρz = %8.3f  ρs = %8.3f  HNC err = %0.1g' % (1/w.lb, rhoz, rhos, w.error)
+        msg = 'T* = %5.3f  ρz = %8.4f  ρs = %8.4f  HNC err = %0.1g' % (1/w.lb, rhoz, rhos, w.error)
     return msg
 
 def replot():
@@ -218,16 +218,16 @@ replot()
 control_color = 'powderblue'
 
 ax_tstar = plt.axes([0.25, 0.05, 0.65, 0.03], facecolor=control_color)
-tstar_slider = Slider(ax_tstar, 'T*', 0.2, 2.0, valinit=1/lb_init, valstep=0.01)
+tstar_slider = Slider(ax_tstar, 'T*', 0.0, 2.0, valinit=1/lb_init, valstep=0.01, valfmt='%5.3f')
 tstar_slider.on_changed(update)
 
 ax_rhoz = plt.axes([0.25, 0.10, 0.65, 0.03], facecolor=control_color)
-rhoz_slider = Slider(ax_rhoz, 'ρ_z', -3, 0, valinit=m.log10(rhoz_init))
+rhoz_slider = Slider(ax_rhoz, 'ρ_z', -3, 0, valinit=m.log10(rhoz_init), valfmt='%5.3f')
 rhoz_slider.on_changed(update)
 
 if solvent:
     ax_rhos = plt.axes([0.25, 0.15, 0.65, 0.03], facecolor=control_color)
-    rhos_slider = Slider(ax_rhos, 'ρ_s', -3, 0, valinit=m.log10(rhos_init))
+    rhos_slider = Slider(ax_rhos, 'ρ_s', -3, 0, valinit=m.log10(rhos_init), valfmt='%5.3f')
     rhos_slider.on_changed(update)
 else:
     rhos_slider = None
@@ -260,11 +260,14 @@ swap_button = Button(ax_swap, 'swap', color=control_color, hovercolor='0.975')
 swap_button.on_clicked(swap)
 
 def reset(event):
-    """reset all slider positions"""
+    """reset all slider positions and plot area"""
     tstar_slider.reset()
     rhoz_slider.reset()
     if rhos_slider:
         rhos_slider.reset()
+    ax.set_xlim([1, args.rmax])
+    ax.set_ylim([-12, 1])
+    ax.figure.canvas.draw()
 
 ax_reset = plt.axes([0.05, 0.15, 0.1, 0.03])
 reset_button = Button(ax_reset, 'reset', color=control_color, hovercolor='0.975')
@@ -290,7 +293,7 @@ ax_quit = plt.axes([0.05, 0.05, 0.1, 0.03])
 quit_button = Button(ax_quit, 'quit', color=control_color, hovercolor='0.975')
 quit_button.on_clicked(quit)
 
-# Parts of ZoomPan was adapted from
+# ZoomPan was adapted from
 # https://stackoverflow.com/questions/11551049/matplotlib-plot-zooming-with-scroll-wheel
 # copyright (c) remains with the original authors.
 
@@ -397,8 +400,7 @@ class SliderScroll:
 
         return scroll, key_up, key_down
 
-sliders = {ax_tstar: tstar_slider,
-           ax_rhoz: rhoz_slider}
+sliders = {ax_tstar: tstar_slider, ax_rhoz: rhoz_slider}
 
 if rhos_slider:
     sliders[ax_rhos] = rhos_slider
