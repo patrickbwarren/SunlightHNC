@@ -7,9 +7,13 @@
 # related to the dissipative particle dynamics (DPD) simulation
 # method.
 
-# Copyright (c) 2009-2019 Unilever UK Central Resources Ltd
+# Main script copyright (c) 2009-2019 Unilever UK Central Resources Ltd
 # (Registered in England & Wales, Company No 29140; Registered
 # Office: Unilever House, Blackfriars, London, EC4P 4BQ, UK).
+
+# Parts of ZoomPan was adapted from
+# https://stackoverflow.com/questions/11551049/matplotlib-plot-zooming-with-scroll-wheel
+# copyright (c) remains with the original authors.
 
 # SunlightDPD is free software: you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as
@@ -178,9 +182,7 @@ plt.subplots_adjust(left=0.25, bottom=0.30)
 
 ax.set_xlim([1, args.rmax])
 ax.set_ylim([-12, 1])
-ax.set_xticks(list(range(0, int(5+args.rmax+0.5), 5)))
-ax.set_yticks(list(range(-12, 2, 1)))
-ax.set_xlabel('r / σ', labelpad=-10)
+ax.set_xlabel('r / σ')
 ax.set_ylabel('log10[- r h(r)]')
 
 # report on diameters
@@ -288,5 +290,119 @@ ax_quit = plt.axes([0.05, 0.05, 0.1, 0.03])
 quit_button = Button(ax_quit, 'quit', color=control_color, hovercolor='0.975')
 quit_button.on_clicked(quit)
 
-plt.show()
+# Parts of ZoomPan was adapted from
+# https://stackoverflow.com/questions/11551049/matplotlib-plot-zooming-with-scroll-wheel
+# copyright (c) remains with the original authors.
 
+class ZoomPan:
+
+    def __init__(self, ax):
+        self.ax = ax
+        self.press = False
+        self.cur_xlim = None
+        self.cur_ylim = None
+        self.xpress = None
+        self.ypress = None
+
+    def factory(self, base_scale=1.1):
+
+        def zoom(event):
+            if event.inaxes != self.ax: return
+            cur_xlim = self.ax.get_xlim()
+            cur_ylim = self.ax.get_ylim()
+            xdata, ydata = event.xdata, event.ydata
+            if event.button == 'down':
+                scale_factor = 1 / base_scale
+            elif event.button == 'up':
+                scale_factor = base_scale
+            new_width = (cur_xlim[1] - cur_xlim[0]) * scale_factor
+            new_height = (cur_ylim[1] - cur_ylim[0]) * scale_factor
+            relx = (cur_xlim[1] - xdata)/(cur_xlim[1] - cur_xlim[0])
+            rely = (cur_ylim[1] - ydata)/(cur_ylim[1] - cur_ylim[0])
+            self.ax.set_xlim([xdata - new_width * (1-relx), xdata + new_width * (relx)])
+            self.ax.set_ylim([ydata - new_height * (1-rely), ydata + new_height * (rely)])
+            self.ax.figure.canvas.draw()
+
+        def button_down(event):
+            if event.inaxes != self.ax: return
+            self.cur_xlim = self.ax.get_xlim()
+            self.cur_ylim = self.ax.get_ylim()
+            self.press = True
+            self.xpress, self.ypress = event.xdata, event.ydata
+
+        def button_up(event):
+            self.press = False
+            self.ax.figure.canvas.draw()
+
+        def mouse_move(event):
+            if self.press is False: return
+            if event.inaxes != self.ax: return
+            dx = event.xdata - self.xpress
+            dy = event.ydata - self.ypress
+            self.cur_xlim -= dx
+            self.cur_ylim -= dy
+            self.ax.set_xlim(self.cur_xlim)
+            self.ax.set_ylim(self.cur_ylim)
+            self.ax.figure.canvas.draw()
+
+        fig = self.ax.get_figure()
+        fig.canvas.mpl_connect('button_press_event', button_down)
+        fig.canvas.mpl_connect('button_release_event', button_up)
+        fig.canvas.mpl_connect('motion_notify_event', mouse_move)
+        fig.canvas.mpl_connect('scroll_event', zoom)
+
+        return zoom, button_down, button_up, mouse_move
+
+zp = ZoomPan(ax).factory()
+
+class SliderScroll:
+
+    def __init__(self, ax):
+        self.ax = ax
+        self.shift_down = False
+        self.control_down = False
+
+    def factory(self, sliders, superfine_scale=1.002, fine_scale=1.01, coarse_scale=1.05):
+
+        def scroll(event):
+            if event.inaxes in sliders:
+                slider = sliders[event.inaxes]
+                scale_factor = superfine_scale if self.shift_down else coarse_scale if self.control_down else fine_scale
+                val = slider.val
+                if val < 0: # reverse direction for negative scales
+                    scale_factor = 1 / scale_factor
+                if event.button == 'down':
+                    val = slider.val / scale_factor
+                elif event.button == 'up':
+                    val = slider.val * scale_factor
+                slider.set_val(val)
+                update(val)
+
+        def key_down(event):
+            if event.key == 'shift':
+                self.shift_down = True
+            elif event.key == 'control':
+                self.control_down = True
+
+        def key_up(event):
+            if event.key == 'shift':
+                self.shift_down = False
+            elif event.key == 'control':
+                self.control_down = False
+
+        fig = self.ax.get_figure()
+        fig.canvas.mpl_connect('scroll_event', scroll)
+        fig.canvas.mpl_connect('key_press_event', key_down)
+        fig.canvas.mpl_connect('key_release_event', key_up)
+
+        return scroll, key_up, key_down
+
+sliders = {ax_tstar: tstar_slider,
+           ax_rhoz: rhoz_slider}
+
+if rhos_slider:
+    sliders[ax_rhos] = rhos_slider
+
+ss = SliderScroll(ax).factory(sliders)
+
+plt.show()
