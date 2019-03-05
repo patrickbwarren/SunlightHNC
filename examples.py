@@ -90,6 +90,8 @@ print('rho =', rho, ' A =', A)
 print('pressure =', w.press)
 print('energy density =', w.uex)
 
+# plt.xkcd()
+
 plt.figure(1)  # This will be g(r)
 imax = int(3.0 / w.deltar)
 plt.plot(w.r[0:imax], 1.0+w.hr[0:imax,0,0])

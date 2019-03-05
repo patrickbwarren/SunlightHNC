@@ -68,7 +68,8 @@ parser.add_argument('--rhoz', action='store', default='0.1', help='total ion den
 parser.add_argument('--rhos', action='store', default='0.4', help='added solvent density (default 0.4)')
 parser.add_argument('--lb', action='store', default='1.0', help='Bjerrum length (default 1.0)')
 parser.add_argument('--swap', action='store_true', help='swap representations of h(r)')
-parser.add_argument('--neg', action='store_true', help='invert sign of h(r)')
+parser.add_argument('--neg1', action='store_true', help='invert sign of first of h(r)')
+parser.add_argument('--neg2', action='store_true', help='invert sign of second of h(r)')
 
 parser.add_argument('--rmax', action='store', default=15.0, type=float, help='maximum radial distance')
 
@@ -163,13 +164,14 @@ def replot():
     """replot the lines and re-annotate"""
     for i, (w00, w01, w11, color, text) in enumerate(selector(args.swap)):
         r = w.r[imin:imax]
-        sgn = 1.0 if args.neg else -1.0 # double negative intentional
+        flip = args.neg1 if i == 0 else args.neg2
+        sgn = 1.0 if flip else -1.0
         rh = sgn * r * (w00*w.hr[imin:imax, 0, 0] + w01*w.hr[imin:imax, 0, 1] + w11*w.hr[imin:imax, 1, 1])
         rh[rh < 0] = 1e-20
         if line[i]: # if line[i] is not None then reset the y data.
             line[i].set_ydata(np.log10(rh))
         else: # plotting for the first time
-            style = 'dashed' if args.neg else 'solid'
+            style = 'dashed' if flip else 'solid'
             line[i], = ax.plot(r, np.log10(rh), color+'-', linestyle=style)
             label[i] = ax.annotate(text, xy=(0.2+0.4*i, 0.92), color=color, xycoords='axes fraction')
     ann.set_text(get_ann_txt())
@@ -215,18 +217,19 @@ replot()
 
 # Set up sliders for lB, rho_z, and rho_s if required
 
-control_color = 'powderblue'
+off_color = 'powderblue'
+on_color = 'royalblue'
 
-ax_tstar = plt.axes([0.25, 0.05, 0.65, 0.03], facecolor=control_color)
+ax_tstar = plt.axes([0.25, 0.05, 0.65, 0.03], facecolor=off_color)
 tstar_slider = Slider(ax_tstar, 'T*', 0.0, 2.0, valinit=1/lb_init, valstep=0.01, valfmt='%5.3f')
 tstar_slider.on_changed(update)
 
-ax_rhoz = plt.axes([0.25, 0.10, 0.65, 0.03], facecolor=control_color)
+ax_rhoz = plt.axes([0.25, 0.10, 0.65, 0.03], facecolor=off_color)
 rhoz_slider = Slider(ax_rhoz, 'ρ_z', -3, 0, valinit=m.log10(rhoz_init), valfmt='%5.3f')
 rhoz_slider.on_changed(update)
 
 if solvent:
-    ax_rhos = plt.axes([0.25, 0.15, 0.65, 0.03], facecolor=control_color)
+    ax_rhos = plt.axes([0.25, 0.15, 0.65, 0.03], facecolor=off_color)
     rhos_slider = Slider(ax_rhos, 'ρ_s', -3, 0, valinit=m.log10(rhos_init), valfmt='%5.3f')
     rhos_slider.on_changed(update)
 else:
@@ -234,21 +237,38 @@ else:
 
 # Set up buttons
 
-def flip_sign(event):
+def flip2_sign(event):
     """invert signs of h"""
-    args.neg = not args.neg
-    style = 'dashed' if args.neg else 'solid'
-    [ line[i].set_linestyle(style) for i in [0, 1] ]
-    flip_button.label.set_text('-ve' if args.neg else '+ve')
+    args.neg2 = not args.neg2
+    style = 'dashed' if args.neg2 else 'solid'
+    line[1].set_linestyle(style)
+    flip2_button.label.set_text('-ve' if args.neg2 else '+ve')
+    flip2_button.color = on_color if args.neg2 else off_color
     replot()
 
-ax_flip = plt.axes([0.05, 0.25, 0.1, 0.03])
-flip_button = Button(ax_flip, '-ve' if args.neg else '+ve', color=control_color, hovercolor='0.975')
-flip_button.on_clicked(flip_sign)
+ax_flip2 = plt.axes([0.05, 0.30, 0.1, 0.03])
+button_color = on_color if args.neg2 else off_color
+flip2_button = Button(ax_flip2, '-ve' if args.neg2 else '+ve', color=button_color, hovercolor='0.975')
+flip2_button.on_clicked(flip2_sign)
+
+def flip1_sign(event):
+    """invert signs of h"""
+    args.neg1 = not args.neg1
+    style = 'dashed' if args.neg1 else 'solid'
+    line[0].set_linestyle(style)
+    flip1_button.label.set_text('-ve' if args.neg1 else '+ve')
+    flip1_button.color = on_color if args.neg1 else off_color
+    replot()
+
+ax_flip1 = plt.axes([0.05, 0.25, 0.1, 0.03])
+button_color = on_color if args.neg2 else off_color
+flip1_button = Button(ax_flip1, '-ve' if args.neg1 else '+ve', color=button_color, hovercolor='0.975')
+flip1_button.on_clicked(flip1_sign)
 
 def swap(event):
     """swap between (hnn, hzz) and (h00, h01) representations"""
     args.swap = not args.swap
+    swap_button.color = on_color if args.swap else off_color
     for i, (w00, w01, w11, color, text) in enumerate(selector(args.swap)):
         line[i].set_color(color)
         label[i].set_color(color)
@@ -256,7 +276,7 @@ def swap(event):
     replot()
 
 ax_swap = plt.axes([0.05, 0.20, 0.1, 0.03])
-swap_button = Button(ax_swap, 'swap', color=control_color, hovercolor='0.975')
+swap_button = Button(ax_swap, 'swap', color=off_color,  hovercolor='0.975')
 swap_button.on_clicked(swap)
 
 def reset(event):
@@ -270,27 +290,25 @@ def reset(event):
     ax.figure.canvas.draw()
 
 ax_reset = plt.axes([0.05, 0.15, 0.1, 0.03])
-reset_button = Button(ax_reset, 'reset', color=control_color, hovercolor='0.975')
+reset_button = Button(ax_reset, 'reset', color=off_color, hovercolor='0.975')
 reset_button.on_clicked(reset)
 
 def dump(event):
     """write state point (T*, rho_z, kappa, [rho_s]) to std out"""
     rhoz = w.rho[0] + w.rho[1]
-    kappa = m.sqrt(4*π*rhoz*w.lb)
-    if w.ncomp == 2:
-        print('%g\t%g\t%g' % (1/w.lb, rhoz, kappa))
-    else:
-        print('%g\t%g\t%g\t%g' % (1/w.lb, rhoz, kappa, w.rho[2]))
+    kappa = m.sqrt(4*π*w.lb*rhoz)
+    rhos = 0.0 if w.ncomp == 2 else w.rho[2]
+    print('%g\t%g\t%g\t%g' % (1/w.lb, rhos, rhoz, kappa))
 
 ax_dump = plt.axes([0.05, 0.10, 0.1, 0.03])
-dump_button = Button(ax_dump, 'dump', color=control_color, hovercolor='0.975')
+dump_button = Button(ax_dump, 'dump', color=off_color, hovercolor='0.975')
 dump_button.on_clicked(dump)
 
 def quit(event):
     exit(0)
 
 ax_quit = plt.axes([0.05, 0.05, 0.1, 0.03])
-quit_button = Button(ax_quit, 'quit', color=control_color, hovercolor='0.975')
+quit_button = Button(ax_quit, 'quit', color=off_color, hovercolor='0.975')
 quit_button.on_clicked(quit)
 
 # ZoomPan was adapted from
@@ -365,19 +383,17 @@ class SliderScroll:
         self.shift_down = False
         self.control_down = False
 
-    def factory(self, sliders, superfine_scale=1.002, fine_scale=1.01, coarse_scale=1.05):
+    def factory(self, sliders, superfine_scale=0.001, fine_scale=0.01, coarse_scale=0.1):
 
         def scroll(event):
             if event.inaxes in sliders:
                 slider = sliders[event.inaxes]
-                scale_factor = superfine_scale if self.shift_down else coarse_scale if self.control_down else fine_scale
+                saltus = superfine_scale if self.shift_down else coarse_scale if self.control_down else fine_scale
                 val = slider.val
-                if val < 0: # reverse direction for negative scales
-                    scale_factor = 1 / scale_factor
                 if event.button == 'down':
-                    val = slider.val / scale_factor
+                    val = val - saltus
                 elif event.button == 'up':
-                    val = slider.val * scale_factor
+                    val = val + saltus
                 slider.set_val(val)
                 update(val)
 
