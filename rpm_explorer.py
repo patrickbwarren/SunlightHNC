@@ -67,15 +67,15 @@ parser.add_argument('--sigma', action='store', default=0.0, type=float, help='in
 parser.add_argument('--rhoz', action='store', default='0.1', help='total ion density (default 0.1)')
 parser.add_argument('--rhos', action='store', default='0.4', help='added solvent density (default 0.4)')
 parser.add_argument('--lb', action='store', default='1.0', help='Bjerrum length (default 1.0)')
-parser.add_argument('--swap', action='store_true', help='swap representations of h(r)')
-parser.add_argument('--neg1', action='store_true', help='invert sign of first of h(r)')
-parser.add_argument('--neg2', action='store_true', help='invert sign of second of h(r)')
 
 parser.add_argument('--rmax', action='store', default=15.0, type=float, help='maximum radial distance')
 
 parser.add_argument('--verbose', action='store_true', help='more output')
 
 args = parser.parse_args()
+
+args.swap = False
+args.choice = ['both', 'both']
 
 w.ncomp = args.ncomp
 w.ng = eval(args.ng.replace('^', '**')) # catch 2^10 etc
@@ -164,16 +164,20 @@ def replot():
     """replot the lines and re-annotate"""
     for i, (w00, w01, w11, color, text) in enumerate(selector(args.swap)):
         r = w.r[imin:imax]
-        flip = args.neg1 if i == 0 else args.neg2
-        sgn = 1.0 if flip else -1.0
-        rh = sgn * r * (w00*w.hr[imin:imax, 0, 0] + w01*w.hr[imin:imax, 0, 1] + w11*w.hr[imin:imax, 1, 1])
-        rh[rh < 0] = 1e-20
-        if line[i]: # if line[i] is not None then reset the y data.
-            line[i].set_ydata(np.log10(rh))
+        rh_pos = r * (w00*w.hr[imin:imax, 0, 0] + w01*w.hr[imin:imax, 0, 1] + w11*w.hr[imin:imax, 1, 1])
+        rh_neg = - rh_pos
+        rh_pos[rh_pos < 0] = 1e-20
+        rh_neg[rh_neg < 0] = 1e-20
+        if line[2*i]: # if line[i] is not None then reset the y data.
+            line[2*i].set_ydata(np.log10(rh_neg))
+            line[2*i+1].set_ydata(np.log10(rh_pos))
         else: # plotting for the first time
-            style = 'dashed' if flip else 'solid'
-            line[i], = ax.plot(r, np.log10(rh), color+'-', linestyle=style)
+            line[2*i], = ax.plot(r, np.log10(rh_neg), color+'-')
+            line[2*i+1], = ax.plot(r, np.log10(rh_pos), color+'--')
             label[i] = ax.annotate(text, xy=(0.2+0.4*i, 0.92), color=color, xycoords='axes fraction')
+        choice = args.choice[i]
+        line[2*i].set_linestyle('None' if choice == 'none' or choice == '-ve' else 'solid')
+        line[2*i+1].set_linestyle('None' if choice == 'none' or choice == '+ve' else 'dashed')
     ann.set_text(get_ann_txt())
     fig.canvas.draw_idle()
 
@@ -207,7 +211,7 @@ ax.annotate(txt, xy=(0.02, 1.08), xycoords='axes fraction')
 imin = int(1.0 / w.deltar)
 imax = int(args.rmax / w.deltar)
 
-line = [None, None] # will contain the data for the lines
+line = [None, None, None, None] # will contain the data for the lines
 label = [None, None] # will contain the labels for the lines
 
 ann = ax.annotate(get_ann_txt(), xy=(0.02, 1.02), xycoords='axes fraction')
@@ -217,19 +221,18 @@ replot()
 
 # Set up sliders for lB, rho_z, and rho_s if required
 
-off_color = 'powderblue'
-on_color = 'royalblue'
+back_color = 'powderblue'
 
-ax_tstar = plt.axes([0.25, 0.05, 0.65, 0.03], facecolor=off_color)
+ax_tstar = plt.axes([0.25, 0.05, 0.65, 0.03], facecolor=back_color)
 tstar_slider = Slider(ax_tstar, 'T*', 0.0, 2.0, valinit=1/lb_init, valstep=0.01, valfmt='%5.3f')
 tstar_slider.on_changed(update)
 
-ax_rhoz = plt.axes([0.25, 0.10, 0.65, 0.03], facecolor=off_color)
+ax_rhoz = plt.axes([0.25, 0.10, 0.65, 0.03], facecolor=back_color)
 rhoz_slider = Slider(ax_rhoz, 'ρ_z', -3, 0, valinit=m.log10(rhoz_init), valfmt='%5.3f')
 rhoz_slider.on_changed(update)
 
 if solvent:
-    ax_rhos = plt.axes([0.25, 0.15, 0.65, 0.03], facecolor=off_color)
+    ax_rhos = plt.axes([0.25, 0.15, 0.65, 0.03], facecolor=back_color)
     rhos_slider = Slider(ax_rhos, 'ρ_s', -3, 0, valinit=m.log10(rhos_init), valfmt='%5.3f')
     rhos_slider.on_changed(update)
 else:
@@ -237,46 +240,43 @@ else:
 
 # Set up buttons
 
-def flip2_sign(event):
-    """invert signs of h"""
-    args.neg2 = not args.neg2
-    style = 'dashed' if args.neg2 else 'solid'
-    line[1].set_linestyle(style)
-    flip2_button.label.set_text('-ve' if args.neg2 else '+ve')
-    flip2_button.color = on_color if args.neg2 else off_color
+def radio1(val):
+    """Select between showing both, +ve, -ve or none for first h(r)"""
+    args.choice[0] = val
     replot()
 
-ax_flip2 = plt.axes([0.05, 0.30, 0.1, 0.03])
-button_color = on_color if args.neg2 else off_color
-flip2_button = Button(ax_flip2, '-ve' if args.neg2 else '+ve', color=button_color, hovercolor='0.975')
-flip2_button.on_clicked(flip2_sign)
-
-def flip1_sign(event):
-    """invert signs of h"""
-    args.neg1 = not args.neg1
-    style = 'dashed' if args.neg1 else 'solid'
-    line[0].set_linestyle(style)
-    flip1_button.label.set_text('-ve' if args.neg1 else '+ve')
-    flip1_button.color = on_color if args.neg1 else off_color
+def radio2(val):
+    """Select between showing both, +ve, -ve or none for second h(r)"""
+    args.choice[1] = val
     replot()
 
-ax_flip1 = plt.axes([0.05, 0.25, 0.1, 0.03])
-button_color = on_color if args.neg2 else off_color
-flip1_button = Button(ax_flip1, '-ve' if args.neg1 else '+ve', color=button_color, hovercolor='0.975')
-flip1_button.on_clicked(flip1_sign)
+radio = [radio1, radio2]
+
+ax_choice = [None, None]
+ax_choice[0] = plt.axes([0.05, 0.42, 0.1, 0.15])
+ax_choice[1] = plt.axes([0.05, 0.25, 0.1, 0.15])
+
+choice = [None, None]
+
+for i in [0, 1]:
+    choice[i] = RadioButtons(ax_choice[i], ('none', '+ve', '-ve', 'both'), active=3)
+    choice[i].on_clicked(radio[i])
+
+for i, (w00, w01, w11, color, text) in enumerate(selector(args.swap)):
+    [ label.set_color(color) for label in choice[i].labels ]
 
 def swap(event):
     """swap between (hnn, hzz) and (h00, h01) representations"""
     args.swap = not args.swap
-    swap_button.color = on_color if args.swap else off_color
     for i, (w00, w01, w11, color, text) in enumerate(selector(args.swap)):
-        line[i].set_color(color)
+        [ line[2*i+j].set_color(color) for j in [0, 1] ]
         label[i].set_color(color)
         label[i].set_text(text)
+        [ label.set_color(color) for label in choice[i].labels ]
     replot()
 
 ax_swap = plt.axes([0.05, 0.20, 0.1, 0.03])
-swap_button = Button(ax_swap, 'swap', color=off_color,  hovercolor='0.975')
+swap_button = Button(ax_swap, 'swap', color=back_color,  hovercolor='0.975')
 swap_button.on_clicked(swap)
 
 def reset(event):
@@ -290,7 +290,7 @@ def reset(event):
     ax.figure.canvas.draw()
 
 ax_reset = plt.axes([0.05, 0.15, 0.1, 0.03])
-reset_button = Button(ax_reset, 'reset', color=off_color, hovercolor='0.975')
+reset_button = Button(ax_reset, 'reset', color=back_color, hovercolor='0.975')
 reset_button.on_clicked(reset)
 
 def dump(event):
@@ -301,14 +301,14 @@ def dump(event):
     print('%g\t%g\t%g\t%g' % (1/w.lb, rhos, rhoz, kappa))
 
 ax_dump = plt.axes([0.05, 0.10, 0.1, 0.03])
-dump_button = Button(ax_dump, 'dump', color=off_color, hovercolor='0.975')
+dump_button = Button(ax_dump, 'dump', color=back_color, hovercolor='0.975')
 dump_button.on_clicked(dump)
 
 def quit(event):
     exit(0)
 
 ax_quit = plt.axes([0.05, 0.05, 0.1, 0.03])
-quit_button = Button(ax_quit, 'quit', color=off_color, hovercolor='0.975')
+quit_button = Button(ax_quit, 'quit', color=back_color, hovercolor='0.975')
 quit_button.on_clicked(quit)
 
 # ZoomPan was adapted from
