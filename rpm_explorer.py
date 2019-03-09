@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-# This file includes unicode characters
+# This file includes unicode characters like π = 3.14159
 
 # This file is part of SunlightDPD - a home for open source software
 # related to the dissipative particle dynamics (DPD) simulation
@@ -28,31 +28,29 @@
 # You should have received a copy of the GNU General Public License
 # along with SunlightDPD.  If not, see <http://www.gnu.org/licenses/>.
 
-# By default (--ncomp=2) this is for RPM without solvent
-# Run with --ncomp=3 for solvent primitive model
+# By default this is for RPM without solvent
+# Run with --solvated for solvent primitive model
 
 # The following correspond to the Fig 1 insets in Coupette et al., PRL 121, 075501 (2018)
 # For this lB = 0.7 nm, sigma = 0.3 nm, [salt] = 1 M, and [solvent] = 10 M and 40 M.
 # Note the use of computed values for lB/sigma and rho*sigma^3.  Also 1 M = 0.602 molecules per nm^3
 # For the salt, NaCl --> Na+ and Cl-, and rhoz = [Na+] + [Cl-] = 2 [NaCl], hence the factor 2 in --rhoz
 
-# python3 rpm_explorer.py --ncomp=3 --lb=0.7/0.3 --rhoz=2*0.602*0.3^3 --rhos=10*0.602*0.3^3
-# python3 rpm_explorer.py --ncomp=3 --lb=0.7/0.3 --rhoz=2*0.602*0.3^3 --rhos=40*0.602*0.3^3
+# python3 rpm_explorer.py --solvated --lb=0.7/0.3 --rhoz=2*0.602*0.3^3 --rhos=10*0.602*0.3^3
+# python3 rpm_explorer.py --solvated --lb=0.7/0.3 --rhoz=2*0.602*0.3^3 --rhos=40*0.602*0.3^3
 
 # Add --diam='[0.25/0.3,0.3373/0.3,1]' to reproduce the size-asymmetric model shown in Fig S1.
 
 import argparse
-import numpy as np
 import math as m
+import numpy as np
 import matplotlib.pyplot as plt
+
+from numpy import pi as π
+from oz import wizard as w
 from matplotlib.widgets import Slider, Button, RadioButtons
 
-from oz import wizard as w
-from numpy import pi as π
-
 parser = argparse.ArgumentParser(description='Interactive RPM explorer')
-
-parser.add_argument('--ncomp', action='store', default=2, type=int, help='number of components (species) (default 2)')
 
 parser.add_argument('--ng', action='store', default='16384', help='number of grid points (default 2^14 = 16384)')
 parser.add_argument('--deltar', action='store', default=1e-3, type=float, help='grid spacing (default 1e-3)')
@@ -66,18 +64,20 @@ parser.add_argument('--diam', action='store', default='[1]', help='hard core dia
 parser.add_argument('--sigma', action='store', default=0.0, type=float, help='inner core diameter (default min diam)')
 parser.add_argument('--rhoz', action='store', default='0.1', help='total ion density (default 0.1)')
 parser.add_argument('--rhos', action='store', default='0.4', help='added solvent density (default 0.4)')
-parser.add_argument('--lb', action='store', default='1.0', help='Bjerrum length (default 1.0)')
+parser.add_argument('--tstar', action='store', default='1.0', help='reduced temperature (default 1.0)')
+parser.add_argument('--solvated', action='store_true', help='for solvated primitive models')
 
-parser.add_argument('--rmax', action='store', default=15.0, type=float, help='maximum radial distance')
+parser.add_argument('--rmax', action='store', default=15.0, type=float, help='maximum radial distance (default 15)')
+parser.add_argument('--floor', action='store', default=1e-20, type=float, help='floor for r h(r) (default 1e-20)')
 
 parser.add_argument('--verbose', action='store_true', help='more output')
 
 args = parser.parse_args()
 
-args.swap = False
-args.choice = ['both', 'both']
+args.swap = False # which combination of h_ij to show
+args.choice = ['both', 'both'] # which signs of h(r) to show
 
-w.ncomp = args.ncomp
+w.ncomp = 3 if args.solvated else 2
 w.ng = eval(args.ng.replace('^', '**')) # catch 2^10 etc
 w.deltar = args.deltar
 w.alpha = args.alpha
@@ -86,11 +86,16 @@ w.nps = args.nps
 w.maxsteps = args.maxsteps
 w.verbose = args.verbose
 
-solvent = (w.ncomp == 3)
-
 w.initialise()
 
-w.lb = lb_init = eval(args.lb)
+# if the user sets tstar to a string (eg 'infinity' or even '∞') this is caught here
+
+try:
+    tstar_init = eval(args.tstar)
+except NameError:
+    tstar_init = 0
+
+w.lb = 1/tstar_init if tstar_init else 0.0
 
 # Now construct the hard core diameters
 
@@ -105,7 +110,7 @@ w.diam[0, 0] = diam[0]
 w.diam[0, 1] = 0.5*(diam[0] + diam[1])
 w.diam[1, 1] = diam[1]
 
-if solvent:
+if args.solvated:
     if len(diam) == 2: diam.append(0.5*(diam[0] + diam[1]))
     w.diam[0, 2] = 0.5*(diam[0] + diam[2])
     w.diam[1, 2] = 0.5*(diam[1] + diam[2])
@@ -128,7 +133,7 @@ def solve(rhoz, rhos):
     """solve the structure at the given densities"""
     w.rho[0] = rhoz/2
     w.rho[1] = rhoz/2
-    if solvent:
+    if args.solvated:
         w.rho[2] = rhos
     w.hnc_solve()
     if w.return_code: exit()
@@ -142,7 +147,8 @@ def selector(individual):
 
 def update(val):
     """update state point from sliders, solve, and replot"""
-    w.lb = 1 / tstar_slider.val
+    if tstar_slider:
+        w.lb = 1 / tstar_slider.val
     w.sigma = args.sigma
     w.rpm_potential()
     rhoz = 10**rhoz_slider.val
@@ -153,11 +159,12 @@ def update(val):
 def get_ann_txt():
     """get a string for annotating the plot"""
     rhoz = w.rho[0] + w.rho[1]
-    if w.ncomp == 2:
-        msg = 'T* = %5.3f  ρz = %8.4f  HNC err = %0.1g' % (1/w.lb, rhoz, w.error)
-    else:
+    tstar = '%5.3f' % (1/w.lb) if w.lb else '∞'
+    if args.solvated:
         rhos = w.rho[2]
-        msg = 'T* = %5.3f  ρz = %8.4f  ρs = %8.4f  HNC err = %0.1g' % (1/w.lb, rhoz, rhos, w.error)
+        msg = 'T* = %s  ρz = %8.4f  ρs = %8.4f  HNC err = %0.1g' % (tstar, rhoz, rhos, w.error)
+    else:
+        msg = 'T* = %s  ρz = %8.4f  HNC err = %0.1g' % (tstar, rhoz, w.error)
     return msg
 
 def replot():
@@ -166,8 +173,8 @@ def replot():
         r = w.r[imin:imax]
         rh_pos = r * (w00*w.hr[imin:imax, 0, 0] + w01*w.hr[imin:imax, 0, 1] + w11*w.hr[imin:imax, 1, 1])
         rh_neg = - rh_pos
-        rh_pos[rh_pos < 0] = 1e-20
-        rh_neg[rh_neg < 0] = 1e-20
+        rh_pos[rh_pos < args.floor] = args.floor
+        rh_neg[rh_neg < args.floor] = args.floor
         if line[2*i]: # if line[i] is not None then reset the y data.
             line[2*i].set_ydata(np.log10(rh_neg))
             line[2*i+1].set_ydata(np.log10(rh_pos))
@@ -195,12 +202,12 @@ ax.set_ylabel('log10[- r h(r)]')
 
 txt = 'diams : %0.2f %0.2f' % (w.diam[0, 0], w.diam[1, 1])
 
-if solvent:
+if args.solvated:
     txt = txt + ' %0.2f' % w.diam[2, 2]
 
 txt = txt + ' excess : %0.2f' % (w.diam[0, 1] - 0.5*(w.diam[0, 0] + w.diam[1, 1]))
 
-if solvent:
+if args.solvated:
     txt = txt + ' %0.2f' % (w.diam[0, 2] - 0.5*(w.diam[0, 0] + w.diam[2, 2]))
     txt = txt + ' %0.2f' % (w.diam[1, 2] - 0.5*(w.diam[1, 1] + w.diam[2, 2]))
 
@@ -223,16 +230,19 @@ replot()
 
 back_color = 'powderblue'
 
-ax_tstar = plt.axes([0.25, 0.05, 0.65, 0.03], facecolor=back_color)
-tstar_slider = Slider(ax_tstar, 'T*', 0.0, 2.0, valinit=1/lb_init, valstep=0.01, valfmt='%5.3f')
-tstar_slider.on_changed(update)
+if tstar_init > 0:
+    ax_tstar = plt.axes([0.25, 0.05, 0.65, 0.03], facecolor=back_color)
+    tstar_slider = Slider(ax_tstar, 'T*', 0.0, max(2.0, tstar_init), valinit=tstar_init, valstep=0.01, valfmt='%5.3f')
+    tstar_slider.on_changed(update)
+else:
+    tstar_slider = None
 
-ax_rhoz = plt.axes([0.25, 0.10, 0.65, 0.03], facecolor=back_color)
+ax_rhoz = plt.axes([0.25, 0.10 if tstar_slider else 0.05, 0.65, 0.03], facecolor=back_color)
 rhoz_slider = Slider(ax_rhoz, 'ρ_z', -3, 0, valinit=m.log10(rhoz_init), valfmt='%5.3f')
 rhoz_slider.on_changed(update)
 
-if solvent:
-    ax_rhos = plt.axes([0.25, 0.15, 0.65, 0.03], facecolor=back_color)
+if args.solvated:
+    ax_rhos = plt.axes([0.25, 0.15 if tstar_slider else 0.10, 0.65, 0.03], facecolor=back_color)
     rhos_slider = Slider(ax_rhos, 'ρ_s', -3, 0, valinit=m.log10(rhos_init), valfmt='%5.3f')
     rhos_slider.on_changed(update)
 else:
@@ -281,7 +291,8 @@ swap_button.on_clicked(swap)
 
 def reset(event):
     """reset all slider positions and plot area"""
-    tstar_slider.reset()
+    if tstar_slider:
+        tstar_slider.reset()
     rhoz_slider.reset()
     if rhos_slider:
         rhos_slider.reset()
@@ -297,8 +308,9 @@ def dump(event):
     """write state point (T*, rho_z, kappa, [rho_s]) to std out"""
     rhoz = w.rho[0] + w.rho[1]
     kappa = m.sqrt(4*π*w.lb*rhoz)
-    rhos = 0.0 if w.ncomp == 2 else w.rho[2]
-    print('%g\t%g\t%g\t%g' % (1/w.lb, rhos, rhoz, kappa))
+    rhos = w.rho[2] if args.solvated else 0
+    tstar = '%g' % (1/w.lb) if w.lb else '∞'
+    print('%s\t%g\t%g\t%g' % (tstar, rhos, rhoz, kappa))
 
 ax_dump = plt.axes([0.05, 0.10, 0.1, 0.03])
 dump_button = Button(ax_dump, 'dump', color=back_color, hovercolor='0.975')
@@ -416,7 +428,10 @@ class SliderScroll:
 
         return scroll, key_up, key_down
 
-sliders = {ax_tstar: tstar_slider, ax_rhoz: rhoz_slider}
+sliders = {ax_rhoz: rhoz_slider}
+
+if tstar_slider:
+    sliders[ax_tstar] = tstar_slider
 
 if rhos_slider:
     sliders[ax_rhos] = rhos_slider
