@@ -88,7 +88,7 @@ w.verbose = args.verbose
 
 w.initialise()
 
-# if the user sets tstar to a string (eg 'infinity' or even '∞') this is caught here
+# if the user sets tstar to a string (eg 'infinity') this is caught here
 
 try:
     tstar_init = eval(args.tstar)
