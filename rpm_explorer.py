@@ -33,11 +33,11 @@
 
 # The following correspond to the Fig 1 insets in Coupette et al., PRL 121, 075501 (2018)
 # For this lB = 0.7 nm, sigma = 0.3 nm, [salt] = 1 M, and [solvent] = 10 M and 40 M.
-# Note the use of computed values for lB/sigma and rho*sigma^3.  Also 1 M = 0.602 molecules per nm^3
-# For the salt, NaCl --> Na+ and Cl-, and rhoz = [Na+] + [Cl-] = 2 [NaCl], hence the factor 2 in --rhoz
+# Note the use of computed values for T* = sigma/lB and rho*sigma^3.  Also 1 M = 0.602 molecules per nm^3
+# For the salt, rhoz = [Na+] + [Cl-] = 2 [NaCl], hence the factor 2 in --rhoz
 
-# python3 rpm_explorer.py --solvated --lb=0.7/0.3 --rhoz=2*0.602*0.3^3 --rhos=10*0.602*0.3^3
-# python3 rpm_explorer.py --solvated --lb=0.7/0.3 --rhoz=2*0.602*0.3^3 --rhos=40*0.602*0.3^3
+# python3 rpm_explorer.py --solvated --tstar=0.3/0.7 --rhoz=2*0.602*0.3^3 --rhos=10*0.602*0.3^3
+# python3 rpm_explorer.py --solvated --tstar=0.3/0.7 --rhoz=2*0.602*0.3^3 --rhos=40*0.602*0.3^3
 
 # Add --diam='[0.25/0.3,0.3373/0.3,1]' to reproduce the size-asymmetric model shown in Fig S1.
 
