@@ -336,6 +336,7 @@ class ZoomPan:
         self.cur_ylim = None
         self.xpress = None
         self.ypress = None
+        self.control_down = False
 
     def factory(self, base_scale=1.1):
 
@@ -349,7 +350,10 @@ class ZoomPan:
             elif event.button == 'up':
                 scale_factor = base_scale
             new_width = (cur_xlim[1] - cur_xlim[0]) * scale_factor
-            new_height = (cur_ylim[1] - cur_ylim[0]) * scale_factor
+            if self.control_down:
+                new_height = (cur_ylim[1] - cur_ylim[0])
+            else:
+                new_height = (cur_ylim[1] - cur_ylim[0]) * scale_factor
             relx = (cur_xlim[1] - xdata)/(cur_xlim[1] - cur_xlim[0])
             rely = (cur_ylim[1] - ydata)/(cur_ylim[1] - cur_ylim[0])
             self.ax.set_xlim([xdata - new_width * (1-relx), xdata + new_width * (relx)])
@@ -378,10 +382,20 @@ class ZoomPan:
             self.ax.set_ylim(self.cur_ylim)
             self.ax.figure.canvas.draw()
 
+        def key_down(event):
+            if event.key == 'control':
+                self.control_down = True
+
+        def key_up(event):
+            if event.key == 'control':
+                self.control_down = False
+
         fig = self.ax.get_figure()
         fig.canvas.mpl_connect('button_press_event', button_down)
         fig.canvas.mpl_connect('button_release_event', button_up)
         fig.canvas.mpl_connect('motion_notify_event', mouse_move)
+        fig.canvas.mpl_connect('key_press_event', key_down)
+        fig.canvas.mpl_connect('key_release_event', key_up)
         fig.canvas.mpl_connect('scroll_event', zoom)
 
         return zoom, button_down, button_up, mouse_move
