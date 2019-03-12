@@ -43,11 +43,14 @@ parser.add_argument('--z1', action='store', default=1, type=int, help='valency o
 parser.add_argument('--z2', action='store', default=-1, type=int, help='valency of negative ions (default -1)')
 parser.add_argument('--type', action='store', default=1, type=int, help='charge type (1=Gaussian, 2=Bessel, 3=Groot, 4=Slater)')
 parser.add_argument('--case', action='store', default=1, type=int, help='Slater method (1=exact, 2=good, 3=bad)')
+parser.add_argument('--nwarm', action='store', default=1, type=int, help='number of intermediate warm-up steps increasing lb')
 
 parser.add_argument('--rho', action='store', default=3.0, type=float, help='total density if ncomp = 3 (default 3.0)')
 parser.add_argument('--rhoz', action='store', default=0.1, type=float, help='total charge density (default 0.1)')
 parser.add_argument('--grcut', action='store', default=15.0, type=float, help='r cut off for g(r) plots (default 15.0)')
 parser.add_argument('--skcut', action='store', default=15.0, type=float, help='k cut off for S(k) plots (default 15.0)')
+parser.add_argument('--sk2cut', action='store', default=100.0, type=float, help='k^2 cut off for S(k^2) plots (default 100.0)')
+parser.add_argument('--floor', action='store', default=1e-20, type=float, help='floor for plotting log r h(r) (default 1e-20)')
 
 parser.add_argument('--rpa', action='store_true', help='use RPA (default HNC)')
 parser.add_argument('--exp', action='store_true', help='use EXP refinement')
@@ -75,19 +78,6 @@ w.arep[:,:] = args.A
 w.z[0] = args.z1
 w.z[1] = args.z2
 
-# potential type = 4 (exact), or potential type = 5 (approximate) with
-# beta = 1/lambda, or beta=5/(8lambda)
-
-if args.type < 4:
-    w.dpd_potential(args.type)
-else:
-    if args.case == 1:
-        w.dpd_potential(w.dpd_slater_exact_charges)
-    else:
-        if args.case == 2: w.beta = 5 / (8*w.lbda)
-        else: w.beta = 1 / w.lbda
-        w.dpd_potential(w.dpd_slater_approx_charges)
-
 # The calculation here solves rhoz = z1^2*rho1 + z2^2*rho2, z1*rho1 + z2*rho2 = 0
 
 w.rho[0] = args.rhoz / (args.z1 * (args.z1 - args.z2))
@@ -95,19 +85,44 @@ w.rho[1] = args.rhoz / (args.z2 * (args.z2 - args.z1))
 
 if (w.ncomp > 2): w.rho[2] = args.rho - w.rho[0] - w.rho[1]
 
-eps = 1e-20
+# potential type = 4 (exact), or potential type = 5 (approximate) with
+# beta = 1/lambda, or beta=5/(8lambda) --- warm up in lb if requested
+
+for i in range(args.nwarm):
+
+    w.lb = (i + 1.0) / args.nwarm * args.lb
+
+    if args.type < 4:
+        w.dpd_potential(args.type)
+    else:
+        if args.case == 1:
+            w.dpd_potential(w.dpd_slater_exact_charges)
+        else:
+            if args.case == 2:
+                w.beta = 5 / (8*w.lbda)
+            else:
+                w.beta = 1 / w.lbda
+            w.dpd_potential(w.dpd_slater_approx_charges)
+
+    if w.verbose: w.write_params()
+
+    if (args.rpa or args.exp):
+        w.rpa_solve()
+    else:
+        w.hnc_solve()
+
+    if args.exp:
+        w.exp_refine()
+
+    if w.return_code: exit()
+
+    if not args.dump:
+        s = str(w.closure_name, 'utf-8').strip()
+        print('rhoz = %g \trho = %g \tlb = %g \t%s error = %g' %
+              (w.rho[0]+w.rho[1], np.sum(w.rho), w.lb, s, w.error))
 
 if not args.dump:
     w.write_params()
-
-if (args.rpa or args.exp): w.rpa_solve()
-else: w.hnc_solve()
-
-if args.exp: w.exp_refine()
-
-if w.return_code: exit()
-
-if not args.dump:
     w.write_thermodynamics()
 
 # density-density structure factor
@@ -121,12 +136,12 @@ szz = np.dot(np.dot(w.z, w.sk), w.z) / np.dot(w.z**2, w.rho)
 if args.dump:
 
     if w.ncomp == 3:
-        
+
         for i in range(w.ng-1):
             print("%g\t%g\t%g\t%g\t%g\t%g\t%g\tHR" % (w.r[i], w.hr[i, 0, 0], w.hr[i, 0, 1], w.hr[i, 1, 1],
                                                       w.hr[i, 0, 2], w.hr[i, 1, 2], w.hr[i, 2, 2]))
     else:
-    
+
         for i in range(w.ng-1):
             print("%g\t%g\t%g\t%g\tHR" % (w.r[i], w.hr[i, 0, 0], w.hr[i, 0, 1], w.hr[i, 1, 1]))
 
@@ -134,7 +149,7 @@ if args.dump:
         print("%g\t%g\t%g\tSK" % (w.k[i], snn[i], szz[i]))
 
 elif args.show:
-    
+
     # code plots log10(r h(r)) versus r
 
     import math as m
@@ -161,6 +176,38 @@ elif args.show:
     plt.xlabel('$r$')
     plt.ylabel('$g(r)$')
 
+    plt.subplot(2, 2, 3) # plot log10 r h(r) to show tails
+
+    plt.plot(w.r[:],
+             list(map(lambda x, y: m.log10(args.floor + m.fabs(x*y)), w.hr[:, 0, 0], w.r[:])),
+             label="$+\!+$")
+
+    plt.plot(w.r[:],
+             list(map(lambda x, y: m.log10(args.floor + m.fabs(x*y)), w.hr[:, 0, 1], w.r[:])),
+             label="$+ -$")
+
+    plt.plot(w.r[:],
+             list(map(lambda x, y: m.log10(args.floor + m.fabs(x*y)), w.hr[:, 1, 1], w.r[:])),
+             label=" $- -$")
+
+    if (w.ncomp == 3):
+
+        plt.plot(w.r[:],
+                 list(map(lambda x, y: m.log10(args.floor + m.fabs(x*y)), w.hr[:, 0, 2], w.r[:])),
+                 label="$+0$")
+
+        plt.plot(w.r[:],
+                 list(map(lambda x, y: m.log10(args.floor + m.fabs(x*y)), w.hr[:, 1, 2], w.r[:])),
+                 label="$-\,0$")
+
+        plt.plot(w.r[:],
+                 list(map(lambda x, y: m.log10(args.floor + m.fabs(x*y)), w.hr[:, 2, 2], w.r[:])),
+                 label="$0\,0$")
+
+    plt.legend(loc='upper right')
+    plt.xlabel('$r$')
+    plt.ylabel('$\log_{10}|rh|$')
+
     plt.subplot(2, 2, 2) # structure factors
 
     jmax = int(args.skcut / w.deltak)
@@ -170,36 +217,13 @@ elif args.show:
     plt.xlabel('$k$')
     # plt.ylabel('$S(k)$')
 
-    plt.subplot(2, 2, 3) # plot log10 r h(r) to show tails
+    plt.subplot(2, 2, 4) # structure factors with k^2
 
-    plt.plot(w.r[:], 
-             list(map(lambda x, y: m.log10(eps + m.fabs(x*y)), w.hr[:, 0, 0], w.r[:])), 
-             label="$+\!+$")
-
-    plt.plot(w.r[:], 
-             list(map(lambda x, y: m.log10(eps + m.fabs(x*y)), w.hr[:, 0, 1], w.r[:])), 
-             label="$+ -$")
-
-    plt.plot(w.r[:], 
-             list(map(lambda x, y: m.log10(eps + m.fabs(x*y)), w.hr[:, 1, 1], w.r[:])), 
-             label=" $- -$")
-
-    if (w.ncomp == 3):
-
-        plt.plot(w.r[:], 
-                 list(map(lambda x, y: m.log10(eps + m.fabs(x*y)), w.hr[:, 0, 2], w.r[:])), 
-                 label="$+0$")
-
-        plt.plot(w.r[:], 
-                 list(map(lambda x, y: m.log10(eps + m.fabs(x*y)), w.hr[:, 1, 2], w.r[:])), 
-                 label="$-\,0$")
-
-        plt.plot(w.r[:], 
-                 list(map(lambda x, y: m.log10(eps + m.fabs(x*y)), w.hr[:, 2, 2], w.r[:])), 
-                 label="$0\,0$")
-
-    plt.legend(loc='upper right')
-    plt.xlabel('$r$')
-    plt.ylabel('$\log_{10}|rh|$')
+    jmax = int(m.sqrt(args.sk2cut) / w.deltak)
+    plt.plot(w.k[:jmax]**2, snn[:jmax], label='$S_{NN}$')
+    plt.plot(w.k[:jmax]**2, szz[:jmax], label='$S_{ZZ}$')
+    plt.legend(loc='lower right')
+    plt.xlabel('$k^2$')
+    # plt.ylabel('$S(k)$')
 
     plt.show()
