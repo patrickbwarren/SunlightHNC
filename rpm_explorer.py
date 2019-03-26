@@ -31,6 +31,18 @@
 # By default this is for RPM without solvent
 # Run with --solvated for solvent primitive model
 
+# MOUSE AND KEYBOARD CONTROLS
+
+# pan and zoom in/out with mouse wheel work in the main plot window
+# control + mouse wheel zooms in/out horizontal axis
+
+# sliders can be adjusted with mouse (move pointer onto slider)
+# click to jump to a given position
+# scroll with mouse wheel for medium adjustment
+# shift + mouse wheel for fine adjustment
+# control + mouse wheel for coarse adjustment
+# press and release spacebar to request entry of a specific value (in terminal window)
+
 # The following correspond to the Fig 1 insets in Coupette et al., PRL 121, 075501 (2018)
 # For this lB = 0.7 nm, sigma = 0.3 nm, [salt] = 1 M, and [solvent] = 10 M and 40 M.
 # Note the use of computed values for T* = sigma/lB and rho*sigma^3.  Also 1 M = 0.602 molecules per nm^3
@@ -434,6 +446,17 @@ class SliderScroll:
                 self.shift_down = False
             elif event.key == 'control':
                 self.control_down = False
+            elif event.key == ' ':
+                if event.inaxes in sliders:
+                    slider = sliders[event.inaxes]
+                    s = input('enter a value for %s\n' % slider_name[slider])
+                    try:
+                        val = float(s)
+                        print('%s set to %g' % (slider_name[slider], val))
+                        slider.set_val(m.log10(val) if log_slider[slider] else val)
+                        update(val)
+                    except ValueError:
+                        print('invalid number ', s)
 
         fig = self.ax.get_figure()
         fig.canvas.mpl_connect('scroll_event', scroll)
@@ -443,12 +466,18 @@ class SliderScroll:
         return scroll, key_up, key_down
 
 sliders = {ax_rhoz: rhoz_slider}
+slider_name = {rhoz_slider: 'rho_z'}
+log_slider = {rhoz_slider: True}
 
 if tstar_slider:
     sliders[ax_tstar] = tstar_slider
+    slider_name[tstar_slider] = 'T*'
+    log_slider[tstar_slider] = False
 
 if rhos_slider:
     sliders[ax_rhos] = rhos_slider
+    slider_name[rhos_slider] = 'rho_s'
+    log_slider[rhos_slider] = True
 
 ss = SliderScroll(ax).factory(sliders)
 
