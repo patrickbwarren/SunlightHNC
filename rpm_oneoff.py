@@ -35,8 +35,8 @@
 # Note the use of computed values for lB/sigma and rho*sigma^3.  Also 1 M = 0.602 molecules per nm^3
 # For the salt, NaCl --> Na+ and Cl-, and rhoz = [Na+] + [Cl-] = 2 [NaCl], hence the factor 2 in --rhoz
 
-# python3 rpm_oneoff.py --ncomp=3 --lb=0.7/0.3 --rhoz=2*0.602*0.3^3 --add --rho=10*0.602*0.3^3 --show --all --tail --only
-# python3 rpm_oneoff.py --ncomp=3 --lb=0.7/0.3 --rhoz=2*0.602*0.3^3 --add --rho=40*0.602*0.3^3 --show --all --tail --only
+# python3 rpm_oneoff.py --solvated --lb=0.7/0.3 --rhoz=2*0.602*0.3^3 --add --rhos=10*0.602*0.3^3 --show --all --tail --only
+# python3 rpm_oneoff.py --solvated --lb=0.7/0.3 --rhoz=2*0.602*0.3^3 --add --rhos=40*0.602*0.3^3 --show --all --tail --only
 
 # Add --diam='[0.25/0.3,0.3373/0.3,1]' to reproduce the size-asymmetric model shown in Fig S1.
 # Note though that the + and - are the wrong way around in this figure.
@@ -49,7 +49,6 @@ from oz import wizard as w
 
 parser = argparse.ArgumentParser(description='RPM one off calculator')
 
-parser.add_argument('--ncomp', action='store', default=2, type=int, help='number of components (species) (default 2)')
 parser.add_argument('--ng', action='store', default='65536', help='number of grid points (default 2^16 = 65536)')
 parser.add_argument('--deltar', action='store', default=1e-3, type=float, help='grid spacing (default 1e-3)')
 parser.add_argument('--alpha', action='store', default=0.2, type=float, help='Picard mixing fraction (default 0.2)')
@@ -57,11 +56,14 @@ parser.add_argument('--npic', action='store', default=6, type=int, help='number 
 parser.add_argument('--nps', action='store', default=6, type=int, help='length of history array (default 6)')
 parser.add_argument('--maxsteps', action='store', default=100, type=int, help='number of iterations (default 100)')
 
+parser.add_argument('--solvated', action='store_true', help='for solvated primitive models')
+
 parser.add_argument('--diam', action='store', default='[1]', help='hard core diameters (default [1])')
 parser.add_argument('--sigma', action='store', default=0.0, type=float, help='inner core diameter (default min diam)')
-parser.add_argument('--rho', action='store', default='0.5', help='total hard sphere density (default 0.5)')
 parser.add_argument('--rhoz', action='store', default='0.1', help='total ion density (default 0.1)')
-parser.add_argument('--lb', action='store', default='1.0', help='Bjerrum length (default 1.0)')
+parser.add_argument('--rho', action='store', default='0.5', help='total hard sphere density (default 0.5)')
+parser.add_argument('--rhos', action='store', default='0.4', help='with --add solvent hard sphere density (default 0.4)')
+parser.add_argument('--tstar', action='store', default='1.0', help='reduced temperature (default 1.0)')
 parser.add_argument('--kappa', action='store', default=-1.0, type=float, help='softening parameter (default off)')
 parser.add_argument('--ushort', action='store_true', help='use U_short in potential')
 
@@ -79,13 +81,13 @@ parser.add_argument('--eps', action='store', default=1e-20, type=float, help='fl
 parser.add_argument('--only', action='store_true', help='plot only pair functions')
 parser.add_argument('--tail', action='store_true', help='plot tails of pair functions')
 parser.add_argument('--all', action='store_true', help='include solvent pair functions')
-parser.add_argument('--add', action='store_true', help='add solute rather than make up as total')
+parser.add_argument('--add', action='store_true', help='add solvent at --rhos rather than make up to total --rho')
 
 parser.add_argument('--verbose', action='store_true', help='more output')
 
 args = parser.parse_args()
 
-w.ncomp = args.ncomp
+w.ncomp = 3 if args.solvated else 2
 w.ng = eval(args.ng.replace('^', '**')) # catch 2^10 etc
 w.deltar = args.deltar
 w.alpha = args.alpha
@@ -126,16 +128,17 @@ if len(diam) == 4: w.diam[0, 1] = diam[3]
 if len(diam) == 5: w.diam[0, 2] = w.diam[1, 2] = diam[4]
 if len(diam) == 6: w.diam[1, 2] = diam[5]
 
+rho = eval(args.rho.replace('^', '**')) # total density 
 rhoz = eval(args.rhoz.replace('^', '**')) # total charged species density
-rho = eval(args.rho.replace('^', '**')) # total density, or solvent density with --add
+rhos = eval(args.rhos.replace('^', '**')) # added solvent hard sphere density
 
 w.rho[0] = 0.5 * rhoz
 w.rho[1] = 0.5 * rhoz
 
 if w.ncomp == 3:
-    if args.add:
-        w.rho[2] = rho
-    else:
+    if args.add: # use --rhos setting here if --add is selected
+        w.rho[2] = rhos
+    else: # add solvent to make up to total hard sphere density
         w.rho[2] = rho - rhoz
 
 if args.exp:
@@ -148,7 +151,7 @@ if args.exp:
     args.msa = True
 
 for i in range(args.nwarm):
-    w.lb = (i + 1.0) / args.nwarm * eval(args.lb)
+    w.lb = (i + 1.0) / args.nwarm * (1.0 / eval(args.tstar))
     w.rpm_potential(args.ushort)
     if w.verbose: w.write_params()
     if args.msa:
@@ -256,15 +259,21 @@ elif args.show:
             lD = 0
         print("ionic strength sum rho z^2 = %g" % sumrhoz2)
         print("Debye length lD = %g, kappa sigma = %g" % (lD, w.sigma/lD))
-        plt.plot(w.r[:],
-                 list(map(lambda x, y: m.log10(args.eps + m.fabs(x*y)), w.hr[:, 0, 0], w.r[:])),
-                 label="$r|h_{11}|$")
-        plt.plot(w.r[:],
-                 list(map(lambda x, y: m.log10(args.eps + m.fabs(x*y)), w.hr[:, 0, 1], w.r[:])),
-                 label="$r|h_{12}|$")
-        plt.plot(w.r[:],
-                 list(map(lambda x, y: m.log10(args.eps + m.fabs(x*y)), w.hr[:, 1, 1], w.r[:])),
-                 label=" $r|h_{22}|$")
+        if args.all:
+            plt.plot(w.r[:],
+                     list(map(lambda x, y: m.log10(args.eps + m.fabs(x*y)), w.hr[:, 0, 0], w.r[:])),
+                     label="$r|h_{11}|$")
+            plt.plot(w.r[:],
+                     list(map(lambda x, y: m.log10(args.eps + m.fabs(x*y)), w.hr[:, 0, 1], w.r[:])),
+                     label="$r|h_{12}|$")
+            plt.plot(w.r[:],
+                     list(map(lambda x, y: m.log10(args.eps + m.fabs(x*y)), w.hr[:, 1, 1], w.r[:])),
+                     label=" $r|h_{22}|$")
+        else:
+            rh = w.r * 0.25 * (w.hr[:, 0, 0] + 2*w.hr[:, 0, 1] + w.hr[:, 1, 1])
+            plt.plot(w.r, np.log10(args.eps + np.abs(rh)), label="$r|h_{dd}|$")
+            rh = w.r * 0.25 * (w.hr[:, 0, 0] - 2*w.hr[:, 0, 1] + w.hr[:, 1, 1])
+            plt.plot(w.r, np.log10(args.eps + np.abs(rh)), label="$r|h_{zz}|$")
         if lD > 0:
             plt.plot(w.r[:],
                      list(map(lambda x: m.log10(args.eps + m.exp(-x/lD)), w.r[:])),
