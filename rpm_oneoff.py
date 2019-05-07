@@ -35,8 +35,8 @@
 # Note the use of computed values for lB/sigma and rho*sigma^3.  Also 1 M = 0.602 molecules per nm^3
 # For the salt, NaCl --> Na+ and Cl-, and rhoz = [Na+] + [Cl-] = 2 [NaCl], hence the factor 2 in --rhoz
 
-# python3 rpm_oneoff.py --solvated --lb=0.7/0.3 --rhoz=2*0.602*0.3^3 --add --rhos=10*0.602*0.3^3 --show --all --tail --only
-# python3 rpm_oneoff.py --solvated --lb=0.7/0.3 --rhoz=2*0.602*0.3^3 --add --rhos=40*0.602*0.3^3 --show --all --tail --only
+# python3 rpm_oneoff.py --solvated --lb=0.7/0.3 --rhoz=2*0.602*0.3^3 --rhos=10*0.602*0.3^3 --show --all --tail --only
+# python3 rpm_oneoff.py --solvated --lb=0.7/0.3 --rhoz=2*0.602*0.3^3 --rhos=40*0.602*0.3^3 --show --all --tail --only
 
 # Add --diam='[0.25/0.3,0.3373/0.3,1]' to reproduce the size-asymmetric model shown in Fig S1.
 # Note though that the + and - are the wrong way around in this figure.
@@ -81,7 +81,7 @@ parser.add_argument('--eps', action='store', default=1e-20, type=float, help='fl
 parser.add_argument('--only', action='store_true', help='plot only pair functions')
 parser.add_argument('--tail', action='store_true', help='plot tails of pair functions')
 parser.add_argument('--all', action='store_true', help='include solvent pair functions')
-parser.add_argument('--add', action='store_true', help='add solvent at --rhos rather than make up to total --rho')
+parser.add_argument('--total', action='store_true', help='add solvent to make up to total --rho')
 
 parser.add_argument('--verbose', action='store_true', help='more output')
 
@@ -136,10 +136,10 @@ w.rho[0] = 0.5 * rhoz
 w.rho[1] = 0.5 * rhoz
 
 if w.ncomp == 3:
-    if args.add: # use --rhos setting here if --add is selected
-        w.rho[2] = rhos
-    else: # add solvent to make up to total hard sphere density
+    if args.total: # add solvent to make up to total hard sphere density
         w.rho[2] = rho - rhoz
+    else: # use --rhos setting here if --add is selected
+        w.rho[2] = rhos
 
 if args.exp:
     w.hs_potential()
