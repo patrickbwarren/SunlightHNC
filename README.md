@@ -100,7 +100,4 @@ Registered Office: Unilever House, 100 Victoria Embankment, London EC4Y 0DY, UK)
 
 #### Contact
 
-Send email to patrick{dot}warren{at}unilever{dot}com
-
-Send paper mail to Dr Patrick B Warren, Unilever R&D Port Sunlight,
-Quarry Road East, Bebington, Wirral, CH63 3JW, UK.
+Send email to patrick.warren{at}stfc.ac.uk
