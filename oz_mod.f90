@@ -7,6 +7,9 @@
 ! modifications copyright (c) 2009-2018 Unilever UK Central Resources
 ! Ltd (Registered in England & Wales, Company No 29140; Registered
 ! Office: Unilever House, Blackfriars, London, EC4P 4BQ, UK).
+! Additional modifications copyright (c) 2020-2021 Patrick B Warren
+! <patrick.warren@stfc.ac.uk> and STFC.
+
 ! SunlightDPD is free software: you can redistribute it and/or
 ! modify it under the terms of the GNU General Public License as
 ! published by the Free Software Foundation, either version 3 of the
@@ -1397,7 +1400,9 @@ contains
     end do
 
     ! The contact value in the case of hard cores.  We extrapolate
-    ! from the two nearest points.
+    ! from the two nearest points.  The same extrapolation is done in
+    ! make_thermodynamics but we want to keep these subroutines
+    ! independent.
 
     do j = 1, ncomp
        do i = 1, j
@@ -1486,7 +1491,9 @@ contains
 
     ! The contact contribution in the case of hard cores.  We
     ! extrapolate the contact value of the pair distribution function
-    ! from the two nearest outside points.
+    ! from the two nearest outside points.  The same extrapolation is
+    ! done in make_pair_functions but we want to keep these
+    ! subroutines independent.
 
     do i = 1, nfnc
        if (dd(i).gt.0.0_dp) then
@@ -1718,7 +1725,7 @@ contains
   end subroutine hnc_kspace_integrals
 
   subroutine write_thermodynamics
-    integer :: i, j
+    integer :: i, j, ij
 
     if (closure_type.eq.NO_CLOSURE) then
        print *, 'No closure = no thermodynamics'
@@ -1733,7 +1740,9 @@ contains
     print *, 'Thermodynamics for ', model_name
     print *, closure_name, ' closure, convergence = ', error
     print *, 'Compressibility factor: mean field contribution = ', cf_mf
-    print *, 'Compressibility factor: contact contribution = ', cf_gc
+    if (any(dd.gt.0.0_dp)) then
+       print *, 'Compressibility factor: contact contribution = ', cf_gc
+    end if
     print *, 'Compressibility factor: correlation contribution = ', cf_xc
     print *, 'Compressibility factor: total = ', &
          & 1.0_dp + cf_mf + cf_gc + cf_xc
@@ -1747,9 +1756,12 @@ contains
     print *, 'Internal energy per particle = ', uex / sum(rho(:))
     print *, 'Internal energy per particle / 3 = ', uex / (3.0_dp*sum(rho(:)))
 
-    do i = 1, ncomp
-       do j = i, ncomp
-          print *, 'Contact g', i, j, ' = 1 + ', hc(i, j), ' = ', 1 + hc(i, j)
+    do j = 1, ncomp
+       do i = 1, j
+          ij = i + j*(j-1)/2
+          if (dd(ij).gt.0.0_dp) then
+             print *, 'Contact g', i, j, ' = 1 + ', hc(i, j), ' = ', 1 + hc(i, j)
+          end if
        end do
     end do
 

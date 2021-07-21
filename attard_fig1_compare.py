@@ -8,8 +8,10 @@
 # method.
 
 # Copyright (c) 2009-2019 Unilever UK Central Resources Ltd
-# (Registered in England & Wales, Company No 29140; Registered
-# Office: Unilever House, Blackfriars, London, EC4P 4BQ, UK).
+# (Registered in England & Wales, Company No 29140; Registered Office:
+# Unilever House, Blackfriars, London, EC4P 4BQ, UK).  Additional
+# modifications copyright (c) 2020-2021 Patrick B Warren
+# <patrick.warren@stfc.ac.uk> and STFC.
 
 # SunlightDPD is free software: you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as
@@ -46,10 +48,10 @@ w.initialise()
 
 # fundamental quantities in SI units 
 
-e = 1.6e-19 # charge on electron
+e = 1.602e-19 # charge on electron
 ε0 = 8.854e-12 # permittivity of vacuum
 kB = 1.38e-23 # Boltzmann constant
-NA = 6.02e23 # Avogadro constant
+NA = 6.022e23 # Avogadro constant
 
 Å = 1e-10 # in m, used for conversions
 
@@ -67,7 +69,7 @@ lb = e**2 / (4*π*εr*ε0*kB*T)
 d = 5 * Å # ion diameter
 concs = [0.5, 2, 5] # Molar units
 
-print('Bjerrum length = %g Å = %g d' % (lb/Å, lb/d))
+print('Bjerrum length = %g Å = %g d, T* = %g' % (lb/Å, lb/d, d/lb))
 
 # We use the diameter d as a base length unit (assuming w.sigma = 1)
 

@@ -88,6 +88,7 @@ args = parser.parse_args()
 
 args.swap = False # which combination of h_ij to show
 args.choice = ['both', 'both'] # which signs of h(r) to show
+args.stretch = False # stretch horizontal axis
 
 w.ncomp = 3 if args.solvated else 2
 w.ng = eval(args.ng.replace('^', '**')) # catch 2^10 etc
@@ -182,12 +183,14 @@ def get_ann_txt():
 def replot():
     """replot the lines and re-annotate"""
     for i, (w00, w01, w11, color, text) in enumerate(selector(args.swap)):
-        r = w.r[imin:imax]
+        r = 2*w.r[imin:imax] if color == 'k' and args.stretch else w.r[imin:imax]
         rh_pos = r * (w00*w.hr[imin:imax, 0, 0] + w01*w.hr[imin:imax, 0, 1] + w11*w.hr[imin:imax, 1, 1])
         rh_neg = - rh_pos
         rh_pos[rh_pos < args.floor] = args.floor
         rh_neg[rh_neg < args.floor] = args.floor
         if line[2*i]: # if line[i] is not None then reset the y data.
+            line[2*i].set_xdata(r)
+            line[2*i+1].set_xdata(r)
             line[2*i].set_ydata(np.log10(rh_neg))
             line[2*i+1].set_ydata(np.log10(rh_pos))
         else: # plotting for the first time
@@ -207,7 +210,7 @@ plt.subplots_adjust(left=0.25, bottom=0.30)
 
 ax.set_xlim([1, args.rmax])
 ax.set_ylim([-12, 1])
-ax.set_xlabel('r / σ')
+# ax.set_xlabel('r/σ')
 ax.set_ylabel('log10[- r h(r)]')
 
 # report on diameters
@@ -234,6 +237,10 @@ line = [None, None, None, None] # will contain the data for the lines
 label = [None, None] # will contain the labels for the lines
 
 ann = ax.annotate(get_ann_txt(), xy=(0.02, 1.02), xycoords='axes fraction')
+
+xaxis_alt1 = ax.annotate('r/σ', xy=(0.5, -0.15), xycoords='axes fraction', ha='center')
+xaxis_alt2 = ax.annotate('2r/σ', xy=(0.59, -0.15), visible=False, xycoords='axes fraction', ha='center')
+xaxis_alt3 = ax.annotate('r/σ', xy=(0.43, -0.15), visible=False, color='r', xycoords='axes fraction', ha='center')
 
 solve(rhoz_init, rhos_init)
 replot()
@@ -275,8 +282,8 @@ def radio2(val):
 radio = [radio1, radio2]
 
 ax_choice = [None, None]
-ax_choice[0] = plt.axes([0.05, 0.42, 0.1, 0.15])
-ax_choice[1] = plt.axes([0.05, 0.25, 0.1, 0.15])
+ax_choice[0] = plt.axes([0.05, 0.47, 0.1, 0.15])
+ax_choice[1] = plt.axes([0.05, 0.30, 0.1, 0.15])
 
 choice = [None, None]
 
@@ -287,6 +294,26 @@ for i in [0, 1]:
 for i, (w00, w01, w11, color, text) in enumerate(selector(args.swap)):
     [ label.set_color(color) for label in choice[i].labels ]
 
+def set_stretch():
+    '''Implement display logic whether ρ-ρ is stretched in the plot'''
+    flag = False if args.swap else args.stretch
+    xaxis_alt1.set_text('and' if flag else 'r/σ')
+    xaxis_alt2.set_visible(flag)
+    xaxis_alt3.set_visible(flag)
+    stretch_button.label.set_text('->ρρ<-' if args.stretch else '<-ρρ->')
+    stretch_button.label.set_color('grey' if args.swap else 'black')
+
+def stretch(event):
+    """stretch horizontal axis for density-density functions"""
+    if not args.swap:
+        args.stretch = not args.stretch
+        set_stretch()
+    replot()
+
+ax_stretch = plt.axes([0.05, 0.25, 0.1, 0.03])
+stretch_button = Button(ax_stretch, '<-ρρ->', color=back_color,  hovercolor='0.975')
+stretch_button.on_clicked(stretch)
+
 def swap(event):
     """swap between (hnn, hzz) and (h00, h01) representations"""
     args.swap = not args.swap
@@ -295,6 +322,7 @@ def swap(event):
         label[i].set_color(color)
         label[i].set_text(text)
         [ label.set_color(color) for label in choice[i].labels ]
+    set_stretch()
     replot()
 
 ax_swap = plt.axes([0.05, 0.20, 0.1, 0.03])

@@ -5,8 +5,10 @@
 # method.
 
 # Copyright (c) 2009-2019 Unilever UK Central Resources Ltd
-# (Registered in England & Wales, Company No 29140; Registered
-# Office: Unilever House, Blackfriars, London, EC4P 4BQ, UK).
+# (Registered in England & Wales, Company No 29140; Registered Office:
+# Unilever House, Blackfriars, London, EC4P 4BQ, UK).  Additional
+# modifications copyright (c) 2020-2021 Patrick B Warren
+# <patrick.warren@stfc.ac.uk> and STFC.
 
 # SunlightDPD is free software: you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as
@@ -35,8 +37,8 @@
 # Note the use of computed values for lB/sigma and rho*sigma^3.  Also 1 M = 0.602 molecules per nm^3
 # For the salt, NaCl --> Na+ and Cl-, and rhoz = [Na+] + [Cl-] = 2 [NaCl], hence the factor 2 in --rhoz
 
-# python3 rpm_oneoff.py --solvated --lb=0.7/0.3 --rhoz=2*0.602*0.3^3 --rhos=10*0.602*0.3^3 --show --all --tail --only
-# python3 rpm_oneoff.py --solvated --lb=0.7/0.3 --rhoz=2*0.602*0.3^3 --rhos=40*0.602*0.3^3 --show --all --tail --only
+## python3 rpm_oneoff.py --solvated --tstar=0.3/0.7 --rhoz=2*0.602*0.3^3 --rhos=10*0.602*0.3^3 --show --all --tail --only
+## python3 rpm_oneoff.py --solvated --tstar=0.3/0.7 --rhoz=2*0.602*0.3^3 --rhos=40*0.602*0.3^3 --show --all --tail --only
 
 # Add --diam='[0.25/0.3,0.3373/0.3,1]' to reproduce the size-asymmetric model shown in Fig S1.
 # Note though that the + and - are the wrong way around in this figure.
@@ -60,9 +62,9 @@ parser.add_argument('--solvated', action='store_true', help='for solvated primit
 
 parser.add_argument('--diam', action='store', default='[1]', help='hard core diameters (default [1])')
 parser.add_argument('--sigma', action='store', default=0.0, type=float, help='inner core diameter (default min diam)')
-parser.add_argument('--rhoz', action='store', default='0.1', help='total ion density (default 0.1)')
 parser.add_argument('--rho', action='store', default='0.5', help='total hard sphere density (default 0.5)')
-parser.add_argument('--rhos', action='store', default='0.4', help='with --add solvent hard sphere density (default 0.4)')
+parser.add_argument('--rhoz', action='store', default='0.1', help='total ion density (default 0.1)')
+parser.add_argument('--rhos', action='store', default='0.4', help='solvent hard sphere density (default 0.4)')
 parser.add_argument('--tstar', action='store', default='1.0', help='reduced temperature (default 1.0)')
 parser.add_argument('--kappa', action='store', default=-1.0, type=float, help='softening parameter (default off)')
 parser.add_argument('--ushort', action='store_true', help='use U_short in potential')
@@ -128,7 +130,7 @@ if len(diam) == 4: w.diam[0, 1] = diam[3]
 if len(diam) == 5: w.diam[0, 2] = w.diam[1, 2] = diam[4]
 if len(diam) == 6: w.diam[1, 2] = diam[5]
 
-rho = eval(args.rho.replace('^', '**')) # total density 
+rho = eval(args.rho.replace('^', '**')) # total density
 rhoz = eval(args.rhoz.replace('^', '**')) # total charged species density
 rhos = eval(args.rhos.replace('^', '**')) # added solvent hard sphere density
 
@@ -138,7 +140,7 @@ w.rho[1] = 0.5 * rhoz
 if w.ncomp == 3:
     if args.total: # add solvent to make up to total hard sphere density
         w.rho[2] = rho - rhoz
-    else: # use --rhos setting here if --add is selected
+    else: # use --rhos setting
         w.rho[2] = rhos
 
 if args.exp:
@@ -176,35 +178,52 @@ if not args.dump:
     w.write_params()
     w.write_thermodynamics()
 
-# density-density and charge-charge structure factor
-# (notice how elegant this is :-)
+# density-density and charge-charge structure factor; notice how elegant this is :-)
 
 snn = np.sum(np.sum(w.sk, axis=2), axis=1) / np.sum(w.rho)
 szz = np.dot(np.dot(w.z, w.sk), w.z) / np.sum(w.rho * w.z**2)
 
 if args.dump:
 
-    for i in range(w.ng-1): 
-        print("%g\t%g\t%g\t%g\tL" % (w.r[i], w.ulong[i, 0],
-                                     w.ulong[i, 1], w.ulong[i, 2]))
+    if args.tail and args.only:
 
-    for i in range(w.ng-1):
-        print("%g\t%g\t%g\tC" % (w.r[i],
+        sumrho = np.sum(w.rho) # total ion concentration
+        sumrhoz2 = np.sum(w.rho * w.z**2) # ionic strength
+        if sumrho > 0 and sumrhoz2 > 0 and w.lb > 0:
+            kappaD = (4*w.pi*w.lb*sumrhoz2)**(1/2) # inverse Debye length
+            dspace = sumrho**(-1/3) # spacing between ions
+            print("# total ion density sum rho = %g, ionic strength sum rho z^2 = %g" % (sumrho, sumrhoz2))
+            print("# Debye length 1/kappaD = %g, spacing between ions dspace = %g" % (1/kappaD, dspace))
+            print("# kappaD sigma = %g, kappaD dspace = %g" % (kappaD*w.sigma, kappaD*dspace))
+
+        lnrhnn = np.log(args.eps + np.abs(w.r * 0.25 * (w.hr[:, 0, 0] + 2*w.hr[:, 0, 1] + w.hr[:, 1, 1])))
+        lnrhzz = np.log(args.eps + np.abs(w.r * 0.25 * (w.hr[:, 0, 0] - 2*w.hr[:, 0, 1] + w.hr[:, 1, 1])))
+        for i in range(w.ng-1):
+            print("%g\t%g\t%g\tRH" % (w.r[i], lnrhnn[i], lnrhzz[i]))
+
+    else:
+
+        for i in range(w.ng-1):
+            print("%g\t%g\t%g\t%g\tL" % (w.r[i], w.ulong[i, 0],
+                                         w.ulong[i, 1], w.ulong[i, 2]))
+
+        for i in range(w.ng-1):
+            print("%g\t%g\t%g\tC" % (w.r[i],
                                      0.5*(w.c[i, 0, 0]-w.ulong[i, 0]
                                           +w.c[i, 1, 0]-w.ulong[i, 1]),
                                      0.5*(w.c[i, 0, 0]-w.ulong[i, 0]
                                           -w.c[i, 1, 0]+w.ulong[i, 1])))
 
-    for i in range(w.ng-1):
-        if w.ncomp == 2:
-            print("%g\t%g\t%g\t%g\tH" % (w.r[i], w.hr[i, 0, 0],
-                                         w.hr[i, 0, 1], w.hr[i, 1, 1]))
-        else:
-            print("%g\t%g\t%g\t%g\t%g\t%g\t%g\tH" % (w.r[i], w.hr[i, 0, 0], w.hr[i, 0, 1], w.hr[i, 1, 1],
-                                                     w.hr[i, 0, 2], w.hr[i, 1, 2], w.hr[i, 2, 2]))
-            
-    for i in range(w.ng-1):
-        print("%g\t%g\t%g\tS" % (w.k[i], snn[i], szz[i]))
+        for i in range(w.ng-1):
+            if w.ncomp == 2:
+                print("%g\t%g\t%g\t%g\tH" % (w.r[i], w.hr[i, 0, 0],
+                                             w.hr[i, 0, 1], w.hr[i, 1, 1]))
+            else:
+                print("%g\t%g\t%g\t%g\t%g\t%g\t%g\tH" % (w.r[i], w.hr[i, 0, 0], w.hr[i, 0, 1], w.hr[i, 1, 1],
+                                                         w.hr[i, 0, 2], w.hr[i, 1, 2], w.hr[i, 2, 2]))
+
+        for i in range(w.ng-1):
+            print("%g\t%g\t%g\tS" % (w.k[i], snn[i], szz[i]))
 
 elif args.show:
 
@@ -222,14 +241,14 @@ elif args.show:
             plt.plot(w.r[0:imax], 1.0 + w.hr[0:imax, 1, 2], label="$g_{23}(r)$")
             plt.plot(w.r[0:imax], 1.0 + w.hr[0:imax, 2, 2], label="$g_{33}(r)$")
         plt.legend(loc='lower right')
-    
+
     def plot_sk():
         "Plot structure factors"
         jmax = int(args.skcut / w.deltak)
         plt.plot(w.k[:jmax], snn[:jmax], label='$S_{NN}(k)$')
         plt.plot(w.k[:jmax], szz[:jmax], label='$S_{ZZ}(k)$')
         plt.legend(loc='lower right')
-    
+
     def plot_hk():
         "Plot fourier transformed pair functions"
         jmax = int(args.skcut*3 / w.deltak)
@@ -252,13 +271,14 @@ elif args.show:
 
     def plot_rhrtail():
         "Plot log r|h| versus r, to show tails"
+        sumrho = np.sum(w.rho) # total ion concentration
         sumrhoz2 = np.sum(w.rho * w.z**2) # ionic strength
-        if sumrhoz2 > 0 and w.lb > 0:
-            lD = 1.0 / m.sqrt(4*w.pi*w.lb*sumrhoz2) # Debye length
-        else:
-            lD = 0
-        print("ionic strength sum rho z^2 = %g" % sumrhoz2)
-        print("Debye length lD = %g, kappa sigma = %g" % (lD, w.sigma/lD))
+        if sumrho > 0 and sumrhoz2 > 0 and w.lb > 0:
+            kappaD = m.sqrt(4*w.pi*w.lb*sumrhoz2) # inverse Debye length
+            dspace = sumrho**(-1/3) # spacing between ions
+            print("total ion density sum rho = %g, ionic strength sum rho z^2 = %g" % (sumrho, sumrhoz2))
+            print("Debye length 1/kappaD = %g, spacing between ions dspace = %g" % (1/kappaD, dspace))
+            print("kappaD sigma = %g, kappaD dspace = %g" % (kappaD*w.sigma, kappaD*dspace))
         if args.all:
             plt.plot(w.r[:],
                      list(map(lambda x, y: m.log10(args.eps + m.fabs(x*y)), w.hr[:, 0, 0], w.r[:])),
@@ -274,9 +294,9 @@ elif args.show:
             plt.plot(w.r, np.log10(args.eps + np.abs(rh)), label="$r|h_{dd}|$")
             rh = w.r * 0.25 * (w.hr[:, 0, 0] - 2*w.hr[:, 0, 1] + w.hr[:, 1, 1])
             plt.plot(w.r, np.log10(args.eps + np.abs(rh)), label="$r|h_{zz}|$")
-        if lD > 0:
+        if sumrhoz2 > 0 and w.lb > 0: # as above
             plt.plot(w.r[:],
-                     list(map(lambda x: m.log10(args.eps + m.exp(-x/lD)), w.r[:])),
+                     list(map(lambda x: m.log10(args.eps + m.exp(-kappaD*x)), w.r[:])),
                      label=" $e^{-\kappa r}$", linestyle='--', color='black')
         if w.ncomp > 2 and args.all:
             plt.plot(w.r[:],
@@ -295,7 +315,7 @@ elif args.show:
     plt.figure(1)
 
     if args.only: # only do one plot depending on other arguments
-        
+
         plt.title('%s solution, error = %0.1g' % (str(w.closure_name, 'utf-8'), w.error))
         if args.tail: # plot log10(r h(r)) versus r
             plot_rhrtail()
@@ -316,6 +336,5 @@ elif args.show:
             plot_rhrtail()
         else: # plot total correlation functions in reciprocal space
             plot_hk()
-        
-    plt.show()
 
+    plt.show()
