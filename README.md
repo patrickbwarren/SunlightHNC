@@ -2,7 +2,7 @@
 
 The current release is version 1.13.
 
-Version 1.13 allows dissimilar sphere diameters in the RPM and hard sphere potentials.  
+Version 1.13 allows dissimilar and non-additive sphere diameters in the RPM and hard sphere potentials.  
 Version 1.12 adds direct calculation of HNC free energy (see documentation).  
 Version 1.11 fixes another bug: missing mean-field contribution to thermodynamics for off-SYM RPM potential.  
 Version 1.10 fixes a bug: missing contact virial pressure contribution in the HNC free energy.  

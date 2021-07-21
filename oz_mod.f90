@@ -61,7 +61,7 @@ module wizard
        & DGEEV_ERROR = 4, &
        & MISMATCH_ERROR = 5
 
-  character (len=4)  :: version = '1.12'  ! The current version
+  character (len=4)  :: version = '1.13'  ! The current version
   character (len=3)  :: closure_name = '' ! TLA for the last-used closure 
   character (len=32) :: model_name = ''   ! Model name
   character (len=48) :: error_msg = ''    ! Error message
