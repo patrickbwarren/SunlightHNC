@@ -100,9 +100,8 @@
 
 \begin{document}
 
-\noindent{\bf\large FORTRAN 90 Ornstein-Zernike solver :: version 1.12}\\[6pt]
-\noindent{\it Patrick B Warren, Unilever R\&D Port Sunlight (February
-  2018)}\\[6pt]
+\noindent{\bf\large FORTRAN 90 Ornstein-Zernike solver :: version 1.13}\\[6pt]
+\noindent{\it Patrick B Warren, Hartree Centre, STFC (July 2021)}\\[6pt]
 
 \noindent The code and this accompanying documentation is released
 under the GPL.  You are welcome to use and modify it for your own
@@ -117,8 +116,11 @@ projects. If you end up publishing results based on this, please cite\\
 
 \vspace{0.25in}
 
-\noindent Features of version 1.12:
+\noindent Features of version 1.13:
 \begin{itemize}
+  \setlength{\itemsep}{1pt}
+  \setlength{\parskip}{0pt}
+  \setlength{\parsep}{0pt}
 \item modern \FORTRAN\ 90 based, with example \python\ driver scripts;
 \item HNC, MSA, RPA, and EXP closures;
 \item fast Ng solver, and Ng decomposition for electrostatics;
@@ -129,14 +131,14 @@ projects. If you end up publishing results based on this, please cite\\
 \end{itemize}
 
 \noindent
-{\small Versions 1.10, 1.11 fixed bugs: the
-contact virial pressure contribution was missing from the HNC free
-energy, and the compressibility and HNC chemical potentials were
-missing a mean-field term for the off-SYM RPM potential.
-Added in version 1.7--1.9: MSA closure and EXP; exact and approximate
-pair potentials for Slater smearing; EXP for hard core potentials
-fixed, new examples added; source code brought up to a modern
-\FORTRAN\ 90 standard.}
+{\small Versions 1.13 and 1.12 were feature enhancements. Versions
+  1.10, 1.11 fixed bugs: the contact virial pressure contribution was
+  missing from the HNC free energy, and the compressibility and HNC
+  chemical potentials were missing a mean-field term for the off-SYM
+  RPM potential.  Added in version 1.7--1.9: MSA closure and EXP;
+  exact and approximate pair potentials for Slater smearing; EXP for
+  hard core potentials fixed, new examples added; source code brought
+  up to a modern \FORTRAN\ 90 standard.}
 
 \newpage
 {\small\tableofcontents}
@@ -1068,7 +1070,7 @@ spheres: both the `vanilla' RPM, and a version in which the unlike
 pair potential is artificially softened, are provided.  For charged
 hard spheres the short range interaction potential can be taken to be
 defined by $e^{-\beta v'}=0$ for $r\le\sigma$ and $e^{-\beta v'}=1$
-for $r>\sigma$, where $\sigma$ is the hard core diameter.
+for $r>\sigma$, where $\sigma$ is the hard core diameter (or $\sigma_{\mu\nu}$ in general).
 
 Given this, we might na\"\i{}vely think of using $\lB/r$ as the long
 range part of the potential.  Although the divergence at $r\to0$ is
@@ -1999,7 +2001,7 @@ See comments in files for more details.
   \Refcite{WSG01}, and with independently done Monte-Carlo simulations
   using trial particle identity swaps.
 %
-\item\verb+vlm_fig2_compare.py+ -- Compute $\log_{10}\gamma_\infty =
+\item\verb+vln_fig2_compare.py+ -- Compute $\log_{10}\gamma_\infty =
   (\muex_1 - \muex_0) / \ln 10$ in the infinite dilution limit for a
   binary DPD fluid, and compare to the empirical fit $0.144 \times
   \Delta a$ as in Fig.~2 in \Refcite{VLN13}.  The fit is derived by
