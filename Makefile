@@ -7,6 +7,8 @@
 # modifications copyright (c) 2009-2017 Unilever UK Central Resources
 # Ltd (Registered in England & Wales, Company No 29140; Registered
 # Office: Unilever House, Blackfriars, London, EC4P 4BQ, UK).
+# Additional modifications copyright (c) 2020-2021 Patrick B Warren
+# <patrick.warren@stfc.ac.uk> and STFC.
 
 # SunlightDPD is free software: you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as
@@ -22,7 +24,9 @@
 # along with SunlightDPD.  If not, see <http://www.gnu.org/licenses/>.
 
 F90 = gfortran
-FFLAGS = -Wall -fbounds-check
+# FFLAGS = -Wall -fbounds-check
+# FFLAGS = -g -Wall -fcheck=all
+FFLAGS = -O2
 LIBFLAGS =  -L/usr/lib -llapack -lfftw3
 INCFLAGS = -I/usr/include/
 PDFL = pdflatex -synctex=1

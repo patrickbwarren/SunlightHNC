@@ -7,6 +7,8 @@
 ! modifications copyright (c) 2009-2017 Unilever UK Central Resources
 ! Ltd (Registered in England & Wales, Company No 29140; Registered
 ! Office: Unilever House, Blackfriars, London, EC4P 4BQ, UK).
+! Additional modifications copyright (c) 2020-2021 Patrick B Warren
+! <patrick.warren@stfc.ac.uk> and STFC.
 
 ! SunlightDPD is free software: you can redistribute it and/or
 ! modify it under the terms of the GNU General Public License as
@@ -44,7 +46,7 @@ program driver
   z(1) = 1.0_dp
   z(2) = -1.0_dp
 
-  call dpd_potential
+  call dpd_potential(1)
 
   rhotot = 3.0_dp
   mfcharge = 0.2_dp

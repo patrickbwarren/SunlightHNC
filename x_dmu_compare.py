@@ -5,11 +5,12 @@
 # method.
 
 # Based on an original code copyright (c) 2007 Lucian Anton.
-# Modifications copyright (c) 2008, 2009 Andrey Vlasov.  
-# Additional modifications copyright (c) 2009-2017 Unilever UK Central
-# Resources Ltd (Registered in England & Wales, Company No 29140;
-# Registered Office: Unilever House, Blackfriars, London, EC4P 4BQ,
-# UK).
+# Modifications copyright (c) 2008, 2009 Andrey Vlasov.  Additional
+# modifications copyright (c) 2009-2017 Unilever UK Central Resources
+# Ltd (Registered in England & Wales, Company No 29140; Registered
+# Office: Unilever House, Blackfriars, London, EC4P 4BQ, UK).
+# Additional modifications copyright (c) 2020-2021 Patrick B Warren
+# <patrick.warren@stfc.ac.uk> and STFC.
 
 # SunlightDPD is free software: you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as
@@ -78,7 +79,7 @@ for i in range(n):
     w.hnc_solve()
     xarr.append(x)
     yarr.append(w.muex[1]-w.muex[0])
-    print("%f\t%f\t%g" % (x, w.muex[1]-w.muex[0], w.error))
+    print("%f\t%f\t%f\t%f\t%g" % (x, w.muex[1], w.muex[0], w.muex[1]-w.muex[0], w.error))
 
 import matplotlib.pyplot as plt
 
