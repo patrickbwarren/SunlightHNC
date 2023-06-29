@@ -48,10 +48,12 @@
 # Note the use of computed values for T* = sigma/lB and rho*sigma^3.  Also 1 M = 0.602 molecules per nm^3
 # For the salt, rhoz = [Na+] + [Cl-] = 2 [NaCl], hence the factor 2 in --rhoz
 
-# python3 rpm_explorer.py --solvated --tstar=0.3/0.7 --rhoz=2*0.602*0.3^3 --rhos=10*0.602*0.3^3
-# python3 rpm_explorer.py --solvated --tstar=0.3/0.7 --rhoz=2*0.602*0.3^3 --rhos=40*0.602*0.3^3
+# python3 rpm_explorer.py --solvated --tstar=0.3/0.7 --rhoz=2*0.602*0.3^3 --rho=10*0.602*0.3^3
+# python3 rpm_explorer.py --solvated --tstar=0.3/0.7 --rhoz=2*0.602*0.3^3 --rho=40*0.602*0.3^3
 
 # Add --diam='[0.25/0.3,0.3373/0.3,1]' to reproduce the size-asymmetric model shown in Fig S1.
+
+# Note that the densities are defined such that ρ+ = ρ- = ρz/2 , ρt = ρz + ρs (if solvated)
 
 import argparse
 import math as m
@@ -72,12 +74,13 @@ parser.add_argument('--npic', action='store', default=6, type=int, help='number 
 parser.add_argument('--nps', action='store', default=6, type=int, help='length of history array (default 6)')
 parser.add_argument('--maxsteps', action='store', default=100, type=int, help='number of iterations (default 100)')
 
-parser.add_argument('--diam', action='store', default='[1]', help='hard core diameters (default [1])')
+parser.add_argument('--diam', action='store', default='1', help='hard core diameters (default 1)')
 parser.add_argument('--sigma', action='store', default=0.0, type=float, help='inner core diameter (default min diam)')
 parser.add_argument('--rhoz', action='store', default='0.1', help='total ion density (default 0.1)')
 parser.add_argument('--rhos', action='store', default='0.4', help='added solvent density (default 0.4)')
+parser.add_argument('--rhot', action='store', default=None, help='added solvent density (default computed)')
 parser.add_argument('--tstar', action='store', default='1.0', help='reduced temperature (default 1.0)')
-parser.add_argument('--solvated', action='store_true', help='for solvated primitive models')
+parser.add_argument('-s', '--solvated', action='store_true', help='for solvated primitive models')
 
 parser.add_argument('--rmax', action='store', default=15.0, type=float, help='maximum radial distance (default 15)')
 parser.add_argument('--floor', action='store', default=1e-20, type=float, help='floor for r h(r) (default 1e-20)')
@@ -86,7 +89,7 @@ parser.add_argument('--verbose', action='store_true', help='more output')
 
 args = parser.parse_args()
 
-args.swap = False # which combination of h_ij to show
+args.show = 0
 args.choice = ['both', 'both'] # which signs of h(r) to show
 
 w.ncomp = 3 if args.solvated else 2
@@ -111,10 +114,7 @@ w.lb = 1/tstar_init if tstar_init else 0.0
 
 # Now construct the hard core diameters
 
-diam = eval(args.diam)
-
-if not isinstance(diam, list):
-    diam = [diam]
+diam = eval(f'[{args.diam}]') # wrap into a list
 
 if len(diam) == 1: diam.append(diam[0])
 
@@ -138,24 +138,28 @@ w.sigma = args.sigma
 
 w.rpm_potential()
 
-rhoz_init = eval(args.rhoz.replace('^', '**')) # total charged species density
-rhos_init = eval(args.rhos.replace('^', '**')) # added solvent density
+def to_val(s):
+    '''return a value from a string, replacing exponentiation symbol'''
+    return eval(s.replace('^', '**'))
+
+rhoz_init = to_val(args.rhoz) # total charged species density
+rhos_init = to_val(f'{args.rhot} - {args.rhoz}') if args.rhot is not None else to_val(args.rhos) # solvent density
 
 def solve(rhoz, rhos):
     """solve the structure at the given densities"""
-    w.rho[0] = rhoz/2
+    w.rho[0] = rhoz/2 # single point of truth where the densities are set for the HNC solver
     w.rho[1] = rhoz/2
     if args.solvated:
         w.rho[2] = rhos
     w.hnc_solve()
     if w.return_code: exit()
 
-def selector(individual):
-    """return a list according to  (hnn, hzz) and (h00, h01) representations"""
-    if individual:
-        return [[0.5, 0, 0.5, 'g', '(h00+h11)/2'], [0, 1, 0, 'b', 'h01']]
-    else:
-        return [[0.25, 0.5, 0.25, 'k', '(h00+2h01+h11)/4'], [0.25, -0.5, 0.25, 'r', '(h00-2h01+h11)/4']]
+selectors = [[['np.outer([0.5, 0.5, 0.0], [0.5, 0.5, 0.0])', 'k', '(h00+2h01+h11)/4'],
+              ['np.outer([0.5, -0.5, 0.0], [0.5, -0.5, 0.0])', 'r', '(h00-2h01+h11)/4']],
+             [['np.array([[0.5, 0.0, 0.0], [0.0, 0.5, 0.0], [0.0, 0.0, 0.0]])', 'g', '(h00+h11)/2'],
+              ['np.array([[0.0, 0.5, 0.0], [0.5, 0.0, 0.0], [0.0, 0.0, 0.0]])', 'b', 'h01']],
+             [['np.outer(x, x)', 'k', 'h_ρρ'],
+              ['np.outer([0.5, -0.5, 0.0], [0.5, -0.5, 0.0])', 'r', 'h_zz']]]
 
 def update(val):
     """update state point from sliders, solve, and replot"""
@@ -168,22 +172,41 @@ def update(val):
     solve(rhoz, rhos)
     replot()
 
+def update_both(val):
+    '''call this if should update both sliders to match rhoz'''
+#    rhoz, rhos = [10**slider.val for slider in [rhoz_slider, rhos_slider]] 
+#    rhot = np.sum(w.rho)
+#    new_rhos = rhot - rhoz
+    rhos = np.sum(w.rho) - 10**rhoz_slider.val
+    # print('rhoz, rhos, rhot, new_rhos, new_rhos+rhoz =', rhoz, rhos, rhot, new_rhos, new_rhos+rhoz)
+    rhos_slider.set_val(m.log10(rhos if rhos > 0 else rhos_init))
+    # print('slider vals =', [10**slider.val for slider in [rhoz_slider, rhos_slider]])
+    update(val)
+
 def get_ann_txt():
     """get a string for annotating the plot"""
     rhoz = w.rho[0] + w.rho[1]
     tstar = '%5.3f' % (1/w.lb) if w.lb else '∞'
     if args.solvated:
         rhos = w.rho[2]
-        msg = 'T* = %s  ρz = %8.4f  ρs = %8.4f  HNC err = %0.1g' % (tstar, rhoz, rhos, w.error)
+        msg = 'T, ρ = %s, %8.4f + %8.4f = %8.4f  [err %0.1g]' % (tstar, rhos, rhoz, rhos+rhoz, w.error)
     else:
-        msg = 'T* = %s  ρz = %8.4f  HNC err = %0.1g' % (tstar, rhoz, w.error)
+        msg = 'T, ρ = %s, %8.4f  [err %0.1g]' % (tstar, rhoz, w.error)
     return msg
 
 def replot():
     """replot the lines and re-annotate"""
-    for i, (w00, w01, w11, color, text) in enumerate(selector(args.swap)):
+    for i, (wgts, color, text) in zip([0, 1], selectors[args.show]):
+        x = w.rho / np.sum(w.rho) # mole fractions
+        wgt = eval(wgts) # this covers all cases
+        # print(wgts) ; print(wgt)
         r = w.r[imin:imax]
-        rh_pos = r * (w00*w.hr[imin:imax, 0, 0] + w01*w.hr[imin:imax, 0, 1] + w11*w.hr[imin:imax, 1, 1])
+        h = wgt[0, 0]*w.hr[imin:imax, 0, 0] + wgt[0, 1]*w.hr[imin:imax, 0, 1] \
+            + wgt[1, 0]*w.hr[imin:imax, 1, 0] + wgt[1, 1]*w.hr[imin:imax, 1, 1]
+        if args.solvated:
+            h = h + wgt[0, 2]*w.hr[imin:imax, 0, 2] + wgt[1, 2]*w.hr[imin:imax, 1, 2] \
+                + wgt[2, 2]*w.hr[imin:imax, 2, 2]
+        rh_pos = r * h
         rh_neg = - rh_pos
         rh_pos[rh_pos < args.floor] = args.floor
         rh_neg[rh_neg < args.floor] = args.floor
@@ -251,11 +274,11 @@ else:
 
 ax_rhoz = plt.axes([0.25, 0.10 if tstar_slider else 0.05, 0.65, 0.03], facecolor=back_color)
 rhoz_slider = Slider(ax_rhoz, 'ρ_z', -3, 0, valinit=m.log10(rhoz_init), valfmt='%5.3f')
-rhoz_slider.on_changed(update)
+rhoz_slider.on_changed(update_both if args.solvated and args.rhot is not None else update)
 
 if args.solvated:
-    ax_rhos = plt.axes([0.25, 0.15 if tstar_slider else 0.10, 0.65, 0.03], facecolor=back_color)
-    rhos_slider = Slider(ax_rhos, 'ρ_s', -3, 0, valinit=m.log10(rhos_init), valfmt='%5.3f')
+    ax_rho = plt.axes([0.25, 0.15 if tstar_slider else 0.10, 0.65, 0.03], facecolor=back_color)
+    rhos_slider = Slider(ax_rho, 'ρ_t' if args.solvated else 'ρ_s', -3, 0, valinit=m.log10(rhos_init), valfmt='%5.3f')
     rhos_slider.on_changed(update)
 else:
     rhos_slider = None
@@ -284,22 +307,22 @@ for i in [0, 1]:
     choice[i] = RadioButtons(ax_choice[i], ('none', '+ve', '-ve', 'both'), active=3)
     choice[i].on_clicked(radio[i])
 
-for i, (w00, w01, w11, color, text) in enumerate(selector(args.swap)):
+for i, (wgts, color, text) in zip([0, 1], selectors[args.show]):
     [ label.set_color(color) for label in choice[i].labels ]
 
-def swap(event):
-    """swap between (hnn, hzz) and (h00, h01) representations"""
-    args.swap = not args.swap
-    for i, (w00, w01, w11, color, text) in enumerate(selector(args.swap)):
+def advance(event):
+    """advance between (hnn, hzz) and (h00, h01) representations"""
+    args.show = (args.show + 1) % len(selectors) # advance through the selections
+    for i, (wgts, color, text) in zip([0, 1], selectors[args.show]):
         [ line[2*i+j].set_color(color) for j in [0, 1] ]
         label[i].set_color(color)
         label[i].set_text(text)
         [ label.set_color(color) for label in choice[i].labels ]
     replot()
 
-ax_swap = plt.axes([0.05, 0.20, 0.1, 0.03])
-swap_button = Button(ax_swap, 'swap', color=back_color,  hovercolor='0.975')
-swap_button.on_clicked(swap)
+ax_advance = plt.axes([0.05, 0.20, 0.1, 0.03])
+advance_button = Button(ax_advance, 'cycle', color=back_color,  hovercolor='0.975')
+advance_button.on_clicked(advance)
 
 def reset(event):
     """reset all slider positions and plot area"""
@@ -475,8 +498,8 @@ if tstar_slider:
     log_slider[tstar_slider] = False
 
 if rhos_slider:
-    sliders[ax_rhos] = rhos_slider
-    slider_name[rhos_slider] = 'rho_s'
+    sliders[ax_rho] = rhos_slider
+    slider_name[rhos_slider] = 'rho_t' if args.rhot is not None else 'rho_s'
     log_slider[rhos_slider] = True
 
 ss = SliderScroll(ax).factory(sliders)
