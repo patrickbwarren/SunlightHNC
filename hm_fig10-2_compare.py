@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 
 # This file is part of SunlightDPD - a home for open source software
 # related to the dissipative particle dynamics (DPD) simulation
@@ -53,14 +54,23 @@ data = [[0.00911,  0.1029, 0.0013,  0.0044, 0.0007,  0.9701, 0.0008],
 # the RPM appears to deviate too far from the hard sphere solution to
 # be a good starting point.
 
+import argparse
 import math as m
+from oz import wizard as w
 
 xdat = list(m.sqrt(0.425**3 * 1.204 * data[i][0]) for i in range(len(data)))
 nundat = list(data[i][1] for i in range(len(data)))
 ctcdat = list(data[i][3] for i in range(len(data)))
 compdat = list(data[i][5] for i in range(len(data)))
 
-from oz import wizard as w
+parser = argparse.ArgumentParser(description='Reproduce Fig 10-2 from Hansen and McDonald')
+parser.add_argument('--hnc', action='store_true', help='include HNC prediction')
+parser.add_argument('--msa', action='store_true', help='include MSA prediction')
+parser.add_argument('--exp', action='store_true', help='include EXP prediction')
+args = parser.parse_args()
+
+if not args.hnc and not args.msa and not args.exp:
+    args.hnc = args.msa = args.exp = True
 
 w.ng = 8192
 w.ncomp = 2
@@ -92,45 +102,59 @@ for i in range(npt):
     lr = lrlo + (lrhi - lrlo) * i / (npt - 1.0)
     rho = m.exp(lr)
     x.append(m.sqrt(rho))
-    w.rho[0] = 0.5 * rho
-    w.rho[1] = 0.5 * rho
-    w.hnc_solve()
-    y[0].append(-w.uex/rho)
-    y[1].append(1.0 + w.cf_gc + w.cf_xc)
-    print("%i\t%f\t%f\t%f\t%g\tHNC" %
-          (i, m.sqrt(rho), w.uex/rho, w.cf_gc, w.error))
-    w.msa_solve()
-    y[2].append(-w.uex/rho)
-    y[3].append(1.0 + w.cf_gc + w.cf_xc)
-    print("%i\t%f\t%f\t%f\t%g\tMSA" %
-          (i, m.sqrt(rho), w.uex/rho, w.cf_gc, w.error))
 
-for i in range(npt):
-    rho = x[i]**2
-    w.rho[0] = 0.5 * rho
-    w.rho[1] = 0.5 * rho
-    w.cold_start = True
-    w.hs_potential()
-    w.msa_solve()
-    w.save_reference()
-    w.rpm_potential()
-    w.msa_solve()
-    w.exp_refine()
-    y[4].append(-w.uex/rho)
-    y[5].append(1.0 + w.cf_gc + w.cf_xc)
-    print("%i\t%f\t%f\t%f\t%g\tEXP" %
-          (i, m.sqrt(rho), w.uex/rho, w.cf_gc, w.error))
+if args.hnc:
+    for i in range(npt):
+        rho = x[i]**2
+        w.rho[0] = 0.5 * rho
+        w.rho[1] = 0.5 * rho
+        w.hnc_solve()
+        y[0].append(-w.uex/rho)
+        y[1].append(1.0 + w.cf_gc + w.cf_xc)
+        print("%i\t%f\t%f\t%f\t%g\t%g\tHNC" %
+              (i, m.sqrt(rho), w.uex/rho, w.cf_gc, w.cf_xc, w.error))
+        
+if args.msa:
+    for i in range(npt):
+        rho = x[i]**2
+        w.rho[0] = 0.5 * rho
+        w.rho[1] = 0.5 * rho
+        w.msa_solve()
+        y[2].append(-w.uex/rho)
+        y[3].append(1.0 + w.cf_gc + w.cf_xc)
+        print("%i\t%f\t%f\t%f\t%g\tMSA" %
+              (i, m.sqrt(rho), w.uex/rho, w.cf_gc, w.error))
+
+if args.exp:
+    for i in range(npt):
+        rho = x[i]**2
+        w.rho[0] = 0.5 * rho
+        w.rho[1] = 0.5 * rho
+        w.cold_start = True
+        w.hs_potential()
+        w.msa_solve()
+        w.save_reference()
+        w.rpm_potential()
+        w.msa_solve()
+        w.exp_refine()
+        y[4].append(-w.uex/rho)
+        y[5].append(1.0 + w.cf_gc + w.cf_xc)
+        print("%i\t%f\t%f\t%f\t%g\tEXP" %
+              (i, m.sqrt(rho), w.uex/rho, w.cf_gc, w.error))
 
 import matplotlib.pyplot as plt
 
-plt.plot(xdat, nundat, 'ro', label='Rasaiah et al (1972): -U/N')
+plt.plot(xdat, nundat, 'ro', label='Rasaiah et al (1972): −U/N')
 plt.plot(xdat, compdat, 'co', label='Rasaiah et al (1972): p')
-plt.plot(x, y[0], 'k-', label='HNC')
-plt.plot(x, y[1], 'k-')
-plt.plot(x, y[2], 'b--', label='MSA')
-plt.plot(x, y[3], 'b--')
-plt.plot(x[0:npt], y[4], 'r--', label='EXP')
-plt.plot(x[0:npt], y[5], 'r--')
+if args.hnc:
+    plt.plot(x, y[0], 'k-', label='HNC')
+    plt.plot(x, y[1], 'k-')
+if args.msa:
+    plt.plot(x, y[2], 'b--', label='MSA')
+    plt.plot(x, y[3], 'b--')
+if args.exp:
+    plt.plot(x[0:npt], y[4], 'r--', label='EXP')
+    plt.plot(x[0:npt], y[5], 'r--')
 plt.xlabel('$(\\rho\\sigma^3)^{1/2}$')
 plt.ylabel('$-U_N$ and $\\beta p/\\rho$')
 plt.legend(loc='upper left')

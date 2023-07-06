@@ -45,7 +45,8 @@
 
 # The following correspond to the Fig 1 insets in Coupette et al., PRL 121, 075501 (2018)
 # For this lB = 0.7 nm, sigma = 0.3 nm, [salt] = 1 M, and [solvent] = 10 M and 40 M.
-# Note the use of computed values for T* = sigma/lB and rho*sigma^3.  Also 1 M = 0.602 molecules per nm^3
+# Note the use of computed values for T* = sigma/lB and rho*sigma^3.
+# Also 1 M = 0.602 molecules per nm^3
 # For the salt, rhoz = [Na+] + [Cl-] = 2 [NaCl], hence the factor 2 in --rhoz
 
 # python3 rpm_explorer.py --solvated --tstar=0.3/0.7 --rhoz=2*0.602*0.3^3 --rho=10*0.602*0.3^3
@@ -63,6 +64,15 @@ import matplotlib.pyplot as plt
 from numpy import pi as π
 from oz import wizard as w
 from matplotlib.widgets import Slider, Button, RadioButtons
+
+# What might be shown in the plot:
+
+selectors = [[['np.outer([0.5, 0.5, 0.0], [0.5, 0.5, 0.0])', 'k', '(h00+2h01+h11)/4'],
+              ['np.outer([0.5, -0.5, 0.0], [0.5, -0.5, 0.0])', 'r', '(h00-2h01+h11)/4']],
+             [['np.array([[0.5, 0.0, 0.0], [0.0, 0.5, 0.0], [0.0, 0.0, 0.0]])', 'g', '(h00+h11)/2'],
+              ['np.array([[0.0, 0.5, 0.0], [0.5, 0.0, 0.0], [0.0, 0.0, 0.0]])', 'b', '(h01+h10)/2']],
+             [['np.outer(x, x)', 'k', 'h_ρρ'],
+              ['np.outer(z, z)', 'y', 'h_zz']]]
 
 parser = argparse.ArgumentParser(description='Interactive RPM explorer')
 
@@ -154,13 +164,6 @@ def solve(rhoz, rhos):
     w.hnc_solve()
     if w.return_code: exit()
 
-selectors = [[['np.outer([0.5, 0.5, 0.0], [0.5, 0.5, 0.0])', 'k', '(h00+2h01+h11)/4'],
-              ['np.outer([0.5, -0.5, 0.0], [0.5, -0.5, 0.0])', 'r', '(h00-2h01+h11)/4']],
-             [['np.array([[0.5, 0.0, 0.0], [0.0, 0.5, 0.0], [0.0, 0.0, 0.0]])', 'g', '(h00+h11)/2'],
-              ['np.array([[0.0, 0.5, 0.0], [0.5, 0.0, 0.0], [0.0, 0.0, 0.0]])', 'b', 'h01']],
-             [['np.outer(x, x)', 'k', 'h_ρρ'],
-              ['np.outer([0.5, -0.5, 0.0], [0.5, -0.5, 0.0])', 'r', 'h_zz']]]
-
 def update(val):
     """update state point from sliders, solve, and replot"""
     if tstar_slider:
@@ -198,6 +201,7 @@ def replot():
     """replot the lines and re-annotate"""
     for i, (wgts, color, text) in zip([0, 1], selectors[args.show]):
         x = w.rho / np.sum(w.rho) # mole fractions
+        z = 0.5 * w.z # for charge-charge correlation
         wgt = eval(wgts) # this covers all cases
         # print(wgts) ; print(wgt)
         r = w.r[imin:imax]
@@ -312,7 +316,8 @@ for i, (wgts, color, text) in zip([0, 1], selectors[args.show]):
 
 def advance(event):
     """advance between (hnn, hzz) and (h00, h01) representations"""
-    args.show = (args.show + 1) % len(selectors) # advance through the selections
+    max_show = len(selectors) if args.solvated else (len(selectors)-1)
+    args.show = (args.show + 1) % max_show # advance through the selections
     for i, (wgts, color, text) in zip([0, 1], selectors[args.show]):
         [ line[2*i+j].set_color(color) for j in [0, 1] ]
         label[i].set_color(color)
