@@ -56,6 +56,8 @@
 
 # Note that the densities are defined such that ρ+ = ρ- = ρz/2 , ρt = ρz + ρs (if solvated)
 
+# Note 
+
 import argparse
 import math as m
 import numpy as np
@@ -65,14 +67,17 @@ from numpy import pi as π
 from oz import wizard as w
 from matplotlib.widgets import Slider, Button, RadioButtons
 
-# What might be shown in the plot:
+# What should be shown in the plot:
 
-selectors = [[['np.outer([0.5, 0.5, 0.0], [0.5, 0.5, 0.0])', 'k', '(h00+2h01+h11)/4'],
-              ['np.outer([0.5, -0.5, 0.0], [0.5, -0.5, 0.0])', 'r', '(h00-2h01+h11)/4']],
-             [['np.array([[0.5, 0.0, 0.0], [0.0, 0.5, 0.0], [0.0, 0.0, 0.0]])', 'g', '(h00+h11)/2'],
-              ['np.array([[0.0, 0.5, 0.0], [0.5, 0.0, 0.0], [0.0, 0.0, 0.0]])', 'b', '(h01+h10)/2']],
-             [['np.outer(x, x)', 'k', 'h_ρρ'],
-              ['np.outer(z, z)', 'y', 'h_zz']]]
+ion_dd = np.array([0.5, 0.5, 0.0])
+solv = np.array([0.0, 0.0, 1.0])
+
+select_dd_zz = [['np.outer(ion_dd, ion_dd)', 'r', '(h00+2h01+h11)/4'],
+                ['np.outer(solv, solv)', 'y', '(h00+2h01+h11)/4'],
+                ['np.outer(x, x)', 'k', 'h_ρρ'],
+                ['np.outer(z, z)', 'y', 'h_zz']]
+
+selectors = [select_dd_zz]
 
 parser = argparse.ArgumentParser(description='Interactive RPM explorer')
 
@@ -235,7 +240,7 @@ plt.subplots_adjust(left=0.25, bottom=0.30)
 ax.set_xlim([1, args.rmax])
 ax.set_ylim([-12, 1])
 ax.set_xlabel('r / σ')
-ax.set_ylabel('log10[- r h(r)]')
+ax.set_ylabel('log10 |r×h(r)|')
 
 # report on diameters
 
@@ -299,26 +304,41 @@ def radio2(val):
     args.choice[1] = val
     replot()
 
-radio = [radio1, radio2]
+def radio3(val):
+    """Select between showing both, +ve, -ve or none for second h(r)"""
+    args.choice[1] = val
+    replot()
 
-ax_choice = [None, None]
-ax_choice[0] = plt.axes([0.05, 0.42, 0.1, 0.15])
-ax_choice[1] = plt.axes([0.05, 0.25, 0.1, 0.15])
+def radio4(val):
+    """Select between showing both, +ve, -ve or none for second h(r)"""
+    args.choice[1] = val
+    replot()
 
-choice = [None, None]
+radios = [radio1, radio2, radio3, radio4]
+nradios = len(radios)
 
-for i in [0, 1]:
+ax_choice = [None] * nradios
+
+for i in range(nradios):
+    ax_choice[i] = plt.axes([0.05, 0.25+i*0.17, 0.1, 0.15])
+
+#ax_choice[0] = plt.axes([0.05, 0.42, 0.1, 0.15])
+#ax_choice[1] = plt.axes([0.05, 0.25, 0.1, 0.15])
+
+choice = [None] * nradios
+
+for i in range(nradios):
     choice[i] = RadioButtons(ax_choice[i], ('none', '+ve', '-ve', 'both'), active=3)
-    choice[i].on_clicked(radio[i])
+    choice[i].on_clicked(radios[i])
 
-for i, (wgts, color, text) in zip([0, 1], selectors[args.show]):
+for i, (wgts, color, text) in zip(range(nradios), selectors[args.show]):
     [ label.set_color(color) for label in choice[i].labels ]
 
 def advance(event):
     """advance between (hnn, hzz) and (h00, h01) representations"""
     args.show = (args.show + 1) % len(selectors) # advance through the selections
-    for i, (wgts, color, text) in zip([0, 1], selectors[args.show]):
-        [ line[2*i+j].set_color(color) for j in [0, 1] ]
+    for i, (wgts, color, text) in zip(range(nradios), selectors[args.show]):
+        [ line[nradios*i+j].set_color(color) for j in [0, 1] ]
         label[i].set_color(color)
         label[i].set_text(text)
         [ label.set_color(color) for label in choice[i].labels ]
