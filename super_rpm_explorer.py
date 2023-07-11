@@ -69,16 +69,6 @@ from matplotlib.widgets import Slider, Button, RadioButtons
 
 # What should be shown in the plot:
 
-ion_dd = np.array([0.5, 0.5, 0.0])
-solv = np.array([0.0, 0.0, 1.0])
-
-select_dd_zz = [['np.outer(ion_dd, ion_dd)', 'r', '(h00+2h01+h11)/4'],
-                ['np.outer(solv, solv)', 'y', '(h00+2h01+h11)/4'],
-                ['np.outer(x, x)', 'k', 'h_ρρ'],
-                ['np.outer(z, z)', 'y', 'h_zz']]
-
-selectors = [select_dd_zz]
-
 parser = argparse.ArgumentParser(description='Interactive RPM explorer')
 
 parser.add_argument('--ng', action='store', default='16384', help='number of grid points (default 2^14 = 16384)')
@@ -104,8 +94,25 @@ parser.add_argument('--verbose', action='store_true', help='more output')
 
 args = parser.parse_args()
 
-args.show = 0
-args.choice = ['both', 'both'] # which signs of h(r) to show
+solv = np.array([0.0, 0.0, 1.0])
+
+h_dd = ['np.outer(x, x)', 'k', 'h_ρρ']
+h_zz = ['np.outer(z, z)', 'r', 'h_zz']
+h_00 = ['np.outer([1.0, 0.0], [1.0, 0.0])', 'b', 'h_00']
+h_01 = ['np.array([[0.0, 0.5], [0.5, 0.0]])', 'y', 'h_01']
+
+rpm_selectors = [[h_dd, h_zz, h_00, h_01]]
+#rpm_sel_dd_zz = [
+                 
+ion_d = np.array([0.5, 0.5, 0.0])
+h_ion_dd = ['np.outer(ion_d, ion_d)', 'b', 'h00 +']
+
+solvated_selectors = [[h_dd, h_zz, ion_dd, h_22]]
+
+selectors = solvated_selectors if args.solvated else rpm_selectors
+
+selected = 0
+hr_choice = ['both', 'both'] # which signs of h(r) to show
 
 w.ncomp = 3 if args.solvated else 2
 w.ng = eval(args.ng.replace('^', '**')) # catch 2^10 etc
@@ -204,7 +211,7 @@ def get_ann_txt():
 
 def replot():
     """replot the lines and re-annotate"""
-    for i, (wgts, color, text) in zip([0, 1], selectors[args.show]):
+    for i, (wgts, color, text) in zip([0, 1], selectors[selected]):
         x = w.rho / np.sum(w.rho) # mole fractions
         z = 0.5 * w.z # for charge-charge correlation
         wgt = eval(wgts) # this covers all cases
@@ -226,7 +233,7 @@ def replot():
             line[2*i], = ax.plot(r, np.log10(rh_neg), color+'-')
             line[2*i+1], = ax.plot(r, np.log10(rh_pos), color+'--')
             label[i] = ax.annotate(text, xy=(0.2+0.4*i, 0.92), color=color, xycoords='axes fraction')
-        choice = args.choice[i]
+        choice = hr_choice[i]
         line[2*i].set_linestyle('None' if choice == 'none' or choice == '-ve' else 'solid')
         line[2*i+1].set_linestyle('None' if choice == 'none' or choice == '+ve' else 'dashed')
     ann.set_text(get_ann_txt())
@@ -293,28 +300,29 @@ else:
     rhos_slider = None
 
 # Set up buttons
+# This should really be better done with a closures
 
 def radio1(val):
     """Select between showing both, +ve, -ve or none for first h(r)"""
-    args.choice[0] = val
+    hr_choice[0] = val
     replot()
 
 def radio2(val):
     """Select between showing both, +ve, -ve or none for second h(r)"""
-    args.choice[1] = val
+    hr_choice[1] = val
     replot()
 
 def radio3(val):
     """Select between showing both, +ve, -ve or none for second h(r)"""
-    args.choice[1] = val
+    hr_choice[2] = val
     replot()
 
 def radio4(val):
     """Select between showing both, +ve, -ve or none for second h(r)"""
-    args.choice[1] = val
+    hr_choice[3] = val
     replot()
 
-radios = [radio1, radio2, radio3, radio4]
+radios = [radio1, radio2] if args.solvated else [radio1, radio2, radio3, radio4]
 nradios = len(radios)
 
 ax_choice = [None] * nradios
@@ -331,17 +339,19 @@ for i in range(nradios):
     choice[i] = RadioButtons(ax_choice[i], ('none', '+ve', '-ve', 'both'), active=3)
     choice[i].on_clicked(radios[i])
 
-for i, (wgts, color, text) in zip(range(nradios), selectors[args.show]):
+for i, (wgts, color, text) in enumerate(selectors[selected]):
     [ label.set_color(color) for label in choice[i].labels ]
 
 def advance(event):
     """advance between (hnn, hzz) and (h00, h01) representations"""
-    args.show = (args.show + 1) % len(selectors) # advance through the selections
-    for i, (wgts, color, text) in zip(range(nradios), selectors[args.show]):
-        [ line[nradios*i+j].set_color(color) for j in [0, 1] ]
+    selected = (selected + 1) % len(selectors) # advance through the selections
+    for i, (wgts, color, text) in enumerate(selectors[selected]):
+        for j in range(nradios):
+            line[nradios*i+j].set_color(color)
         label[i].set_color(color)
         label[i].set_text(text)
-        [ label.set_color(color) for label in choice[i].labels ]
+        for label in choice[i].labels:
+            label.set_color(color)
     replot()
 
 ax_advance = plt.axes([0.05, 0.20, 0.1, 0.03])
