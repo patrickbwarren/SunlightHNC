@@ -41,7 +41,8 @@
 # scroll with mouse wheel for medium adjustment
 # shift + mouse wheel for fine adjustment
 # control + mouse wheel for coarse adjustment
-# press and release spacebar to request entry of a specific value (in terminal window)
+# spacebar to either dump a state point (pointer outside sliders)
+# or request entry of a specific value (pointer on a slider)
 
 # The following correspond to the Fig 1 insets in Coupette et al., PRL 121, 075501 (2018)
 # For this lB = 0.7 nm, sigma = 0.3 nm, [salt] = 1 M, and [solvent] = 10 M and 40 M.
@@ -54,9 +55,7 @@
 
 # Add --diam='[0.25/0.3,0.3373/0.3,1]' to reproduce the size-asymmetric model shown in Fig S1.
 
-# Note that the densities are defined such that ρ+ = ρ- = ρz/2 , ρt = ρz + ρs (if solvated)
-
-# Note 
+# Note that the densities are defined such that ρ+ = ρ- = ρz/2 and ρt = ρz + ρs (if solvated)
 
 import argparse
 import math as m
@@ -67,7 +66,7 @@ from numpy import pi as π
 from oz import wizard as w
 from matplotlib.widgets import Slider, Button, RadioButtons
 
-parser = argparse.ArgumentParser(description='Interactive RPM explorer')
+parser = argparse.ArgumentParser(description='Interactive super RPM explorer')
 
 parser.add_argument('--ng', action='store', default='16384', help='number of grid points (default 2^14 = 16384)')
 parser.add_argument('--deltar', action='store', default=1e-3, type=float, help='grid spacing (default 1e-3)')
@@ -113,13 +112,14 @@ h_zz = ['np.outer(z, z)', 'r', 'h_zz']
 rpm_selectors = [[h_dd, h_zz], [h_00, h_01]]
 
 # Additional correlation coefficients defined for the solvated PM.
+# ion below refers to the densities of the charged particles
 
-ion_d = np.array([0.5, 0.5, 0.0])
+ions_d = np.array([0.5, 0.5, 0.0])
 solv_d= np.array([0.0, 0.0, 1.0])
-h_ion_dd = ['np.outer(ion_d, ion_d)', 'b', 'h_ion_dd']
+h_ions = ['np.outer(ions_d, ions_d)', 'b', 'h_ions']
 h_solv = ['np.outer(solv_d, solv_d)', 'y', 'h_solv']
 
-solvated_selectors = [[h_ion_dd, h_zz, h_solv, h_dd],
+solvated_selectors = [[h_ions, h_zz, h_solv, h_dd],
                       [h_00, h_01, h_02, h_22]]
 
 selectors = solvated_selectors if args.solvated else rpm_selectors
@@ -229,7 +229,7 @@ def replot():
         x = w.rho / np.sum(w.rho) # mole fractions
         z = 0.5 * w.z # for charge-charge correlation
         wgt = eval(wgts) # this covers all cases
-        print(i, 'wgts' , wgts, ' ; color', color, ', text', text) ; print(wgt)
+        # print(i, 'wgts' , wgts, ' ; color', color, ', text', text) ; print(wgt)
         r = w.r[imin:imax]
         h = wgt[0, 0]*w.hr[imin:imax, 0, 0] + wgt[0, 1]*w.hr[imin:imax, 0, 1] \
             + wgt[1, 0]*w.hr[imin:imax, 1, 0] + wgt[1, 1]*w.hr[imin:imax, 1, 1]
@@ -308,7 +308,7 @@ rhoz_slider.on_changed(update_both if args.solvated and args.rhot is not None el
 
 if args.solvated:
     ax_rho = plt.axes([0.25, 0.15 if tstar_slider else 0.10, 0.65, 0.03], facecolor=back_color)
-    rhos_slider = Slider(ax_rho, 'ρ_t' if args.solvated else 'ρ_s', -3, 0, valinit=m.log10(rhos_init), valfmt='%5.3f')
+    rhos_slider = Slider(ax_rho, 'ρ_s', -3, 0, valinit=m.log10(rhos_init), valfmt='%5.3f')
     rhos_slider.on_changed(update)
 else:
     rhos_slider = None
@@ -369,7 +369,7 @@ def advance(event):
             lab.set_color(color)
     replot()
 
-ax_advance = plt.axes([0.05, 0.20, 0.1, 0.03])
+ax_advance = plt.axes([0.05, 0.15, 0.1, 0.03])
 advance_button = Button(ax_advance, 'cycle', color=back_color,  hovercolor='0.975')
 advance_button.on_clicked(advance)
 
@@ -384,21 +384,9 @@ def reset(event):
     ax.set_ylim([-12, 1])
     ax.figure.canvas.draw()
 
-ax_reset = plt.axes([0.05, 0.15, 0.1, 0.03])
+ax_reset = plt.axes([0.05, 0.10, 0.1, 0.03])
 reset_button = Button(ax_reset, 'reset', color=back_color, hovercolor='0.975')
 reset_button.on_clicked(reset)
-
-def dump(event):
-    """write state point (T*, rho_z, kappa, [rho_s]) to std out"""
-    rhoz = w.rho[0] + w.rho[1]
-    kappa = m.sqrt(4*π*w.lb*rhoz)
-    rhos = w.rho[2] if args.solvated else 0
-    tstar = '%g' % (1/w.lb) if w.lb else '∞'
-    print('%s\t%g\t%g\t%g\t%g' % (tstar, rhos, rhoz, rhoz+rhoz, kappa))
-
-ax_dump = plt.axes([0.05, 0.10, 0.1, 0.03])
-dump_button = Button(ax_dump, 'dump', color=back_color, hovercolor='0.975')
-dump_button.on_clicked(dump)
 
 def quit(event):
     exit(0)
@@ -529,6 +517,12 @@ class SliderScroll:
                         update(val)
                     except ValueError:
                         print('invalid number ', s)
+                else:
+                    rhoz = w.rho[0] + w.rho[1]
+                    kappa = m.sqrt(4*π*w.lb*rhoz)
+                    rhos = w.rho[2] if args.solvated else 0
+                    tstar = '%g' % (1/w.lb) if w.lb else 'inf'
+                    print('%s\t%g\t%g\t%g\t%g\tstate_point' % (tstar, rhos, rhoz, rhos+rhoz, kappa))
 
         fig = self.ax.get_figure()
         fig.canvas.mpl_connect('scroll_event', scroll)
@@ -548,7 +542,7 @@ if tstar_slider:
 
 if rhos_slider:
     sliders[ax_rho] = rhos_slider
-    slider_name[rhos_slider] = 'rho_t' if args.rhot is not None else 'rho_s'
+    slider_name[rhos_slider] = 'rho_s'
     log_slider[rhos_slider] = True
 
 ss = SliderScroll(ax).factory(sliders)
