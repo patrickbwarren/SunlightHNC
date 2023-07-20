@@ -67,8 +67,6 @@ from numpy import pi as π
 from oz import wizard as w
 from matplotlib.widgets import Slider, Button, RadioButtons
 
-# What should be shown in the plot:
-
 parser = argparse.ArgumentParser(description='Interactive RPM explorer')
 
 parser.add_argument('--ng', action='store', default='16384', help='number of grid points (default 2^14 = 16384)')
@@ -94,25 +92,41 @@ parser.add_argument('--verbose', action='store_true', help='more output')
 
 args = parser.parse_args()
 
-solv = np.array([0.0, 0.0, 1.0])
+# What should be shown in the plot:
+
+if args.solvated:
+    h_00 = ['np.outer([1.0, 0.0, 0.0], [1.0, 0.0, 0.0])', 'b', 'h_00']
+    h_01 = ['np.array([[0.0, 0.5, 0.0], [0.5, 0.0, 0.0], [0.0, 0.0, 0.0]])', 'r', 'h_01']
+    h_02 = ['np.array([[0.0, 0.0, 0.5], [0.0, 0.0, 0.0], [0.5, 0.0, 0.0]])', 'y', 'h_02']
+    h_22 = ['np.outer([0.0, 0.0, 1.0], [0.0, 0.0, 1.0])', 'k', 'h_00']
+else:
+    h_00 = ['np.outer([1.0, 0.0], [1.0, 0.0])', 'b', 'h_00']
+    h_01 = ['np.array([[0.0, 0.5], [0.5, 0.0]])', 'y', 'h_01']
+    h_02 = None
+    h_22 = None
+
+# These hold for both RPM and solvated PM.
 
 h_dd = ['np.outer(x, x)', 'k', 'h_ρρ']
 h_zz = ['np.outer(z, z)', 'r', 'h_zz']
-h_00 = ['np.outer([1.0, 0.0], [1.0, 0.0])', 'b', 'h_00']
-h_01 = ['np.array([[0.0, 0.5], [0.5, 0.0]])', 'y', 'h_01']
 
-rpm_selectors = [[h_dd, h_zz, h_00, h_01]]
-#rpm_sel_dd_zz = [
-                 
+rpm_selectors = [[h_dd, h_zz], [h_00, h_01]]
+
+# Additional correlation coefficients defined for the solvated PM.
+
 ion_d = np.array([0.5, 0.5, 0.0])
-h_ion_dd = ['np.outer(ion_d, ion_d)', 'b', 'h00 +']
+solv_d= np.array([0.0, 0.0, 1.0])
+h_ion_dd = ['np.outer(ion_d, ion_d)', 'b', 'h_ion_dd']
+h_solv = ['np.outer(solv_d, solv_d)', 'y', 'h_solv']
 
-solvated_selectors = [[h_dd, h_zz, ion_dd, h_22]]
+solvated_selectors = [[h_ion_dd, h_zz, h_solv, h_dd],
+                      [h_00, h_01, h_02, h_22]]
 
 selectors = solvated_selectors if args.solvated else rpm_selectors
 
-selected = 0
-hr_choice = ['both', 'both'] # which signs of h(r) to show
+selected = 0 # initial selection
+
+hr_choice = ['both'] * 4 # which signs of h(r) to show
 
 w.ncomp = 3 if args.solvated else 2
 w.ng = eval(args.ng.replace('^', '**')) # catch 2^10 etc
@@ -160,12 +174,12 @@ w.sigma = args.sigma
 
 w.rpm_potential()
 
-def to_val(s):
+def arg_to_val(s):
     '''return a value from a string, replacing exponentiation symbol'''
     return eval(s.replace('^', '**'))
 
-rhoz_init = to_val(args.rhoz) # total charged species density
-rhos_init = to_val(f'{args.rhot} - {args.rhoz}') if args.rhot is not None else to_val(args.rhos) # solvent density
+rhoz_init = arg_to_val(args.rhoz) # total charged species density
+rhos_init = arg_to_val(f'{args.rhot} - {args.rhoz}') if args.rhot is not None else arg_to_val(args.rhos) # solvent density
 
 def solve(rhoz, rhos):
     """solve the structure at the given densities"""
@@ -211,11 +225,11 @@ def get_ann_txt():
 
 def replot():
     """replot the lines and re-annotate"""
-    for i, (wgts, color, text) in zip([0, 1], selectors[selected]):
+    for i, (wgts, color, text) in enumerate(selectors[selected]):
         x = w.rho / np.sum(w.rho) # mole fractions
         z = 0.5 * w.z # for charge-charge correlation
         wgt = eval(wgts) # this covers all cases
-        # print(wgts) ; print(wgt)
+        print(i, 'wgts' , wgts, ' ; color', color, ', text', text) ; print(wgt)
         r = w.r[imin:imax]
         h = wgt[0, 0]*w.hr[imin:imax, 0, 0] + wgt[0, 1]*w.hr[imin:imax, 0, 1] \
             + wgt[1, 0]*w.hr[imin:imax, 1, 0] + wgt[1, 1]*w.hr[imin:imax, 1, 1]
@@ -232,7 +246,7 @@ def replot():
         else: # plotting for the first time
             line[2*i], = ax.plot(r, np.log10(rh_neg), color+'-')
             line[2*i+1], = ax.plot(r, np.log10(rh_pos), color+'--')
-            label[i] = ax.annotate(text, xy=(0.2+0.4*i, 0.92), color=color, xycoords='axes fraction')
+            label[i] = ax.annotate(text, xy=(0.2+0.2*i, 0.92), color=color, xycoords='axes fraction')
         choice = hr_choice[i]
         line[2*i].set_linestyle('None' if choice == 'none' or choice == '-ve' else 'solid')
         line[2*i+1].set_linestyle('None' if choice == 'none' or choice == '+ve' else 'dashed')
@@ -269,8 +283,8 @@ ax.annotate(txt, xy=(0.02, 1.08), xycoords='axes fraction')
 imin = int(1.0 / w.deltar)
 imax = int(args.rmax / w.deltar)
 
-line = [None, None, None, None] # will contain the data for the lines
-label = [None, None] # will contain the labels for the lines
+line = [None, None] * 4 # will contain the data for the lines
+label = [None] * 4 # will contain the labels for the lines
 
 ann = ax.annotate(get_ann_txt(), xy=(0.02, 1.02), xycoords='axes fraction')
 
@@ -322,7 +336,7 @@ def radio4(val):
     hr_choice[3] = val
     replot()
 
-radios = [radio1, radio2] if args.solvated else [radio1, radio2, radio3, radio4]
+radios = [radio1, radio2, radio3, radio4] if args.solvated else [radio1, radio2]
 nradios = len(radios)
 
 ax_choice = [None] * nradios
@@ -344,14 +358,15 @@ for i, (wgts, color, text) in enumerate(selectors[selected]):
 
 def advance(event):
     """advance between (hnn, hzz) and (h00, h01) representations"""
+    global selected, line, label
     selected = (selected + 1) % len(selectors) # advance through the selections
     for i, (wgts, color, text) in enumerate(selectors[selected]):
-        for j in range(nradios):
-            line[nradios*i+j].set_color(color)
+        for j in [0, 1]:
+            line[2*i+j].set_color(color)
         label[i].set_color(color)
         label[i].set_text(text)
-        for label in choice[i].labels:
-            label.set_color(color)
+        for lab in choice[i].labels:
+            lab.set_color(color)
     replot()
 
 ax_advance = plt.axes([0.05, 0.20, 0.1, 0.03])
