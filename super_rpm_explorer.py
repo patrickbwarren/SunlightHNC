@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-# This file includes unicode characters like π = 3.14159
-
 # This file is part of SunlightDPD - a home for open source software
 # related to the dissipative particle dynamics (DPD) simulation
 # method.
@@ -10,6 +8,8 @@
 # Main script copyright (c) 2009-2019 Unilever UK Central Resources Ltd
 # (Registered in England & Wales, Company No 29140; Registered
 # Office: Unilever House, Blackfriars, London, EC4P 4BQ, UK).
+
+# Updates copyright (x) 2021-2023 Patrick B Warren.
 
 # ZoomPan was adapted from
 # https://stackoverflow.com/questions/11551049/matplotlib-plot-zooming-with-scroll-wheel
@@ -29,7 +29,7 @@
 # along with SunlightDPD.  If not, see <http://www.gnu.org/licenses/>.
 
 # By default this is for RPM without solvent
-# Run with --solvated for solvent primitive model
+# Run with -s or --solvated for solvent primitive model
 
 # MOUSE AND KEYBOARD CONTROLS
 
@@ -55,7 +55,7 @@
 
 # Add --diam='[0.25/0.3,0.3373/0.3,1]' to reproduce the size-asymmetric model shown in Fig S1.
 
-# Note that the densities are defined such that ρ+ = ρ- = ρz/2 and ρt = ρz + ρs (if solvated)
+# Note that the densities are defined such that  ρ+ = ρ- = ρz/2 and ρt = ρz + ρs (if solvated).
 
 import argparse
 import math as m
@@ -65,6 +65,10 @@ import matplotlib.pyplot as plt
 from numpy import pi as π
 from oz import wizard as w
 from matplotlib.widgets import Slider, Button, RadioButtons
+
+def arg_to_val(s):
+    '''return a value from a string, replacing exponentiation symbol'''
+    return eval(s.replace('^', '**'))
 
 parser = argparse.ArgumentParser(description='Interactive super RPM explorer')
 
@@ -91,45 +95,51 @@ parser.add_argument('--verbose', action='store_true', help='more output')
 
 args = parser.parse_args()
 
-# What should be shown in the plot:
+# What should be shown in the plot.  The 'h_' entries here consist of
+# an expression to be evaluated for a 2×2 or 3×3 weight matrix which
+# multiplies h_ij, a color code for the line, and a label.
+
+# For h_zz and h_dd the vectors z and x are calculated in the function
+# replot() below for both RPM (2 entries) and solvated PM (3 entries)
+# and contain the charged mole fractions and overall mole fractions
+# respectively.  Additional vectors ions_d and solv_d are defined for
+# the solvated case.
+
+# Note that assuming the charges species are '0' and '1', and the
+# solvent species is '2', the following symmetries hold: h_ij = h_ji
+# for all cases ; h_00 = h_11 for the RPM and solvated case ; h_02 =
+# h_12 for the solvated case.  Hence there are two independent
+# function for the RPM case: h_00 and h_01 say; and four independent
+# functions for the solvated case: h_00, h_01, h_02, and h_22 say.
+
+h_zz = ['np.outer(z, z)', 'r', 'h_zz']
+h_dd = ['np.outer(x, x)', 'k', 'h_dd']
 
 if args.solvated:
-    h_00 = ['np.outer([1.0, 0.0, 0.0], [1.0, 0.0, 0.0])', 'b', 'h_00']
-    h_01 = ['np.array([[0.0, 0.5, 0.0], [0.5, 0.0, 0.0], [0.0, 0.0, 0.0]])', 'r', 'h_01']
+    q = np.array([0.5, 0.5, 0.0])
+    s = np.array([0.0, 0.0, 1.0])
+    h_00 = ['np.array([[1.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0]])', 'r', 'h_00']
+    h_01 = ['np.array([[0.0, 0.5, 0.0], [0.5, 0.0, 0.0], [0.0, 0.0, 0.0]])', 'b', 'h_01']
     h_02 = ['np.array([[0.0, 0.0, 0.5], [0.0, 0.0, 0.0], [0.5, 0.0, 0.0]])', 'y', 'h_02']
-    h_22 = ['np.outer([0.0, 0.0, 1.0], [0.0, 0.0, 1.0])', 'k', 'h_00']
+    h_22 = ['np.outer(s, s)', 'k', 'h_22']
+    h_qq = ['np.outer(q, q)', 'b', 'h_qq']
+    h_ss = ['np.outer(s, s)', 'y', 'h_ss']
+    selectors = [[h_zz, h_qq, h_ss, h_dd], [h_00, h_01, h_02, h_22]]
+    nlines = 4
 else:
-    h_00 = ['np.outer([1.0, 0.0], [1.0, 0.0])', 'b', 'h_00']
+    h_00 = ['np.array([[1.0, 0.0], [0.0, 0.0]])', 'b', 'h_00']
     h_01 = ['np.array([[0.0, 0.5], [0.5, 0.0]])', 'y', 'h_01']
-    h_02 = None
-    h_22 = None
-
-# These hold for both RPM and solvated PM.
-
-h_dd = ['np.outer(x, x)', 'k', 'h_ρρ']
-h_zz = ['np.outer(z, z)', 'r', 'h_zz']
-
-rpm_selectors = [[h_dd, h_zz], [h_00, h_01]]
-
-# Additional correlation coefficients defined for the solvated PM.
-# ion below refers to the densities of the charged particles
-
-ions_d = np.array([0.5, 0.5, 0.0])
-solv_d= np.array([0.0, 0.0, 1.0])
-h_ions = ['np.outer(ions_d, ions_d)', 'b', 'h_ions']
-h_solv = ['np.outer(solv_d, solv_d)', 'y', 'h_solv']
-
-solvated_selectors = [[h_ions, h_zz, h_solv, h_dd],
-                      [h_00, h_01, h_02, h_22]]
-
-selectors = solvated_selectors if args.solvated else rpm_selectors
+    selectors = [[h_zz, h_dd], [h_00, h_01]]
+    nlines = 2
 
 selected = 0 # initial selection
 
-hr_choice = ['both'] * 4 # which signs of h(r) to show
+hr_choice = ['both'] * nlines # which signs of h(r) to show
+line = [None, None] * nlines # will contain the data for the lines
+label = [None] * nlines # will contain the labels for the lines
 
 w.ncomp = 3 if args.solvated else 2
-w.ng = eval(args.ng.replace('^', '**')) # catch 2^10 etc
+w.ng = arg_to_val(args.ng) # catch 2^10 etc
 w.deltar = args.deltar
 w.alpha = args.alpha
 w.npic = args.npic
@@ -174,16 +184,15 @@ w.sigma = args.sigma
 
 w.rpm_potential()
 
-def arg_to_val(s):
-    '''return a value from a string, replacing exponentiation symbol'''
-    return eval(s.replace('^', '**'))
-
 rhoz_init = arg_to_val(args.rhoz) # total charged species density
 rhos_init = arg_to_val(f'{args.rhot} - {args.rhoz}') if args.rhot is not None else arg_to_val(args.rhos) # solvent density
 
+# This is the single point of truth where the densities are set in the
+# HNC solver, such that ρ+ = ρ- = ρz/2 and ρt = ρz + ρs (if solvated).
+
 def solve(rhoz, rhos):
-    """solve the structure at the given densities"""
-    w.rho[0] = rhoz/2 # single point of truth where the densities are set for the HNC solver
+    '''solve the structure at the given densities'''
+    w.rho[0] = rhoz/2 
     w.rho[1] = rhoz/2
     if args.solvated:
         w.rho[2] = rhos
@@ -191,7 +200,7 @@ def solve(rhoz, rhos):
     if w.return_code: exit()
 
 def update(val):
-    """update state point from sliders, solve, and replot"""
+    '''update state point from sliders, solve, and replot'''
     if tstar_slider:
         w.lb = 1 / tstar_slider.val
     w.sigma = args.sigma
@@ -203,17 +212,12 @@ def update(val):
 
 def update_both(val):
     '''call this if should update both sliders to match rhoz'''
-#    rhoz, rhos = [10**slider.val for slider in [rhoz_slider, rhos_slider]] 
-#    rhot = np.sum(w.rho)
-#    new_rhos = rhot - rhoz
     rhos = np.sum(w.rho) - 10**rhoz_slider.val
-    # print('rhoz, rhos, rhot, new_rhos, new_rhos+rhoz =', rhoz, rhos, rhot, new_rhos, new_rhos+rhoz)
     rhos_slider.set_val(m.log10(rhos if rhos > 0 else rhos_init))
-    # print('slider vals =', [10**slider.val for slider in [rhoz_slider, rhos_slider]])
     update(val)
 
 def get_ann_txt():
-    """get a string for annotating the plot"""
+    '''get a string for annotating the plot'''
     rhoz = w.rho[0] + w.rho[1]
     tstar = '%5.3f' % (1/w.lb) if w.lb else '∞'
     if args.solvated:
@@ -224,7 +228,7 @@ def get_ann_txt():
     return msg
 
 def replot():
-    """replot the lines and re-annotate"""
+    '''replot the lines and re-annotate'''
     for i, (wgts, color, text) in enumerate(selectors[selected]):
         x = w.rho / np.sum(w.rho) # mole fractions
         z = 0.5 * w.z # for charge-charge correlation
@@ -283,9 +287,6 @@ ax.annotate(txt, xy=(0.02, 1.08), xycoords='axes fraction')
 imin = int(1.0 / w.deltar)
 imax = int(args.rmax / w.deltar)
 
-line = [None, None] * 4 # will contain the data for the lines
-label = [None] * 4 # will contain the labels for the lines
-
 ann = ax.annotate(get_ann_txt(), xy=(0.02, 1.02), xycoords='axes fraction')
 
 solve(rhoz_init, rhos_init)
@@ -313,68 +314,51 @@ if args.solvated:
 else:
     rhos_slider = None
 
-# Set up buttons
-# This should really be better done with a closures
+# Set up radio buttons panels for selecting branches of h(r).  See eg
+# https://en.wikipedia.org/wiki/Closure_(computer_programming) for the
+# method to make an array of callback functions.
 
-def radio1(val):
-    """Select between showing both, +ve, -ve or none for first h(r)"""
-    hr_choice[0] = val
-    replot()
+def make_radio_callback(i):
+    '''Function that makes radio callback functions'''
+    def func(val):
+        hr_choice[i] = val
+        replot()
+    return func # return a closure
 
-def radio2(val):
-    """Select between showing both, +ve, -ve or none for second h(r)"""
-    hr_choice[1] = val
-    replot()
-
-def radio3(val):
-    """Select between showing both, +ve, -ve or none for second h(r)"""
-    hr_choice[2] = val
-    replot()
-
-def radio4(val):
-    """Select between showing both, +ve, -ve or none for second h(r)"""
-    hr_choice[3] = val
-    replot()
-
-radios = [radio1, radio2, radio3, radio4] if args.solvated else [radio1, radio2]
-nradios = len(radios)
-
-ax_choice = [None] * nradios
+nradios = len(selectors[selected])
+#radio_callback = [make_radio_callback(i) for i in range(nradios)]
+radio_ax = [plt.axes([0.05, 0.25+i*0.17, 0.1, 0.15]) for i in range(nradios)]
+radio_choice = [RadioButtons(radio_ax[i], ('none', '+ve', '-ve', 'both'), active=3) for i in range(nradios)]
 
 for i in range(nradios):
-    ax_choice[i] = plt.axes([0.05, 0.25+i*0.17, 0.1, 0.15])
+    radio_choice[i].on_clicked(make_radio_callback(i))
 
-#ax_choice[0] = plt.axes([0.05, 0.42, 0.1, 0.15])
-#ax_choice[1] = plt.axes([0.05, 0.25, 0.1, 0.15])
-
-choice = [None] * nradios
-
-for i in range(nradios):
-    choice[i] = RadioButtons(ax_choice[i], ('none', '+ve', '-ve', 'both'), active=3)
-    choice[i].on_clicked(radios[i])
-
+def radio_labels_set_color(i, color):
+    '''set the radio label colors for the given choice i'''
+    for label in radio_choice[i].labels:
+        label.set_color(color)
+    
 for i, (wgts, color, text) in enumerate(selectors[selected]):
-    [ label.set_color(color) for label in choice[i].labels ]
+    radio_labels_set_color(i, color)
 
-def advance(event):
-    """advance between (hnn, hzz) and (h00, h01) representations"""
+def cycle(event):
+    '''cycle between h-plot choices'''
     global selected, line, label
-    selected = (selected + 1) % len(selectors) # advance through the selections
+    selected = (selected + 1) % len(selectors) # cycle through the selections
     for i, (wgts, color, text) in enumerate(selectors[selected]):
-        for j in [0, 1]:
-            line[2*i+j].set_color(color)
+        line[2*i].set_color(color)
+        line[2*i+1].set_color(color)
         label[i].set_color(color)
         label[i].set_text(text)
-        for lab in choice[i].labels:
-            lab.set_color(color)
+        radio_labels_set_color(i, color)
     replot()
 
-ax_advance = plt.axes([0.05, 0.15, 0.1, 0.03])
-advance_button = Button(ax_advance, 'cycle', color=back_color,  hovercolor='0.975')
-advance_button.on_clicked(advance)
+ax_cycle = plt.axes([0.05, 0.15, 0.1, 0.03])
+cycle_button = Button(ax_cycle, 'cycle', color=back_color,  hovercolor='0.975')
+cycle_button.on_clicked(cycle)
 
 def reset(event):
-    """reset all slider positions and plot area"""
+    '''reset all slider positions and plot area'''
     if tstar_slider:
         tstar_slider.reset()
     rhoz_slider.reset()
