@@ -316,7 +316,7 @@ else:
 
 # Set up radio buttons panels for selecting branches of h(r).  See eg
 # https://en.wikipedia.org/wiki/Closure_(computer_programming) for the
-# method to make an array of callback functions.
+# method of making callback functions using a closure.
 
 def make_radio_callback(i):
     '''Function that makes radio callback functions'''
@@ -326,7 +326,6 @@ def make_radio_callback(i):
     return func # return a closure
 
 nradios = len(selectors[selected])
-#radio_callback = [make_radio_callback(i) for i in range(nradios)]
 radio_ax = [plt.axes([0.05, 0.25+i*0.17, 0.1, 0.15]) for i in range(nradios)]
 radio_choice = [RadioButtons(radio_ax[i], ('none', '+ve', '-ve', 'both'), active=3) for i in range(nradios)]
 
