@@ -152,7 +152,7 @@ w.initialise()
 
 # if the user sets tstar to a string (eg 'infinity') this is caught here
 
-if 'inf' in args.tstar:
+if 'inf' in args.tstar or args.hard_sphere:
     tstar_init = np.inf
     w.lb = 0.0
     w.set_potential = w.hs_potential if args.hard_sphere else w.rpm_potential
