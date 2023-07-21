@@ -85,13 +85,14 @@ parser.add_argument('--sigma', action='store', default=0.0, type=float, help='in
 parser.add_argument('--rhoz', action='store', default='0.1', help='total ion density (default 0.1)')
 parser.add_argument('--rhos', action='store', default='0.4', help='added solvent density (default 0.4)')
 parser.add_argument('--rhot', action='store', default=None, help='added solvent density (default computed)')
-parser.add_argument('--tstar', action='store', default='1.0', help='reduced temperature (default 1.0)')
+parser.add_argument('-t', '--tstar', action='store', default='1.0', help='reduced temperature (default 1.0)')
 parser.add_argument('-s', '--solvated', action='store_true', help='for solvated primitive models')
+parser.add_argument('-H', '--hard-sphere', action='store_true', help='use explicit hard sphere potential')
 
 parser.add_argument('--rmax', action='store', default=15.0, type=float, help='maximum radial distance (default 15)')
 parser.add_argument('--floor', action='store', default=1e-20, type=float, help='floor for r h(r) (default 1e-20)')
 
-parser.add_argument('--verbose', action='store_true', help='more output')
+parser.add_argument('-v', '--verbose', action='store_true', help='more output')
 
 args = parser.parse_args()
 
@@ -151,12 +152,14 @@ w.initialise()
 
 # if the user sets tstar to a string (eg 'infinity') this is caught here
 
-try:
-    tstar_init = eval(args.tstar)
-except NameError:
-    tstar_init = 0
-
-w.lb = 1/tstar_init if tstar_init else 0.0
+if 'inf' in args.tstar:
+    tstar_init = np.inf
+    w.lb = 0.0
+    w.set_potential = w.hs_potential if args.hard_sphere else w.rpm_potential
+else:
+    tstar_init = arg_to_val(args.tstar)
+    w.lb = 1.0 / tstar_init
+    w.set_potential = w.rpm_potential
 
 # Now construct the hard core diameters
 
@@ -182,7 +185,7 @@ if len(diam) == 6: w.diam[1, 2] = diam[5]
 
 w.sigma = args.sigma
 
-w.rpm_potential()
+w.set_potential()
 
 rhoz_init = arg_to_val(args.rhoz) # total charged species density
 rhos_init = arg_to_val(f'{args.rhot} - {args.rhoz}') if args.rhot is not None else arg_to_val(args.rhos) # solvent density
@@ -198,13 +201,15 @@ def solve(rhoz, rhos):
         w.rho[2] = rhos
     w.hnc_solve()
     if w.return_code: exit()
+    if args.verbose:
+        w.write_params()
 
 def update(val):
     '''update state point from sliders, solve, and replot'''
     if tstar_slider:
         w.lb = 1 / tstar_slider.val
     w.sigma = args.sigma
-    w.rpm_potential()
+    w.set_potential()
     rhoz = 10**rhoz_slider.val
     rhos = 10**rhos_slider.val if rhos_slider else rhos_init
     solve(rhoz, rhos)
@@ -296,12 +301,12 @@ replot()
 
 back_color = 'powderblue'
 
-if tstar_init > 0:
+if tstar_init == np.inf:
+    tstar_slider = None
+else:
     ax_tstar = plt.axes([0.25, 0.05, 0.65, 0.03], facecolor=back_color)
     tstar_slider = Slider(ax_tstar, 'T*', 0.0, max(2.0, tstar_init), valinit=tstar_init, valstep=0.01, valfmt='%5.3f')
     tstar_slider.on_changed(update)
-else:
-    tstar_slider = None
 
 ax_rhoz = plt.axes([0.25, 0.10 if tstar_slider else 0.05, 0.65, 0.03], facecolor=back_color)
 rhoz_slider = Slider(ax_rhoz, 'ρ_z', -3, 0, valinit=m.log10(rhoz_init), valfmt='%5.3f')
