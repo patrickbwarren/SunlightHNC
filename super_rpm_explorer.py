@@ -41,8 +41,11 @@
 # scroll with mouse wheel for medium adjustment
 # shift + mouse wheel for fine adjustment
 # control + mouse wheel for coarse adjustment
-# spacebar to either dump a state point (pointer outside sliders)
-# or request entry of a specific value (pointer on a slider)
+
+# key controls: 'p' to print the current state point
+# spacebar to request entry of a specific value (pointer on a slider)
+# 'd' to dump pair distribution functions to stdout
+# 'c', 'r', 'q' to cycle, reset or quit as in panel buttons.
 
 # The following correspond to the Fig 1 insets in Coupette et al., PRL 121, 075501 (2018)
 # For this lB = 0.7 nm, sigma = 0.3 nm, [salt] = 1 M, and [solvent] = 10 M and 40 M.
@@ -61,10 +64,14 @@ import argparse
 import math as m
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.text import Text
 
 from numpy import pi as π
 from oz import wizard as w
 from matplotlib.widgets import Slider, Button, RadioButtons
+
+back_color = 'powderblue'
+activated_color = 'deepskyblue'
 
 def arg_to_val(s):
     '''return a value from a string, replacing exponentiation symbol'''
@@ -121,11 +128,11 @@ if args.solvated:
     s = np.array([0.0, 0.0, 1.0])
     h_00 = ['np.array([[1.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0]])', 'r', 'h_00']
     h_01 = ['np.array([[0.0, 0.5, 0.0], [0.5, 0.0, 0.0], [0.0, 0.0, 0.0]])', 'b', 'h_01']
-    h_02 = ['np.array([[0.0, 0.0, 0.5], [0.0, 0.0, 0.0], [0.5, 0.0, 0.0]])', 'y', 'h_02']
-    h_22 = ['np.outer(s, s)', 'k', 'h_22']
+    h_02 = ['np.array([[0.0, 0.0, 0.5], [0.0, 0.0, 0.0], [0.5, 0.0, 0.0]])', 'g', 'h_02']
+    h_22 = ['np.outer(s, s)', 'y', 'h_22']
     h_qq = ['np.outer(q, q)', 'b', 'h_qq']
     h_ss = ['np.outer(s, s)', 'y', 'h_ss']
-    selectors = [[h_zz, h_qq, h_ss, h_dd], [h_00, h_01, h_02, h_22]]
+    selectors = [[h_zz, h_qq, h_dd, h_ss], [h_00, h_01, h_02, h_22]]
     nlines = 4
 else:
     h_00 = ['np.array([[1.0, 0.0], [0.0, 0.0]])', 'b', 'h_00']
@@ -147,6 +154,12 @@ w.npic = args.npic
 w.nps = args.nps
 w.maxsteps = args.maxsteps
 w.verbose = args.verbose
+
+# The following creates matrix with '0' below the diagonal, '1' on the
+# diagonal, and '2' above the diagonal.  Used to scale wgts.
+
+yy = np.tri(w.ncomp, w.ncomp, dtype=int)
+wgt_fac = 1 - yy + yy.transpose()
 
 w.initialise()
 
@@ -190,6 +203,8 @@ w.set_potential()
 rhoz_init = arg_to_val(args.rhoz) # total charged species density
 rhos_init = arg_to_val(f'{args.rhot} - {args.rhoz}') if args.rhot is not None else arg_to_val(args.rhos) # solvent density
 
+args.fix_rhot = args.rhot is not None # logical variable
+
 # This is the single point of truth where the densities are set in the
 # HNC solver, such that ρ+ = ρ- = ρz/2 and ρt = ρz + ρs (if solvated).
 
@@ -214,11 +229,12 @@ def update(val):
     rhos = 10**rhos_slider.val if rhos_slider else rhos_init
     solve(rhoz, rhos)
     replot()
-
+     
 def update_both(val):
     '''call this if should update both sliders to match rhoz'''
-    rhos = np.sum(w.rho) - 10**rhoz_slider.val
-    rhos_slider.set_val(m.log10(rhos if rhos > 0 else rhos_init))
+    if args.solvated and args.fix_rhot:
+        rhos = np.sum(w.rho) - 10**rhoz_slider.val
+        rhos_slider.set_val(m.log10(rhos if rhos > 0 else rhos_init))
     update(val)
 
 def get_ann_txt():
@@ -237,8 +253,7 @@ def replot():
     for i, (wgts, color, text) in enumerate(selectors[selected]):
         x = w.rho / np.sum(w.rho) # mole fractions
         z = 0.5 * w.z # for charge-charge correlation
-        wgt = eval(wgts) # this covers all cases
-        # print(i, 'wgts' , wgts, ' ; color', color, ', text', text) ; print(wgt)
+        wgt = wgt_fac * eval(wgts) # this covers all cases and doubles up entries above diagonal
         r = w.r[imin:imax]
         h = wgt[0, 0]*w.hr[imin:imax, 0, 0] + wgt[0, 1]*w.hr[imin:imax, 0, 1] \
             + wgt[1, 0]*w.hr[imin:imax, 1, 0] + wgt[1, 1]*w.hr[imin:imax, 1, 1]
@@ -299,8 +314,6 @@ replot()
 
 # Set up sliders for lB, rho_z, and rho_s if required
 
-back_color = 'powderblue'
-
 if tstar_init == np.inf:
     tstar_slider = None
 else:
@@ -310,7 +323,7 @@ else:
 
 ax_rhoz = plt.axes([0.25, 0.10 if tstar_slider else 0.05, 0.65, 0.03], facecolor=back_color)
 rhoz_slider = Slider(ax_rhoz, 'ρ_z', -3, 0, valinit=m.log10(rhoz_init), valfmt='%5.3f')
-rhoz_slider.on_changed(update_both if args.solvated and args.rhot is not None else update)
+rhoz_slider.on_changed(update_both)
 
 if args.solvated:
     ax_rho = plt.axes([0.25, 0.15 if tstar_slider else 0.10, 0.65, 0.03], facecolor=back_color)
@@ -345,7 +358,17 @@ def radio_labels_set_color(i, color):
 for i, (wgts, color, text) in enumerate(selectors[selected]):
     radio_labels_set_color(i, color)
 
-def cycle(event):
+def toggle(event=None):
+    '''toggle fix total density'''
+    args.fix_rhot = not args.fix_rhot
+    toggle_button.color = activated_color if args.fix_rhot else back_color
+
+ax_toggle = plt.axes([0.05, 0.20, 0.1, 0.03])
+toggle_button_color = activated_color if args.fix_rhot else back_color
+toggle_button = Button(ax_toggle, 'fix ρt', color=toggle_button_color, hovercolor='0.975')
+toggle_button.on_clicked(toggle)
+
+def cycle(event=None):
     '''cycle between h-plot choices'''
     global selected, line, label
     selected = (selected + 1) % len(selectors) # cycle through the selections
@@ -361,7 +384,7 @@ ax_cycle = plt.axes([0.05, 0.15, 0.1, 0.03])
 cycle_button = Button(ax_cycle, 'cycle', color=back_color,  hovercolor='0.975')
 cycle_button.on_clicked(cycle)
 
-def reset(event):
+def reset(event=None):
     '''reset all slider positions and plot area'''
     if tstar_slider:
         tstar_slider.reset()
@@ -376,7 +399,8 @@ ax_reset = plt.axes([0.05, 0.10, 0.1, 0.03])
 reset_button = Button(ax_reset, 'reset', color=back_color, hovercolor='0.975')
 reset_button.on_clicked(reset)
 
-def quit(event):
+def quit(event=None):
+    print('quitting')
     exit(0)
 
 ax_quit = plt.axes([0.05, 0.05, 0.1, 0.03])
@@ -505,12 +529,30 @@ class SliderScroll:
                         update(val)
                     except ValueError:
                         print('invalid number ', s)
-                else:
-                    rhoz = w.rho[0] + w.rho[1]
-                    kappa = m.sqrt(4*π*w.lb*rhoz)
-                    rhos = w.rho[2] if args.solvated else 0
-                    tstar = '%g' % (1/w.lb) if w.lb else 'inf'
-                    print('%s\t%g\t%g\t%g\t%g\tstate_point' % (tstar, rhos, rhoz, rhos+rhoz, kappa))
+            elif event.key == 'p':
+                rhoz = w.rho[0] + w.rho[1]
+                kappa = m.sqrt(4*π*w.lb*rhoz)
+                rhos = w.rho[2] if args.solvated else 0
+                tstar = '%g' % (1/w.lb) if w.lb else 'inf'
+                print('%s\t%g\t%g\t%g\t%g\tstate_point' % (tstar, rhos, rhoz, rhos+rhoz, kappa))
+            elif event.key == 'd':
+                for i in range(imin, imax):
+                    if w.ncomp == 3:
+                        print('%g\t%g\t%g\t%g\t%g\t%g\t%g' % (w.r[i], w.hr[i, 0, 0], w.hr[i, 0, 1], w.hr[i, 1, 1], 
+                                                              w.hr[i, 0, 2], w.hr[i, 1, 2], w.hr[i, 2, 2]))
+                    else:
+                        print('%g\t%g\t%g\t%g' % (w.r[i], w.hr[i, 0, 0], w.hr[i, 0, 1], w.hr[i, 1, 1]))
+            elif event.key == 't':
+                toggle()
+            elif event.key == 'c':
+                cycle()
+            elif event.key == 'r':
+                reset()
+            elif event.key == 'v':
+                args.verbose = not args.verbose
+                w.verbose = args.verbose
+                print('verbose on' if args.verbose else 'verbose off')
+
 
         fig = self.ax.get_figure()
         fig.canvas.mpl_connect('scroll_event', scroll)
