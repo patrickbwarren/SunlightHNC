@@ -72,6 +72,8 @@ from matplotlib.widgets import Slider, Button, RadioButtons
 
 back_color = 'powderblue'
 activated_color = 'deepskyblue'
+pos_line = 'solid'
+neg_line = 'dashed'
 
 def arg_to_val(s):
     '''return a value from a string, replacing exponentiation symbol'''
@@ -92,6 +94,7 @@ parser.add_argument('--sigma', action='store', default=0.0, type=float, help='in
 parser.add_argument('--rhoz', action='store', default='0.1', help='total ion density (default 0.1)')
 parser.add_argument('--rhos', action='store', default='0.4', help='added solvent density (default 0.4)')
 parser.add_argument('--rhot', action='store', default=None, help='added solvent density (default computed)')
+parser.add_argument('--square', action='store_true', help='square selected functions')
 parser.add_argument('-t', '--tstar', action='store', default='1.0', help='reduced temperature (default 1.0)')
 parser.add_argument('-s', '--solvated', action='store_true', help='for solvated primitive models')
 parser.add_argument('-H', '--hard-sphere', action='store_true', help='use explicit hard sphere potential')
@@ -120,23 +123,23 @@ args = parser.parse_args()
 # function for the RPM case: h_00 and h_01 say; and four independent
 # functions for the solvated case: h_00, h_01, h_02, and h_22 say.
 
-h_zz = ['np.outer(z, z)', 'r', 'h_zz']
-h_dd = ['np.outer(x, x)', 'k', 'h_dd']
+h_zz = ['np.outer(z, z)', 'r', 'h_zz', 2]
+h_dd = ['np.outer(x, x)', 'k', 'h_dd', 1]
 
 if args.solvated:
     q = np.array([0.5, 0.5, 0.0])
     s = np.array([0.0, 0.0, 1.0])
-    h_00 = ['np.array([[1.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0]])', 'r', 'h_00']
-    h_01 = ['np.array([[0.0, 0.5, 0.0], [0.5, 0.0, 0.0], [0.0, 0.0, 0.0]])', 'b', 'h_01']
-    h_02 = ['np.array([[0.0, 0.0, 0.5], [0.0, 0.0, 0.0], [0.5, 0.0, 0.0]])', 'g', 'h_02']
-    h_22 = ['np.outer(s, s)', 'y', 'h_22']
-    h_qq = ['np.outer(q, q)', 'b', 'h_qq']
-    h_ss = ['np.outer(s, s)', 'y', 'h_ss']
+    h_00 = ['np.array([[1.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0]])', 'r', 'h_00', 2]
+    h_01 = ['np.array([[0.0, 0.5, 0.0], [0.5, 0.0, 0.0], [0.0, 0.0, 0.0]])', 'b', 'h_01', 2]
+    h_02 = ['np.array([[0.0, 0.0, 0.5], [0.0, 0.0, 0.0], [0.5, 0.0, 0.0]])', 'g', 'h_02', 1]
+    h_22 = ['np.outer(s, s)', 'y', 'h_22', 1]
+    h_qq = ['np.outer(q, q)', 'b', 'h_qq', 1]
+    h_ss = ['np.outer(s, s)', 'y', 'h_ss', 1]
     selectors = [[h_zz, h_qq, h_dd, h_ss], [h_00, h_01, h_02, h_22]]
     nlines = 4
 else:
-    h_00 = ['np.array([[1.0, 0.0], [0.0, 0.0]])', 'b', 'h_00']
-    h_01 = ['np.array([[0.0, 0.5], [0.5, 0.0]])', 'y', 'h_01']
+    h_00 = ['np.array([[1.0, 0.0], [0.0, 0.0]])', 'b', 'h_00', 1]
+    h_01 = ['np.array([[0.0, 0.5], [0.5, 0.0]])', 'y', 'h_01', 1]
     selectors = [[h_zz, h_dd], [h_00, h_01]]
     nlines = 2
 
@@ -237,20 +240,25 @@ def update_both(val):
         rhos_slider.set_val(m.log10(rhos if rhos > 0 else rhos_init))
     update(val)
 
-def get_ann_txt():
-    '''get a string for annotating the plot'''
+def set_ann_txt():
+    '''set plot annotation'''
+    global t_ann, rho_ann, diam_txt
     rhoz = w.rho[0] + w.rho[1]
-    tstar = '%5.3f' % (1/w.lb) if w.lb else '∞'
+    t_msg = 'T = %5.3f' % (1/w.lb) if w.lb else 'T = ∞'
     if args.solvated:
         rhos = w.rho[2]
-        msg = 'T, ρ = %s, %8.4f + %8.4f = %8.4f  [err %0.1g]' % (tstar, rhos, rhoz, rhos+rhoz, w.error)
+        rho_msg = 'ρz + ρs = %6.4f + %6.4f = %6.4f :: err = %0.1g' % (rhoz, rhos, rhos+rhoz, w.error)
     else:
-        msg = 'T, ρ = %s, %8.4f  [err %0.1g]' % (tstar, rhoz, w.error)
-    return msg
+        rho_msg = 'ρ = %6.4f :: err = %0.1g' % (rhoz, w.error)
+    dia_ann.set_text(f'{diam_txt} :: {t_msg}')
+    rho_ann.set_text(rho_msg)
 
-def replot():
+def replot(flip=False):
     '''replot the lines and re-annotate'''
-    for i, (wgts, color, text) in enumerate(selectors[selected]):
+    global pos_line, neg_line
+    if flip:
+        pos_line, neg_line = neg_line, pos_line
+    for i, (wgts, color, text, pwr) in enumerate(selectors[selected]):
         x = w.rho / np.sum(w.rho) # mole fractions
         z = 0.5 * w.z # for charge-charge correlation
         wgt = wgt_fac * eval(wgts) # this covers all cases and doubles up entries above diagonal
@@ -260,7 +268,7 @@ def replot():
         if args.solvated:
             h = h + wgt[0, 2]*w.hr[imin:imax, 0, 2] + wgt[1, 2]*w.hr[imin:imax, 1, 2] \
                 + wgt[2, 2]*w.hr[imin:imax, 2, 2]
-        rh_pos = r * h
+        rh_pos = r*h**pwr if args.square and pwr > 1 else r*h
         rh_neg = - rh_pos
         rh_pos[rh_pos < args.floor] = args.floor
         rh_neg[rh_neg < args.floor] = args.floor
@@ -268,13 +276,14 @@ def replot():
             line[2*i].set_ydata(np.log10(rh_neg))
             line[2*i+1].set_ydata(np.log10(rh_pos))
         else: # plotting for the first time
-            line[2*i], = ax.plot(r, np.log10(rh_neg), color+'-')
-            line[2*i+1], = ax.plot(r, np.log10(rh_pos), color+'--')
-            label[i] = ax.annotate(text, xy=(0.2+0.2*i, 0.92), color=color, xycoords='axes fraction')
+            line[2*i], = ax.plot(r, np.log10(rh_neg), f'{color}-')
+            line[2*i+1], = ax.plot(r, np.log10(rh_pos), f'{color}-')
+            label[i] = ax.annotate(f'{text}^{pwr}' if args.square and pwr > 1 else text,
+                                   xy=(0.2+0.2*i, 0.92), color=color, xycoords='axes fraction')
         choice = hr_choice[i]
-        line[2*i].set_linestyle('None' if choice == 'none' or choice == '-ve' else 'solid')
-        line[2*i+1].set_linestyle('None' if choice == 'none' or choice == '+ve' else 'dashed')
-    ann.set_text(get_ann_txt())
+        line[2*i].set_linestyle('None' if choice == 'none' or choice == '-ve' else neg_line)
+        line[2*i+1].set_linestyle('None' if choice == 'none' or choice == '+ve' else pos_line)
+    set_ann_txt()
     fig.canvas.draw_idle()
 
 # Set up the plot area
@@ -289,27 +298,27 @@ ax.set_ylabel('log10 |r×h(r)|')
 
 # report on diameters
 
-txt = 'diams : %0.2f %0.2f' % (w.diam[0, 0], w.diam[1, 1])
+diam_txt = 'σ = %0.2f %0.2f' % (w.diam[0, 0], w.diam[1, 1])
 
 if args.solvated:
-    txt = txt + ' %0.2f' % w.diam[2, 2]
+    diam_txt = diam_txt + ' %0.2f' % w.diam[2, 2]
 
-txt = txt + ' excess : %0.2f' % (w.diam[0, 1] - 0.5*(w.diam[0, 0] + w.diam[1, 1]))
+diam_txt = diam_txt + ' :: ∆σ = %0.2f' % (w.diam[0, 1] - 0.5*(w.diam[0, 0] + w.diam[1, 1]))
 
 if args.solvated:
-    txt = txt + ' %0.2f' % (w.diam[0, 2] - 0.5*(w.diam[0, 0] + w.diam[2, 2]))
-    txt = txt + ' %0.2f' % (w.diam[1, 2] - 0.5*(w.diam[1, 1] + w.diam[2, 2]))
+    diam_txt = diam_txt + ' %0.2f' % (w.diam[0, 2] - 0.5*(w.diam[0, 0] + w.diam[2, 2]))
+    diam_txt = diam_txt + ' %0.2f' % (w.diam[1, 2] - 0.5*(w.diam[1, 1] + w.diam[2, 2]))
 
-ax.annotate(txt, xy=(0.02, 1.08), xycoords='axes fraction')
+dia_ann = ax.annotate('', xy=(0.02, 1.08), xycoords='axes fraction')
+rho_ann = ax.annotate('', xy=(0.02, 1.02), xycoords='axes fraction')
 
 # solve and make initial plot
 
 imin = int(1.0 / w.deltar)
 imax = int(args.rmax / w.deltar)
 
-ann = ax.annotate(get_ann_txt(), xy=(0.02, 1.02), xycoords='axes fraction')
-
 solve(rhoz_init, rhos_init)
+
 replot()
 
 # Set up sliders for lB, rho_z, and rho_s if required
@@ -355,7 +364,7 @@ def radio_labels_set_color(i, color):
     for label in radio_choice[i].labels:
         label.set_color(color)
     
-for i, (wgts, color, text) in enumerate(selectors[selected]):
+for i, (wgts, color, text, pwr) in enumerate(selectors[selected]):
     radio_labels_set_color(i, color)
 
 def toggle(event=None):
@@ -368,16 +377,22 @@ toggle_button_color = activated_color if args.fix_rhot else back_color
 toggle_button = Button(ax_toggle, 'fix ρt', color=toggle_button_color, hovercolor='0.975')
 toggle_button.on_clicked(toggle)
 
-def cycle(event=None):
-    '''cycle between h-plot choices'''
+def relabel():
+    '''relabel the lines'''
     global selected, line, label
-    selected = (selected + 1) % len(selectors) # cycle through the selections
-    for i, (wgts, color, text) in enumerate(selectors[selected]):
+    for i, (wgts, color, text, pwr) in enumerate(selectors[selected]):
         line[2*i].set_color(color)
         line[2*i+1].set_color(color)
         label[i].set_color(color)
-        label[i].set_text(text)
+        label[i].set_text(f'{text}^{pwr}' if args.square and pwr > 1 else text)
         radio_labels_set_color(i, color)
+    
+
+def cycle(event=None):
+    '''cycle between h-plot choices'''
+    global selected
+    selected = (selected + 1) % len(selectors) # cycle through the selections
+    relabel()
     replot()
 
 ax_cycle = plt.axes([0.05, 0.15, 0.1, 0.03])
@@ -552,7 +567,12 @@ class SliderScroll:
                 args.verbose = not args.verbose
                 w.verbose = args.verbose
                 print('verbose on' if args.verbose else 'verbose off')
-
+            elif event.key == '2':
+                args.square = not args.square
+                relabel()
+                replot()
+            elif event.key == 'a':
+                replot(flip=True)
 
         fig = self.ax.get_figure()
         fig.canvas.mpl_connect('scroll_event', scroll)
