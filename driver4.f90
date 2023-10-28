@@ -28,7 +28,8 @@ program driver4
 
   verbose = .true.
 
-  ng = 4096
+  ng = 65536 ! 2^16, for speed tests
+  ! ng = 262144 ! 2^18, for speed tests
   ncomp = 4
 
   call initialise
