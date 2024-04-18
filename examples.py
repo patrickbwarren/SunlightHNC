@@ -75,6 +75,8 @@ def mu_aex(drho):
         prev = w.muex[0]
     return aex
 
+w.ng = 8192
+w.deltar = 0.02
 w.initialise()
 w.arep[0,0] = A = 25.0
 w.dpd_potential()
@@ -82,6 +84,7 @@ w.rho[0] = rho = 3.0
 w.hnc_solve()
 
 w.write_thermodynamics()
+w.write_params()
 
 print('SunlightHNC v%s' % str(w.version, 'utf-8').strip())
 
