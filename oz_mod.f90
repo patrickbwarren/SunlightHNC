@@ -348,7 +348,7 @@ contains
             & / (rootpi * r * sigma) &
             & - lb * erf(0.5_dp*r/sigma) / r**2
 
-       model_name = "DPD with Gaussian charges"
+       model_name = "DPD_with_Gaussian_charges"
        
     end if
 
@@ -366,7 +366,7 @@ contains
        dulong(:,nfnc) = - (lb / r**2) * (1.0_dp - exp(-r/sigma) &
             & * (1.0_dp + r / sigma))
        
-       model_name = "DPD with Bessel charges"
+       model_name = "DPD_with_Bessel_charges"
 
     end if
 
@@ -389,7 +389,7 @@ contains
 
        dulong(:,nfnc) = 0.0_dp
    
-       model_name = "DPD with linear charges"
+       model_name = "DPD_with_linear_charges"
 
     end if
 
@@ -411,7 +411,7 @@ contains
             & * (1.0_dp + 2.0_dp*r/lbda + 2.0_dp*r**2/lbda**2 &
             &     + 7.0_dp*r**3/(6.0_dp*lbda**3) + r**4/(3.0_dp*lbda**4)) )
 
-       model_name = "DPD with Slater (exact) charges"
+       model_name = "DPD_with_Slater_(exact)_charges"
 
     end if
 
@@ -431,7 +431,7 @@ contains
        dulong(:,nfnc) = - (lb / r**2) * (1.0_dp - exp(-2.0_dp*beta*r) &
             & * (1.0_dp + 2.0_dp*beta*r*(1.0_dp + beta*r)) )
 
-       model_name = "DPD with Slater (approx) charges"
+       model_name = "DPD_with_Slater_(approx)_charges"
 
     end if
 
@@ -547,10 +547,10 @@ contains
 
     if (.not.uuflag) then
        model_type = URPM_WITHOUT_USHORT
-       model_name = 'URPM without U_short'
+       model_name = 'URPM_without_U_short'
     else
        model_type = URPM_WITH_USHORT
-       model_name = 'URPM with U_short'
+       model_name = 'URPM_with_U_short'
     end if
 
   end subroutine urpm_potential
@@ -672,10 +672,10 @@ contains
     
     if (.not.uuflag) then
        model_type = RPM_WITHOUT_USHORT
-       model_name = 'RPM without U_short'
+       model_name = 'RPM_without_U_short'
     else
        model_type = RPM_WITH_USHORT
-       model_name = 'RPM with U_short'
+       model_name = 'RPM_with_U_short'
     end if
 
   end subroutine rpm_potential
@@ -723,7 +723,7 @@ contains
     u0 = 0.0_dp
     
     model_type = HARD_SPHERES
-    model_name = 'hard spheres'
+    model_name = 'hard_spheres'
 
   end subroutine hs_potential
 
