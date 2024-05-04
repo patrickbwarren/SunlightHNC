@@ -105,7 +105,7 @@ from its origins in a monolithic FORTRAN 90 code:
 A longer term aim therefore is to split out the central
 Ornstein-Zernike solver with the closure approximations into a
 streamlined standalone suite of FORTRAN 90 kernel functions.  This
-would particularly preserve the technically complex bespoke Ng
+would particularly preserve the technically complex and bespoke Ng
 accelerated convergence scheme.  The initialisation of specific
 potential models (DPD, RPM, etc) would then be implemented using
 [NumPy](https://numpy.org/) in a separate python module.  This
