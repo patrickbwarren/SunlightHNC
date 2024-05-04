@@ -22,11 +22,16 @@ Version 1.7 handles an arbitrary number of components (rather than a maximum of 
 
 See [PDF documentation](oz_doc.pdf "oz_doc.pdf") for details.
 
+A related pure python code with a more limited feature set is
+available in a [separate GitHub
+project](https://github.com/patrickbwarren/python3-HNC-solver).  It
+might also be helpful to browse the documentation for this project
+too.
+
 #### Citation
 
 You are of course expected to use and modify this code for your own
-projects!  
-If you end up publishing results based on this code, or a
+projects!  If you end up publishing results based on this code, or a
 derived version, please cite :
 
 *Screening properties of Gaussian electrolyte models, with application
@@ -71,6 +76,55 @@ fast Fourier transform library are both required.
 The compiler tools including `f2py`, and pre-built versions of the
 `lapack` and `fftw` libraries, are available for most modern GNU/Linux
 distributions.
+
+#### Roadmap
+
+Whilst the code is very functional there still remain legacy issues
+from its origins in a monolithic FORTRAN 90 code:
+
+* aspects of the initialisation (potential model definitions) and
+  post-processing (thermodynamic calculations) do not necessarily have
+  to be done in FORTRAN;
+
+* many parameters are hard-wired into the code, such as in the
+  potential functions, with in some cases overloaded definitions;
+
+* adding new potentials, or changing / verifying the current ones is
+  clunky and requires access to the underlying FORTRAN code;
+
+* the solver grid is allocated at startup, and cannot currently be
+  re-sized, nor can multiple grids be used in the same application;
+
+* certain features of the current code, such as reporting the solver
+  status, involve string manipulations which are certainly better
+  handled directly in python;
+
+* overall, the current interface doesn't take full advantage of what
+  might be considered modern python functionality and design patterns.
+
+A longer term aim therefore is to split out the central
+Ornstein-Zernike solver with the closure approximations into a
+streamlined standalone suite of FORTRAN 90 kernel functions.  This
+would particularly preserve the technically complex bespoke Ng
+accelerated convergence scheme.  The initialisation of specific
+potential models (DPD, RPM, etc) would then be implemented using
+[NumPy](https://numpy.org/) in a separate python module.  This
+would make the potential model definitions and the associated
+parameter specifications more accessible, user-friendly, and better in
+accord with pythonic idioms.
+
+Initially, the downstream thermodynamic calculations could be left in
+FORTRAN but in time these too could be moved into python, using for
+example the `trapz` function in NumPy to handle the integrations, along
+the lines of the related pure python Ornstein-Zernike-HNC solver
+[here](https://github.com/patrickbwarren/python3-HNC-solver).
+
+Thus, functionally, the code would split into two:
+
+* a `sunlighthnc-core` module, wrapping the core FORTRAN 90 functions;
+* a `sunlighthnc` module, providing the application user interface.
+
+If-and-when this comes to pass, this will be version 2.0 of the code !!
 
 #### Copying
 
