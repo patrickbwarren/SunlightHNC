@@ -1775,6 +1775,7 @@ contains
        print *, 'HNC: k-space, tr (short), aex_ks = ', aex_ks
        print *, 'HNC: k-space, tr (long),  aex_kl = ', aex_kl
        print *, 'HNC: total free energy density = ', aex
+       print *, 'HNC:   --ditto--  per particle = ', aex / sum(rho(:))
        print *, 'HNC: sum rho muex - pex        = ', sum(rho(:)*muex(:))-pex
        print *, 'HNC: deficit = ', deficit
      end if
