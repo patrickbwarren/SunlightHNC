@@ -80,16 +80,16 @@ distributions.
 #### Roadmap
 
 Whilst the code is very functional there still remain legacy issues
-from its origins in a monolithic FORTRAN 90 code:
+from its origins in monolithic FORTRAN 90:
 
 * aspects of the initialisation (potential model definitions) and
   post-processing (thermodynamic calculations) do not necessarily have
   to be done in FORTRAN;
 
-* many parameters are hard-wired into the code, such as in the
+* many parameters are hard-wired into the code in the
   potential functions, with in some cases overloaded definitions;
 
-* adding new potentials, or changing / verifying the current ones is
+* adding new potentials or changing / verifying the current ones is
   clunky and requires access to the underlying FORTRAN code;
 
 * the solver grid is allocated at startup, and cannot currently be
@@ -124,7 +124,7 @@ Thus, functionally, the code would split into two:
 * a `sunlighthnc-core` module, wrapping the core FORTRAN 90 functions;
 * a `sunlighthnc` module, providing the application user interface.
 
-If-and-when this comes to pass, this will be version 2.0 of the code !!
+If and when this comes to pass, this will be version 2.0 of the code !!
 
 #### Copying
 
