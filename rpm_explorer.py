@@ -41,7 +41,7 @@
 # scroll with mouse wheel for medium adjustment
 # shift + mouse wheel for fine adjustment
 # control + mouse wheel for coarse adjustment
-# press and release spacebar to request entry of a specific value (in terminal window)
+# 'v' with the pointer on a slider to request entry of a specific value (in terminal window)
 
 # The following correspond to the Fig 1 insets in Coupette et al., PRL 121, 075501 (2018)
 # For this lB = 0.7 nm, sigma = 0.3 nm, [salt] = 1 M, and [solvent] = 10 M and 40 M.
@@ -473,7 +473,7 @@ class SliderScroll:
                 self.shift_down = False
             elif event.key == 'control':
                 self.control_down = False
-            elif event.key == ' ':
+            elif event.key == 'v':
                 if event.inaxes in sliders:
                     slider = sliders[event.inaxes]
                     s = input('enter a value for %s\n' % slider_name[slider])

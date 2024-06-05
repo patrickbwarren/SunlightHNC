@@ -110,7 +110,8 @@ diam = eval(args.diam)
 if not isinstance(diam, list):
     diam = [diam]
 
-if len(diam) == 1: diam.append(diam[0])
+if len(diam) == 1:
+    diam.append(diam[0])
 
 # These are for the charged species
 

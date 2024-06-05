@@ -43,7 +43,7 @@
 # control + mouse wheel for coarse adjustment
 
 # key controls: 'p' to print the current state point
-# spacebar to request entry of a specific value (pointer on a slider)
+# 'v' to request entry of a specific value (pointer on a slider)
 # 'd' to dump pair distribution functions to stdout
 # 'c', 'r', 'q' to cycle, reset or quit as in panel buttons.
 
@@ -533,7 +533,7 @@ class SliderScroll:
                 self.shift_down = False
             elif event.key == 'control':
                 self.control_down = False
-            elif event.key == ' ':
+            elif event.key == 'v':
                 if event.inaxes in sliders:
                     slider = sliders[event.inaxes]
                     s = input('enter a value for %s\n' % slider_name[slider])
