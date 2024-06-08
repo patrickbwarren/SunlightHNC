@@ -86,7 +86,7 @@ class OZSolver:
         for ij in range(w.nfnc):
             cut = round(w.dd[ij] / w.deltar)
             w.expnegus[:cut, ij] = 0.0
-        w.u0 = z**2 * lb / sigma
+        w.u0[:] = z**2 * lb / sigma
         w.tp[:] = 0.0
         w.tu[:] = 0.0
         w.tl[:] = 0.0
@@ -121,7 +121,10 @@ class OZSolver:
         self.verbosity = verbosity
         self.wizard.verbosity = (verbosity > 1)
 
-    def hnc_solve(self, rho): # solve and return a solution object
+    def hnc_solve(self, rho, alpha=0.3, npic=6, cold_start=False): # solve and return a solution object
         self.wizard.rho = rho
+        self.wizard.npic = npic
+        self.wizard.alpha = alpha
+        self.wizard.cold_start = cold_start
         self.wizard.hnc_solve()
         return Solution(self.wizard)
