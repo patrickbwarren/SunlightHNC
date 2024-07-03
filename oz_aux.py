@@ -11,7 +11,9 @@
 # Modifications copyright (c) 2008, 2009 Andrey Vlasov.  Additional
 # modifications copyright (c) 2009-2017 Unilever UK Central Resources
 # Ltd (Registered in England & Wales, Company No 29140; Registered
-# Office: Unilever House, Blackfriars, London, EC4P 4BQ, UK).
+# Office: Unilever House, Blackfriars, London, EC4P 4BQ, UK).  Later
+# modifications copyright (c) 2020-2024 Patrick B Warren
+# <patrick.warren@stfc.ac.uk> and STFC.
 
 # SunlightDPD is free software: you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as
@@ -44,61 +46,77 @@ class Solution:
         self.uex = wizard.uex
         self.muex = wizard.muex
         self.hc = wizard.hc
+        self.hr = wizard.hr
         self.closure = F90str(wizard.closure_name)
+        self.wizard = wizard # give access to underlying FORTRAN sector
 
     def write_params(self):
         self.wizard.write_params()
 
-    def write_thermodynamics():
+    def write_thermodynamics(self):
         self.wizard.write_thermodynamics()
+
+class Model:
+
+    def __init__(self, wizard, name):
+        self.name = name # give it a name, other properties may be attached later
+        self.wizard = wizard # give access to underlying FORTRAN sector
 
 class OZSolver:
 
     def __init__(self, wizard, ncomp=1, ng=16384, deltar=0.01): # instantiate and initialise
-        wizard.ncomp = ncomp
         wizard.ng = ng
+        wizard.ncomp = ncomp
         wizard.deltar = deltar
-        wizard.initialise()
+        wizard.initialise() # all the arrays in the FORTRAN sector
+        self.r = wizard.r # copy these for use outside
+        self.k = wizard.k
+        self.deltar = wizard.deltar
+        self.deltak = wizard.deltak
         self.version = F90str(wizard.version)
         self.wizard = wizard # gives access from the instantiated object
 
     def additive_primitive_model(self, lb, diam, z):
+        model = Model(self.wizard, 'additive PM')
         w = self.wizard
-        r, k = w.r, w.k
-        for j in range(w.ncomp):
+        r, k, ncomp = w.r, w.k, w.ncomp
+        model.diam = np.empty((ncomp, ncomp)) 
+        for j in range(ncomp):
             for i in range(j+1):
                 ij = i + j*(j+1)//2
-                w.dd[ij] = 0.5*(diam[i] + diam[j])
-        sigma = np.min(w.dd) # this defines the minimum hard core
-        cut = round(sigma / w.deltar)
-        for j in range(w.ncomp):
+                model.diam[i, j] = 0.5*(diam[i] + diam[j])
+                w.dd[ij] = model.diam[i, j]
+        σ = np.min(w.dd) # this defines the minimum hard core
+        cut = round(σ / w.deltar)
+        for j in range(ncomp):
             for i in range(j+1):
                 ij = i + j*(j+1)//2
                 zzlb = z[i] * z[j] * lb
                 w.ulong[:, ij] = zzlb / r
-                w.ulong[:cut, ij] = zzlb / sigma # cut-off inside min hard core (see docs)
+                w.ulong[:cut, ij] = zzlb / σ # cut-off inside min hard core (see docs)
                 w.dulong[:, ij] = - zzlb / r**2
                 w.dulong[:cut, ij] = 0.0 # -- ditto --
-                w.ulongk[:, ij] = 4*π*zzlb*sin(k*sigma) / (sigma * k**3)
+                w.ulongk[:, ij] = 4*π*zzlb*sin(k*σ) / (σ * k**3)
         w.ushort[:, :] = 0.0
         w.dushort[:, :] = 0.0
         w.expnegus[:, :] = 1.0
         for ij in range(w.nfnc):
             cut = round(w.dd[ij] / w.deltar)
             w.expnegus[:cut, ij] = 0.0
-        w.u0[:] = z**2 * lb / sigma
+        w.u0[:] = z**2 * lb / σ
         w.tp[:] = 0.0
         w.tu[:] = 0.0
         w.tl[:] = 0.0
-        self.model = 'additive PM'
+        return model
 
     def restricted_primitive_model(self, lb):
         diam = np.array([1.0, 1.0])
         z = np.array([1.0, -1.0])
-        self.additive_primitive_model(lb, diam, z)
-        self.model = 'RPM'
+        model = self.additive_primitive_model(lb, diam, z)
+        model.name = 'RPM'
+        return model
 
-    def soften_rpm(self, lb, kappa, ushort=False): # to be called after RPM
+    def soften_rpm(self, lb, kappa, ushort=False): # to be called on an instance of Model after RPM
         w = self.wizard
         σ = np.min(w.dd)
         r, k, κ = w.r, w.k, kappa
@@ -115,16 +133,18 @@ class OZSolver:
         w.tp[1] = π*lb * ( σ*exp(-κ**2*σ**2)/(κ*sqrt(π)) + (1/(2*κ**2) - 1/3*σ**2) * erfc(κ*σ) )
         w.tu[1] = π*lb * ( σ*exp(-κ**2*σ**2)/(κ*sqrt(π)) + (1/(2*κ**2) - σ**2) * erfc(κ*σ) )
         what = 'Ushort' if ushort else 'Ulong'
-        self.model = f'softened RPM ({what} changed)'
+        model.name = f'softened RPM ({what} changed)'
+        return model
+
+    def hnc_solve(self, rho, npic=6, alpha=0.2, cold_start=None): # solve and return a solution object
+        self.wizard.rho = rho
+        self.wizard.npic = npic
+        self.wizard.alpha = alpha
+        if cold_start is not None: # avoid setting this if not required
+            self.wizard.cold_start = cold_start
+        self.wizard.hnc_solve()
+        return Solution(self.wizard)
 
     def set_verbosity(self, verbosity):
         self.verbosity = verbosity
         self.wizard.verbosity = (verbosity > 1)
-
-    def hnc_solve(self, rho, alpha=0.3, npic=6, cold_start=False): # solve and return a solution object
-        self.wizard.rho = rho
-        self.wizard.npic = npic
-        self.wizard.alpha = alpha
-        self.wizard.cold_start = cold_start
-        self.wizard.hnc_solve()
-        return Solution(self.wizard)

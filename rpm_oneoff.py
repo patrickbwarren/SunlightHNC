@@ -6,8 +6,8 @@
 
 # Copyright (c) 2009-2019 Unilever UK Central Resources Ltd
 # (Registered in England & Wales, Company No 29140; Registered Office:
-# Unilever House, Blackfriars, London, EC4P 4BQ, UK).  Additional
-# modifications copyright (c) 2020-2021 Patrick B Warren
+# Unilever House, Blackfriars, London, EC4P 4BQ, UK).  Later
+# modifications copyright (c) 2020-2024 Patrick B Warren
 # <patrick.warren@stfc.ac.uk> and STFC.
 
 # SunlightDPD is free software: you can redistribute it and/or
@@ -47,7 +47,10 @@
 
 import argparse
 import numpy as np
+from numpy import pi as π
 from oz import wizard as w
+from numpy import sin, sqrt, exp
+from scipy.special import erf, erfc
 
 parser = argparse.ArgumentParser(description='RPM one off calculator')
 
@@ -77,7 +80,7 @@ parser.add_argument('--exp', action='store_true', help='use EXP (implies MSA)')
 parser.add_argument('--nwarm', action='store', default=1, type=int, help='number of intermediate warm-up steps')
 
 parser.add_argument('--dump', action='store_true', help='write out g(r)')
-parser.add_argument('--show', action='store_true', help='plot results')
+parser.add_argument('-s', '--show', action='store_true', help='plot results')
 
 parser.add_argument('--eps', action='store', default=1e-20, type=float, help='floor for log tails (default 1e-20)')
 parser.add_argument('--only', action='store_true', help='plot only pair functions')
@@ -85,7 +88,9 @@ parser.add_argument('--tail', action='store_true', help='plot tails of pair func
 parser.add_argument('--all', action='store_true', help='include solvent pair functions')
 parser.add_argument('--total', action='store_true', help='add solvent to make up to total --rho')
 
-parser.add_argument('--verbose', action='store_true', help='more output')
+parser.add_argument('-b', '--bespoke', action='store_true', help='use bespoke model builder')
+
+parser.add_argument('-v', '--verbose', action='store_true', help='more output')
 
 args = parser.parse_args()
 
@@ -138,6 +143,10 @@ rhos = eval(args.rhos.replace('^', '**')) # added solvent hard sphere density
 w.rho[0] = 0.5 * rhoz
 w.rho[1] = 0.5 * rhoz
 
+if args.bespoke:
+    r, k = w.r, w.k
+    w.z = np.array([1.0, -1.0]) if w.ncomp == 2 else np.array([1.0, -1.0, 0.0])
+
 if w.ncomp == 3:
     if args.total: # add solvent to make up to total hard sphere density
         w.rho[2] = rho - rhoz
@@ -155,7 +164,35 @@ if args.exp:
 
 for i in range(args.nwarm):
     w.lb = (i + 1.0) / args.nwarm * (1.0 / eval(args.tstar))
-    w.rpm_potential(args.ushort)
+    if args.bespoke: 
+        for j in range(w.ncomp):
+            for i in range(j+1):
+                ij = i + j*(j+1)//2
+                w.dd[ij] = 0.5*(diam[i] + diam[j])
+        σ = np.min(w.dd)
+        cut = round(σ / w.deltar)
+        for j in range(w.ncomp):
+            for i in range(j+1):
+                ij = i + j*(j+1)//2
+                zzlb = w.z[i] * w.z[j] * w.lb
+                w.ulong[:, ij] = zzlb / r
+                w.ulong[:cut, ij] = zzlb / σ
+                w.ulongk[:, ij] = 4 * π * zzlb * sin(k*σ)  / (σ * k**3)
+                w.dulong[:, ij] = - zzlb / r**2
+                w.dulong[:cut, ij] = 0.0
+        w.ushort[:, :] = 0.0
+        w.dushort[:, :] = 0.0
+        w.expnegus[:, :] = 1.0
+        for ij in range(w.nfnc):
+            cut = round(w.dd[ij] / w.deltar)
+            w.expnegus[:cut, ij] = 0.0
+        w.u0 = w.z**2 * w.lb / σ
+        w.tp[:] = 0.0
+        w.tu[:] = 0.0
+        w.tl[:] = 0.0
+    else:
+        w.rpm_potential(args.ushort)
+
     if w.verbose: w.write_params()
     if args.msa:
         w.msa_solve()
@@ -176,6 +213,8 @@ if args.exp:
 if w.return_code: exit()
 
 if not args.dump:
+    if args.bespoke:
+        print('BESPOKE POTENTIAL BUILDER')
     w.write_params()
     w.write_thermodynamics()
 
