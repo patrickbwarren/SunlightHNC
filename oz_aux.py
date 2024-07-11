@@ -137,14 +137,15 @@ class OZSolver:
         model.name = f'softened RPM ({what} changed)'
         return model
 
-    def hnc_solve(self, rho, npic=6, alpha=0.2, cold_start=None): # solve and return a solution object
+    def hnc_solve(self, rho, npic=6, alpha=0.2, maxsteps=100, cold_start=None): # solve
         self.wizard.rho = rho
         self.wizard.npic = npic
         self.wizard.alpha = alpha
+        self.wizard.maxsteps = maxsteps
         if cold_start is not None: # avoid setting this if not required
             self.wizard.cold_start = cold_start
         self.wizard.hnc_solve()
-        return Solution(self.wizard)
+        return Solution(self.wizard) # return a solution object
 
     def set_verbosity(self, verbosity):
         self.verbosity = verbosity
