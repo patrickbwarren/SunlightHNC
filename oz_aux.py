@@ -38,13 +38,14 @@ def F90str(s): # convert FORTRAN string to python
 
 class Solution:
 
-    def __init__(self, wizard): # copy everything over that we might need
+    def __init__(self, wizard): # copy some things that we might need (add more here !)
         self.error = wizard.error
         self.deficit = wizard.deficit
         self.aex = wizard.aex
         self.press = wizard.press
         self.uex = wizard.uex
         self.muex = wizard.muex
+        self.r = wizard.r
         self.hc = wizard.hc
         self.hr = wizard.hr
         self.closure = F90str(wizard.closure_name)
@@ -147,4 +148,4 @@ class OZSolver:
 
     def set_verbosity(self, verbosity):
         self.verbosity = verbosity
-        self.wizard.verbosity = (verbosity > 1)
+        self.wizard.verbose = (verbosity > 1)
