@@ -89,6 +89,7 @@ module wizard
        & nps = 6,           & ! number of previous states used in Ng method
        & npic = 6,          & ! number of Picard steps
        & maxsteps = 100,    & ! max number of steps to take for convergence
+       & nsteps,            & ! actual number of steps taken
        & return_code = 0      ! error code (see above)
 
   integer*8 :: plan  ! FFTW plan for fast discrete sine transforms
@@ -220,7 +221,7 @@ contains
     print *, ' r(ng-1) = ', r(ng-1), ' k(ng-1) = ', k(ng-1)
     print *, 'POTENTIAL DETAILS :: model type =', model_type, model_name
     if (model_type.eq.NO_MODEL_TYPE) then
-       print *, 'No potential has been selected'
+       print *, 'No potential has been selected / potential set externally'
     else if (model_type.le.DPD_SLATER_EXACT_CHARGES) then
        print *, 'DPD potential was selected, matrix A = '
        do i = 1, ncomp
@@ -1105,6 +1106,7 @@ contains
        end if
        if (error .lt. tol) exit
     end do
+    nsteps = i
     if (error .gt. tol) then
        return_code = CONVERGENCE_ERROR
        error_msg = 'error > tol in hnc_solve'
@@ -1281,6 +1283,7 @@ contains
        end if
        if (error .lt. tol) exit
     end do
+    nsteps = i
     if (error .gt. tol) then
        return_code = CONVERGENCE_ERROR
        error_msg = 'error > tol in msa_solve'
