@@ -44,6 +44,8 @@ class Grid: # instantiate one of these first
         wizard.ncomp = ncomp
         wizard.deltar = deltar
         wizard.initialise() # all the arrays in the FORTRAN sector
+        self.ng = wizard.ng
+        self.ncomp = wizard.ncomp
         self.r = wizard.r # copy these for use outside
         self.k = wizard.k
         self.deltar = wizard.deltar
@@ -66,7 +68,6 @@ class Solution: # intended for internal use only; assumes direct access to wizar
         self.press = wizard.press
         self.uex = wizard.uex
         self.muex = wizard.muex
-        self.r = wizard.r
         self.hc = wizard.hc
         self.hr = wizard.hr
         self.closure = F90str(wizard.closure_name)
