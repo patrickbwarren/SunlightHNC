@@ -2024,13 +2024,13 @@ See comments in files for more details.
   The near-exact linear dependence can be represented by $\chi (1 -
   2x)$ where $\chi$ is the Flory $\chi$-parameter.
 %
-\item\verb+hm_fig4-2_compare.py+ solves for the virial and
+\item\verb+hm4_fig4-2_compare.py+ solves for the virial and
   compressibility route pressure for the MSA and HNC, for hard
   spheres, and compares with the accurate Carnahan-Starling equation of
-  state, as in Fig 4.2 of \Refcite{HM06}.  
+  state, as in Fig~4.2 of \Refcite{HM06}.
 %
-\item\verb+hm_fig10-2_compare.py+ solves the MSA and HNC for the
-  RPM and compares with Monte-Carlo data, as in Fig 10.2 of
+\item\verb+hm4_fig10-3_compare.py+ solves the MSA and HNC for the
+  RPM and compares with Monte-Carlo data, as in Fig~10.3 of
   \Refcite{HM06}.
 %
 \item\verb+attard_fig1_compare.py+ solves the HNC for the RPM to
@@ -2158,15 +2158,19 @@ For completeness, the partner to \Eqref{eq:msa1} is the Percus-Yevick
 hard sphere solution \cite{HM06, Wert63}
 %
 \begin{equation}
-  \half(c_{11}+c_{12})=
-  -[\lambda_1-6\eta\lambda_2r/R
-  +\half\eta\lambda_1(r/R)^3]\,\Theta(1-x)
+  \half(c_{11}+c_{12})=\Bigl\{\begin{array}{ll}
+  -\lambda_1-6\eta\lambda_2x-\half\eta\lambda_1x^3 & x<1\,,\\
+  0 & x > 1\,,\end{array}
   \label{eq:msa2}
 \end{equation}
 %
-where $\lambda_1=(1+2\eta)^2/(1-\eta)^4$,
-$\lambda_2=(1+\half\eta)^2/(1-\eta)^4$, and $\eta=\pi\rho R^3/6$ is
-the packing fraction.
+where $x=r/R$, $\eta=\pi\rho R^3/6$ is the packing fraction, and
+%
+\begin{equation}
+\lambda_1=(1+2\eta)^2/(1-\eta)^4\,,\quad
+\lambda_2=-(2+\eta)^2/4(1-\eta)^4\,.
+\end{equation}
+%
 
 An alternative route to the charge-charge structure factor uses
 analytic continuation on the Laplace-transformed direct correlation
@@ -2199,7 +2203,7 @@ If the indicated operations are carried out, one indeed recovers
   J. Chem. Phys. {\bf61}, 2680--2689 (1974).
 
 \bibitem{HM06} J.-P.~Hansen and I.~R.~McDonald, ``Theory of simple
-  liquids 3rd edition'' (Academic Press, Amsterdam, 2006).
+  liquids, 4th edition'' (Academic Press, Amsterdam, 2013).
 
 \bibitem{KMP04} C.~T.~Kelley and B.~Montgomery Pettitt, ``A fast
   solver for the Ornstein-Zernike equations'',
