@@ -71,7 +71,7 @@ print('Bjerrum length = %g Å = %g d, T* = %g' % (lb/Å, lb/d, d/lb))
 
 # We use the diameter d as a base length unit
 
-model = oz_aux.restricted_primitive_model(grid, lb/d)
+model = oz_aux.restricted_primitive_model(grid, lb / d)
 
 fig, (ax1, ax2) = plt.subplots(1, 2)
 
@@ -101,9 +101,7 @@ for i, (conc, style) in enumerate(zip(concs, styles)):
 
     ρd3 = conc * 1e3 * NA * d**3
 
-    rho = np.array([ρd3, ρd3])
-
-    soln = oz_aux.hnc_solve(model, rho)
+    soln = oz_aux.hnc_solve(model, np.array([ρd3, ρd3]))
 
     if wizard.return_code: exit()
 
