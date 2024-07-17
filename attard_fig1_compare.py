@@ -10,7 +10,7 @@
 # Copyright (c) 2009-2019 Unilever UK Central Resources Ltd
 # (Registered in England & Wales, Company No 29140; Registered Office:
 # Unilever House, Blackfriars, London, EC4P 4BQ, UK).  Additional
-# modifications copyright (c) 2020-2021 Patrick B Warren
+# modifications copyright (c) 2020-2024 Patrick B Warren
 # <patrick.warren@stfc.ac.uk> and STFC.
 
 # SunlightDPD is free software: you can redistribute it and/or
@@ -32,19 +32,17 @@
 # of an electrolyte at 0.5 M, 2 M, and 5 M, with ion diameter 0.5 nm,
 # in water with ε_r = 78.5 ant T = 300 K.
 
+# Updated July 2024 to use the new oz_aux module.
+
+import oz_aux
 import argparse
 import numpy as np
-import math as m
 import matplotlib.pyplot as plt
 
-from oz import wizard as w
+from oz import wizard
 from numpy import pi as π
 
-w.ncomp = 2
-w.ng = 2**14 # or 2**16
-w.deltar = 1e-3 # or 5e-4
-
-w.initialise()
+grid = oz_aux.Grid(wizard, ncomp=2, ng=2**14, deltar=1e-3) # or 2*16 and 5e-4
 
 # fundamental quantities in SI units 
 
@@ -71,11 +69,9 @@ concs = [0.5, 2, 5] # Molar units
 
 print('Bjerrum length = %g Å = %g d, T* = %g' % (lb/Å, lb/d, d/lb))
 
-# We use the diameter d as a base length unit (assuming w.sigma = 1)
+# We use the diameter d as a base length unit
 
-w.lb = lb / d
-
-w.rpm_potential()
+model = oz_aux.restricted_primitive_model(grid, lb/d)
 
 fig, (ax1, ax2) = plt.subplots(1, 2)
 
@@ -93,7 +89,7 @@ ax2.set_ylim([-8, 1])
 ax2.set_yticks(list(range(-8, 2, 1)))
 ax2.set_title('log10 h(r)')
 
-imin = int(1.0 / w.deltar)
+imin = int(1.0 / grid.deltar)
 
 styles = ['k-', 'r--', 'b:']
 
@@ -105,40 +101,38 @@ for i, (conc, style) in enumerate(zip(concs, styles)):
 
     ρd3 = conc * 1e3 * NA * d**3
 
-    w.rho[0] = ρd3
-    w.rho[1] = ρd3
+    rho = np.array([ρd3, ρd3])
 
-    w.hnc_solve()
+    soln = oz_aux.hnc_solve(model, rho)
 
-    if w.return_code: exit()
+    if wizard.return_code: exit()
 
-    s = str(w.closure_name, 'utf-8').strip()
-    print('conc = %5.1f M \tρ*d^3 = %8.5f \tϕ = %8.5f \t%s error = %g' %
-          (conc, ρd3, π*ρd3/6, s, w.error))
+    print('conc = %5.1f M \tρ*d^3 = %8.5f \tϕ = %8.5f \tpress = %8.5f \t%s error = %g' %
+          (conc, ρd3, π*ρd3/6, soln.press, soln.closure, soln.error))
 
-    imax = int(4.0 / w.deltar)
-    
-    ax1.plot(w.r[imin:imax] * d / Å, w.hr[imin:imax, 0, 0], style)
-    ax1.plot(w.r[imin:imax] * d / Å, w.hr[imin:imax, 0, 1], style)
+    imax = int(4.0 / grid.deltar)
+
+    ax1.plot(grid.r[imin:imax] * d / Å, soln.hr[imin:imax, 0, 0], style)
+    ax1.plot(grid.r[imin:imax] * d / Å, soln.hr[imin:imax, 0, 1], style)
 
     # In Attard's figure the line for 0.5 M is surely h_{+-}
 
-    imax = int(10.0 / w.deltar)
+    imax = int(10.0 / grid.deltar)
 
     if i == 0:
-        h = w.hr[imin:imax, 0, 1]
+        h = soln.hr[imin:imax, 0, 1]
     else:
-        h = w.hr[imin:imax, 0, 0]
+        h = soln.hr[imin:imax, 0, 0]
 
     h[h < 0] = 1e-20 # chop off negative regions
 
-    ax2.plot(w.r[imin:imax] * d / Å, np.log10(h), style)
+    ax2.plot(grid.r[imin:imax] * d / Å, np.log10(h), style)
 
     # The commented out variant plots r h for both ++ and +- functions
 
     # for j, color in zip([0, 1], ['r', 'b']):
-    #     h = w.r[imin:imax] * w.hr[imin:imax, 0, j]
+    #     h = grid.r[imin:imax] * soln.hr[imin:imax, 0, j]
     #     h[h < 0] = 1e-20
-    #     plt.plot(w.r[imin:imax] * d / Å, np.log10(h), color+style)
+    #     plt.plot(grid.r[imin:imax] * d / Å, np.log10(h), color+style)
 
 plt.show()
