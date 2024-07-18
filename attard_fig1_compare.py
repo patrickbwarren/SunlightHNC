@@ -101,7 +101,7 @@ for i, (conc, style) in enumerate(zip(concs, styles)):
 
     ρd3 = conc * 1e3 * NA * d**3
 
-    soln = oz_aux.hnc_solve(model, np.array([ρd3, ρd3]))
+    soln = oz_aux.solve(model, np.array([ρd3, ρd3]), 'HNC')
 
     if wizard.return_code: exit()
 

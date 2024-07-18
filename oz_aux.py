@@ -59,6 +59,9 @@ class Model: # build a model on top of the grid
         self.name = name # give it a name, other properties may be attached later
         self.wizard = grid.wizard # give access to underlying FORTRAN sector
 
+    def write_params(self):
+        self.wizard.write_params()
+
 class Solution: # intended for internal use only; assumes direct access to wizard
 
     def __init__(self, wizard): # copy some things that we might need (add more here !)
@@ -146,14 +149,20 @@ def soften_rpm(model, kappa, ushort=False): # to be called after RPM
     model.name = f'softened RPM ({what} changed)'
     return model
 
-def hnc_solve(model, rho, npic=6, alpha=0.2, maxsteps=100, cold_start=None): # solve
-    w = model.wizard
-    w.rho = rho
-    w.npic = npic
-    w.alpha = alpha
-    w.maxsteps = maxsteps
+def solve(model, rho, closure='HNC', npic=6, alpha=0.2, maxsteps=100, cold_start=None):
+    model.wizard.rho = rho
+    model.wizard.npic = npic
+    model.wizard.alpha = alpha
+    model.wizard.maxsteps = maxsteps
     if cold_start is not None: # avoid setting this if not required
-        w.cold_start = cold_start
-    w.hnc_solve()
-    return Solution(w) # return a solution object
+        model.wizard.cold_start = cold_start
+    if 'hnc' in closure.lower():
+        model.wizard.hnc_solve()
+    elif 'msa' in closure.lower():
+        model.wizard.msa_solve()
+    else:
+        raise ValueError(f'unrecognised closure {closure} in solve; use HNC or MSA')
+    return Solution(model.wizard) # return a solution object
 
+def hnc_solve(*args, **kwargs): # for backwards compatibility ; deprecated
+    return solve(*args, closure='HNC', **kwargs)
