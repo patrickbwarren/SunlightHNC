@@ -149,7 +149,7 @@ Anton, with modifications copyright &copy; 2008, 2009 Andrey Vlasov, and
 additional modifications copyright &copy; 2009-2018 Unilever UK Central
 Resources Ltd (Registered in London number 29140;
 Registered Office: Unilever House, 100 Victoria Embankment, London EC4Y 0DY, UK).
-Later modifications copyright &copy; 2020-2023 Patrick B Warren (STFC).
+Later modifications copyright &copy; 2020-2025 Patrick B Warren (STFC).
 
 #### Contact
 
