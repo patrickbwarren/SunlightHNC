@@ -151,7 +151,7 @@ projects. If you end up publishing results based on this, please cite\\
 The \FORTRAN\ 90 module \verb+oz_mod.f90+ implements an
 Ornstein-Zernike solver for multicomponent mixtures of possibly
 charged particles, returning both structural and thermodynamic
-information.  The closures currently implemented are the HNC, MSA,
+information \cite{WVA+13}.  The closures currently implemented are the HNC, MSA,
 RPA, and EXP.  Though we say it ourselves, the code is \emph{fast}
 since it is written in native \FORTRAN\ and implements the Ng
 acceleration schemes \cite{Ng74}.  The interaction potentials are
@@ -161,7 +161,7 @@ liquid state integral equation methods can be found in Hansen and
 McDonald \cite{HM06}, Kelley and Montgomery Pettitt \cite{KMP04}, and
 Vrbka \etal\ \cite{Vrbka09}.  We note that Vrbka provides an
 independent package called `pyOZ', implemented entirely in
-\python~\cite{Vrbka09}.  There are some differences with the present
+\python.  There are some differences with the present
 approach: the Ornstein-Zernike relation is normalised slightly
 differently, a conjugate gradient method is used to accelerate
 convergence, and pyOZ provides other closures in addition to the ones
@@ -177,14 +177,21 @@ later converted to use the open source libraries \FFTW\ and
 \subsection{Single component HNC}
 %
 We suppose that the interaction between a pair of particles is given
-by the potential $v(r)$.  We introduce the following quantities
-\cite{HM06}: the pair distribution function $g(r)$, the total
-correlation function $h(r)\equiv g(r)-1$, the direct correlation
-function $c(r)$ defined by the Ornstein-Zernike relation below, and
-the indirect correlation function $e(r)\equiv h(r)-c(r)$.  Note that
-the indirect correlation function is called $\gamma(r)$ by Vrbka
-\etal\ \cite{Vrbka09} and $b(r)$ by Hansen and McDonald \cite{HM06}.  We
-also introduce the Fourier transforms, \eg\
+by the potential $v(r)$.  We introduce the following quantities:
+%
+\begin{equation}
+  \begin{array}{lll}
+    g(r)        &\quad& \text{pair distribution function},   \\
+    h(r)=g(r)-1      && \text{total correlation function},   \\[6pt]
+    c(r)             && \text{direct correlation function},  \\
+    e(r) = h(r)-c(r) && \text{indirect correlation function},
+  \end{array}
+\end{equation}
+%
+where $c(r)$ is defined by the Ornstein-Zernike relation below.  Note
+that the indirect correlation function is called $b(r)$ by Hansen and
+McDonald \cite{HM06} and $\gamma(r)$ by Vrbka \etal\ \cite{Vrbka09}.
+We also introduce the Fourier transforms, \eg\
 %
 \begin{equation}
 \tilde h(k) = \int\!d^3\rvec\, e^{-i\kvec\cdot\rvec} \,h(r)\,,
@@ -210,8 +217,7 @@ h(r) = \frac{1}{2 \pi^2 r} \int_0^\infty \!\!dk\, \sin(kr)\, k\, \tilde h(k)\,.
 \label{eq:bFB}
 \end{equation}
 %
-In terms of the Fourier transforms the Ornstein-Zernike (OZ) relation
-is
+In these terms the Ornstein-Zernike (OZ) relation is~\cite{HM06}
 %
 \begin{equation}
 \tilde h(k) = \tilde c(k) + \rho\,
@@ -489,26 +495,37 @@ given by $g_{\mu\nu}=\delta_{\mu\nu}+h_{\mu\nu}$.
 \subsubsection{Structure factors}
 %
 For the partial structure factors, there is a choice of normalisation.
-In the present code the structure factors are perhaps unusually
-defined to be
+The present code defines
 %
 \begin{equation}
-S_{\mu\nu}(k) = \rho_\mu\delta_{\mu\nu} + \rho_\mu\rho_\nu{\tilde
-  h}_{\mu\nu}
-\label{eq:skdef}
+    S_{\mu\nu}(k)
+    = \rho_\mu\delta_{\mu\nu} + \rho_\mu\rho_\nu{\tilde h}_{\mu\nu}
+    \qquad \text{(present definition)}\,,
+  \label{eq:skdef}
 \end{equation}
 %
 where ${\tilde h}_{\mu\nu}={\tilde c}_{\mu\nu}\myprime + {\tilde
-  e}_{\mu\nu}\myprime$ (again, $\beta v_{\mu\nu}\lr$ cancels); the
-Fourier transforms ${\tilde c}_{\mu\nu}\myprime$ and ${\tilde
-  e}_{\mu\nu}\myprime$ are available as a byproduct of solving the OZ
-relation.  With this normalisation the structure factors obey
-$S_{\mu\nu}(k)\to\rho_\mu\delta_{\mu\nu}$ as $k\to\infty$.  An
-alternative (and more popular) normalisation, for which
-$S_{\mu\nu}(k)\to\delta_{\mu\nu}$ as $k\to\infty$, is obtained from
-the above expression by multiplying by $({\rho_\mu\rho_\nu})^{-1/2}$.
-
-The unusual choice of normalisation is made to facilitate
+  e}_{\mu\nu}\myprime$ (again, $\beta v_{\mu\nu}\lr$ cancels) and
+(recall) $\rho_\mu=\rho x_\mu$\,; the Fourier transforms ${\tilde
+  c}_{\mu\nu}\myprime$ and ${\tilde e}_{\mu\nu}\myprime$ are available
+as a byproduct of solving the OZ relation.  With this normalisation
+the structure factors obey $S_{\mu\nu}(k)\to\rho_\mu\delta_{\mu\nu}$
+as $k\to\infty$.  Two alternative normalisations are due to Aschroft
+and Langreth \cite{AL67} and to Hansen and McDonald
+\cite{HM06} respectively:
+%
+\begin{equation}
+  \begin{array}{llll}
+    S_{\mu\nu}(k)/\rho^{1/2}_\mu \rho^{1/2}_\nu
+    &= \delta_{\mu\nu} + \rho x^{1/2}_\mu x^{1/2}_\nu{\tilde h}_{\mu\nu}
+    &\quad& \text{(Ashcroft-Langreth)}\,,\\[6pt]
+    S_{\mu\nu}(k)/\rho
+    &= x_\mu\delta_{\mu\nu} + \rho x_\mu x_\nu{\tilde h}_{\mu\nu}
+    && \text{(Hansen-McDonald)}\,.
+  \end{array}
+\end{equation}
+%
+The present choice of normalisation is made to facilitate
 the calculation of the density-density and charge-charge structure
 factors \via\
 %
@@ -518,7 +535,7 @@ factors \via\
   \label{eq:snnszz}
 \end{equation}
 %
-The normalisation ensures $S_{NN}$, $S_{ZZ}\to1$ as $k\to\infty$.
+This ensures $S_{NN}$, $S_{ZZ}\to1$ as $k\to\infty$.
 
 \subsection{Thermodynamics}
 \label{sec:thermo}
@@ -2218,6 +2235,10 @@ If the indicated operations are carried out, one indeed recovers
   R.~R.~Netz, and W.~Kunz, ``Ion-specific thermodynamics of
   multicomponent electrolytes: A hybrid HNC/MD approach'',
   J.\ Chem.\ Phys.\ {\bf131}, 154109 (2009).
+
+\bibitem{AL67} N.~W.~Ashcroft and D.~C.~Langreth, ``Structure of
+  Binary Liquid Mixtures. II. Resistivity of Alloys and the Ion-Ion
+  Interaction'', Phys.\ Rev.\ 159, 500 (1967).
 
 \bibitem{Hir60} K.~Hiroike, ``A new approach to the theory of
   classical fluids, II'', Prog.\ Theor.\ Phys.\ {\bf24}, 317 (1960).
