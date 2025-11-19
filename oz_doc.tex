@@ -1789,7 +1789,7 @@ calculations do require all the remaining potential functions though.
 %
 As a basic example the following minimalist code solves the
 HNC closure problem for standard one-component DPD at $\rho=3$ and
-$A=25$, and prints the virial route pressure,
+$A=25$ using the default grid size and spacing, and prints the virial route pressure,
 %
 \begin{verbatim}
 #!/usr/bin/env python3
@@ -1895,6 +1895,7 @@ w.dpd_potential()
 w.rho[0] = 3.0
 print('CR pressure = %0.5f' % cr_press(0.05))
 print('VR pressure = %0.5f' % w.press)
+print('GP pressure = %0.5f' % (rho + rho*w.muex - w.aex))
 \end{verbatim}
 %
 results in
@@ -1902,9 +1903,10 @@ results in
 \begin{verbatim}
 CR pressure = 22.66623
 VR pressure = 23.56415
+GP pressure = 23.56441
 \end{verbatim}
 %
-Pressures calculated by the two routes differ by about 4\%
+The last here is the (negative) grand potential (GP) density, which in a homogeneous system should equal the pressure; this (numerically) verifies consistency with the virial route.  The pressure calculated by the compressibility route differs by about 4\%
 which appears to be typical for HNC for soft potentials.  Also,
 further investigation reveals the dependence on $\delta\rho$ is linear
 and extrapolates to $p=22.31$ at $\delta\rho\to0$, for $\rho=3$ and

@@ -75,8 +75,8 @@ def mu_aex(drho):
         prev = w.muex[0]
     return aex
 
-w.ng = 8192
-w.deltar = 0.02
+#w.ng = 8192
+#w.deltar = 0.02
 w.initialise()
 w.arep[0,0] = A = 25.0
 w.dpd_potential()
@@ -113,6 +113,7 @@ plt.show()
 print('\n*** Example 6.2 ***\n')
 print('CR pressure = %0.5f' % cr_press(0.05))
 print('VR pressure = %0.5f' % w.press)
+print('GP pressure = %0.5f' % (rho + rho*w.muex - w.aex))
 
 print('\n*** Example 6.3 ***\n')
 print('energy aex = %0.5f' % energy_aex(0.1))
