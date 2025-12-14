@@ -11,11 +11,11 @@ Version 1.8 includes the MSA closure and various potentials for Slater smeared c
 Version 1.7 handles an arbitrary number of components (rather than a maximum of three, as for previous versions).
 
 A small update was made to the documentation recently (Dec 2025)
-because it became unclear whether it was really true that the free
-energy satisfied *a* = ∑<sub>i</sub> ρ<sub>i</sub> μ<sub>i</sub> − *p*
-where *p* is the virial pressure.  In an exact theory, this would be
-true, and it appears to hold accurately in HNC for soft potentials.  I
-thank Josh Robinson for drawing my attention to this.
+because it became unclear whether it was really true that the HNC free
+energy satisfies *a* = ∑<sub>i</sub> ρ<sub>i</sub> μ<sub>i</sub> −
+*p*, where *p* is the virial pressure.  In an exact theory, this would
+be an identity, and it appears to hold accurately in HNC for soft
+potentials.  I thank Josh Robinson for drawing my attention to this.
 
 #### Features
 
