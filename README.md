@@ -17,6 +17,10 @@ energy satisfies *a* = ∑<sub>i</sub> ρ<sub>i</sub> μ<sub>i</sub> −
 be an identity, and it appears to hold accurately in HNC for soft
 potentials.  I thank Josh Robinson for drawing my attention to this.
 
+The experimental module `oz_aux.py` makes a start at implementing the
+road map below, by wrapping the initialisation stages and the HNC
+solver, and providing support for RPM potentials.
+
 #### Features
 
 * FORTRAN 90 based, with example python driver scripts;
