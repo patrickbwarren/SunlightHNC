@@ -114,7 +114,7 @@ module wizard
        & aex_rl, aex_rs,    & ! contributions to HNC excess free energy density
        & aex_kl, aex_kd,    & !    --- '' ---
        & aex_ks, aex,       & ! -- '' --, and final excess free energy density
-       & deficit,           & ! excess free energy deficit (see docs)
+       & deficit,           & ! excess free energy deficit (see below)
        & uex, uex_mf, uex_xc  ! energy density total and contributions
 
   ! (*) sigma is used both for the long-range Coulomb smearing length
@@ -1622,7 +1622,7 @@ contains
 
        ! The free energy density should satisfy
        ! f - sum_mu rho_mu mu_mu + p = 0.
-       ! The deficit/excess here is a test of the numerics
+       ! The deficit/excess here is a test of the accuracy
 
        deficit = aex - sum(rho(:) * muex(:)) + pex
 

@@ -12,7 +12,7 @@
 # modifications copyright (c) 2009-2017 Unilever UK Central Resources
 # Ltd (Registered in England & Wales, Company No 29140; Registered
 # Office: Unilever House, Blackfriars, London, EC4P 4BQ, UK).  Later
-# modifications copyright (c) 2020-2024 Patrick B Warren
+# modifications copyright (c) 2020-2025 Patrick B Warren
 # <patrick.warren@stfc.ac.uk> and STFC.
 
 # SunlightDPD is free software: you can redistribute it and/or
@@ -134,7 +134,7 @@ def soften_rpm(model, kappa, ushort=False): # to be called after RPM
     model.kappa = copy(kappa)
     r, k, κ = w.r, w.k, kappa
     if ushort: # modify Ushort, keeping Ulong unchanged
-        w.ushort[:, 1] = lb*erfc(κ*r) / r # note this flattens as r --> 0, unlike the bare Coulomb law
+        w.ushort[:, 1] = lb*erfc(κ*r) / r # this flattens as r --> 0
         w.dushort[:, 1] = - lb*erfc(κ*r) / r**2 - 2*κ*lb*exp(-κ**2*r**2) / (sqrt(π)*r)
         cut = round(w.dd[1] / w.deltar)
         w.expnegus[cut:, 1] = exp(-w.ushort[cut:, 1])
