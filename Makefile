@@ -30,6 +30,7 @@ FFLAGS = -O2
 LIBFLAGS =  -L/usr/lib -llapack -lfftw3
 INCFLAGS = -I/usr/include/
 PDFL = pdflatex -synctex=1
+F2PY = python3 -m numpy.f2py
 
 DRIVERS = driver1 driver2 driver3 driver4
 
@@ -47,8 +48,8 @@ oz_doc.pdf : oz_doc.tex gofr.png sofk.png
 drivers : $(DRIVERS)
 
 oz.so : oz_mod.f90
-	f2py3 --overwrite-signature $< -m oz -h oz.pyf
-	f2py3 -c $< oz.pyf $(INCFLAGS) $(LIBFLAGS)
+	$(F2PY) --overwrite-signature $< -m oz -h oz.pyf
+	$(F2PY) -c $< oz.pyf $(INCFLAGS) $(LIBFLAGS)
 
 driver1 : driver1.o oz_mod.o
 	$(F90) -o $@ $^ $(LIBFLAGS)
