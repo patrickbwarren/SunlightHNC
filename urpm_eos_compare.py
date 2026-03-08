@@ -91,7 +91,8 @@ ax.set_ylim(1e-4, 10)
 yticks = [1e-4, 1e-3, 0.01, 0.1, 1, 10]
 ylabels = ['$10^{-4}$', '$10^{-3}$', '0.01', '0.1', '1', '10']
 ax.set_yticks(yticks, labels=ylabels)
-ax.set_ylabel(r'$-p^{\mathrm{ex}}$  and  $-\langle U\rangle/3V$', fontsize=label_fs)
+ylabels = [r'$-p^{\mathrm{ex}}$', r'$-\langle U\rangle/3V$']
+ax.set_ylabel(' ; '.join(ylabels), fontsize=label_fs)
 
 ax.minorticks_off()
 ax.tick_params(direction='in', width=gen_lw, length=5, top=True, right=True, labelsize=tick_fs)
