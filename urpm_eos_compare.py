@@ -44,22 +44,20 @@ parser.add_argument('-o', '--output', help='output figure to, eg, pdf file')
 args = parser.parse_args()
 
 MC = pd.read_excel('urpm_eos.ods')
-MC['eby3'] = MC.e / 3
 MC['pex'] = MC.p - MC.rho
+
+lB_vals = MC.lB.unique()
 
 half = 0.5 * np.ones(2)
 grid = oz_aux.Grid(wizard, ncomp=2, ng=4096, deltar=0.01)
 
 data = []
-for lb in [1, 10]:
-    urpm = oz_aux.ultrasoft_restricted_primitive_model(grid, lb)
+for lB in lB_vals:
+    urpm = oz_aux.ultrasoft_restricted_primitive_model(grid, lB)
     for ρz in np.geomspace(1e-3, 10, 21):
         soln = oz_aux.solve(urpm, half*ρz, 'HNC')
-        data.append([x+0 for x in [lb, ρz, soln.press, soln.uex, soln.error]])
-
-HNC = pd.DataFrame(data, columns=['lB', 'rho', 'p', 'e', 'conv'])
-HNC['eby3'] = HNC.e / 3
-HNC['pex'] = HNC.p - HNC.rho
+        data.append([x+0 for x in [lB, ρz, soln.pex, soln.uex, soln.error]])
+HNC = pd.DataFrame(data, columns=['lB', 'rho', 'pex', 'e', 'conv'])
 
 lw, ms = 1.2, 4
 gen_lw, line_lw = 1.2, 1.2
@@ -71,15 +69,15 @@ color = [f'tab:{c}' for c in ['blue', 'red']]
 
 ρ = np.array([1e-3, 10])
 
-for lB, c in zip([10, 1], color):
+for lB, c in zip(lB_vals, color):
     κ = np.sqrt(4*π*lB*ρ)
     ax.loglog(ρ, κ**3/(24*π), ':', lw=lw, c=c)
     cut = HNC.lB == lB
     ax.loglog(HNC[cut].rho, -HNC[cut].pex, '-', lw=lw, c=c, label=f'$l_B={lB}$')
-    ax.loglog(HNC[cut].rho, -HNC[cut].eby3, '-', lw=lw, c=c)
+    ax.loglog(HNC[cut].rho, -HNC[cut].e/3, '-', lw=lw, c=c)
     cut = MC.lB == lB
     ax.loglog(MC[cut].rho, -MC[cut].pex, 'o', ms=ms, c=c)
-    ax.loglog(MC[cut].rho, -MC[cut].eby3, 's', ms=ms, c=c)
+    ax.loglog(MC[cut].rho, -MC[cut].e/3, 's', ms=ms, c=c)
 
 ax.legend(loc='upper left', frameon=False, fontsize=legend_fs, labelspacing=0.5)
 
@@ -93,7 +91,7 @@ ax.set_ylim(1e-4, 10)
 yticks = [1e-4, 1e-3, 0.01, 0.1, 1, 10]
 ylabels = ['$10^{-4}$', '$10^{-3}$', '0.01', '0.1', '1', '10']
 ax.set_yticks(yticks, labels=ylabels)
-ax.set_ylabel(r'$-p^{\mathrm{ex}}$  and  $-\langle U\rangle/3$', fontsize=label_fs)
+ax.set_ylabel(r'$-p^{\mathrm{ex}}$  and  $-\langle U\rangle/3V$', fontsize=label_fs)
 
 ax.minorticks_off()
 ax.tick_params(direction='in', width=gen_lw, length=5, top=True, right=True, labelsize=tick_fs)
