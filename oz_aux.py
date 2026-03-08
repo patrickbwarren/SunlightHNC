@@ -127,6 +127,31 @@ def restricted_primitive_model(grid, lb):
     model.name = 'RPM'
     return model
 
+def ultrasoft_restricted_primitive_model(grid, lb, sigma=1):
+    model = Model(grid, 'URPM')
+    w = model.wizard
+    if w.ncomp != 2:
+        raise ValueError(f'URPM requires ncomp = 2 (not {w.ncomp})')
+    model = Model(grid, 'URPM')
+    model.lb = copy(lb)
+    model.sigma = copy(sigma)
+    model.z = np.array([1.0, -1.0])
+    r, k, σ, z = w.r, w.k, w.sigma, model.z
+    w.ulong[:, 0] = lb/r * erf(r/(2*σ))
+    w.ulongk[:, 0] = 4*π*lb/k**2 * exp(-k**2*σ**2)
+    w.dulong[:, 0] = lb/(sqrt(π)*r*σ) * exp(-r**2/(4*σ**2)) - lb/r**2 * erf(r/(2*σ))
+    w.ulong[:, 1] = - w.ulong[:, 0]
+    w.ulongk[:, 1] = - w.ulongk[:, 0]
+    w.dulong[:, 1] = - w.dulong[:, 0]
+    w.ulong[:, 2] = w.ulong[:, 0]
+    w.ulongk[:, 2] = w.ulongk[:, 0]
+    w.dulong[:, 2] = w.dulong[:, 0]
+    w.ushort[:, :] = 0
+    w.dushort[:, :] = 0
+    w.u0 = z**2*lb / (sqrt(π)*σ)
+    w.expnegus[:, :] = 1.0
+    return model
+
 def soften_rpm(model, kappa, ushort=False): # to be called after RPM
     lb = model.lb
     σ = model.sigma
