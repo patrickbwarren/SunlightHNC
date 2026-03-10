@@ -65,19 +65,19 @@ tick_fs, label_fs, legend_fs = 14, 14, 14
 
 fig, ax = plt.subplots(figsize=(6, 4), dpi=args.dpi)
 
-color = [f'tab:{c}' for c in ['blue', 'red']]
+colors = [f'tab:{c}' for c in ['blue', 'red']]
 
 ρ = np.array([1e-3, 10])
 
-for lB, c in zip(lB_vals, color):
+for lB, color in zip(lB_vals, colors):
     κ = np.sqrt(4*π*lB*ρ)
-    ax.loglog(ρ, κ**3/(24*π), ':', lw=lw, c=c)
+    ax.loglog(ρ, κ**3/(24*π), ':', lw=lw, c=color)
     cut = HNC.lB == lB
-    ax.loglog(HNC[cut].rho, -HNC[cut].pex, '-', lw=lw, c=c, label=f'$l_B={lB}$')
-    ax.loglog(HNC[cut].rho, -HNC[cut].e/3, '-', lw=lw, c=c)
+    ax.loglog(HNC[cut].rho, -HNC[cut].pex, '-', lw=lw, c=color, label=f'$l_B={lB}$')
+    ax.loglog(HNC[cut].rho, -HNC[cut].e/3, '-', lw=lw, c=color)
     cut = MC.lB == lB
-    ax.loglog(MC[cut].rho, -MC[cut].pex, 'o', ms=ms, c=c)
-    ax.loglog(MC[cut].rho, -MC[cut].e/3, 's', ms=ms, c=c)
+    ax.loglog(MC[cut].rho, -MC[cut].pex, 'o', ms=ms, c=color)
+    ax.loglog(MC[cut].rho, -MC[cut].e/3, 's', ms=ms, c=color)
 
 ax.legend(loc='upper left', frameon=False, fontsize=legend_fs, labelspacing=0.5)
 
