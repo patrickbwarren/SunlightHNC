@@ -119,7 +119,6 @@ def additive_primitive_model(grid, lb, diam, z):
     w.tp[:] = 0.0
     w.tu[:] = 0.0
     w.tl[:] = 0.0
-    w.dd[:, :] = 0.0
     return model
 
 def restricted_primitive_model(grid, lb):
