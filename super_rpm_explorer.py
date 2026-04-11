@@ -9,7 +9,7 @@
 # (Registered in England & Wales, Company No 29140; Registered
 # Office: Unilever House, Blackfriars, London, EC4P 4BQ, UK).
 
-# Updates copyright (x) 2021-2023 Patrick B Warren.
+# Updates copyright (c) 2021-2026 Patrick B Warren.
 
 # ZoomPan was adapted from
 # https://stackoverflow.com/questions/11551049/matplotlib-plot-zooming-with-scroll-wheel
@@ -30,6 +30,18 @@
 
 # By default this is for RPM without solvent
 # Run with -s or --solvated for solvent primitive model
+
+# Correlation functions currently have two variants
+
+# h_00, h_01, h_02, h_22 where 0, 1, 2 are the +, -, solvent
+
+# Alternate four independent combinations are :
+# h_zz = 1/4 (h_00 + h_11 - 2 h_01) = charge-charge correlation
+# h_dd = sum_ij x_i x_j h_ij = total density-density correlation
+# h_qq = 1/4 (h_00 + h_11 + 2 h_01) = charge-charge density correlation
+# h_ss = h_22 = solvent-solvent correlationb
+
+# For the unsolvated RPM case, only h_00, h_01 or h_zz, h_dd are shown
 
 # MOUSE AND KEYBOARD CONTROLS
 
