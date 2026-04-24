@@ -133,6 +133,7 @@ module wizard
        & c(:, :, :),        & ! direct correlation functions (dcfs)
        & e(:, :, :),        & ! indirect correlation functions (icfs)
        & h0(:, :),          & ! reference total correlation functions
+       & cr(:, :, :),       & ! current direct correlation functions
        & hr(:, :, :),       & ! current total correlation functions
        & hc(:, :),          & ! current contact values
        & ck(:, :),          & ! transform of dcfs
@@ -168,6 +169,7 @@ contains
     allocate(c(ng-1, nfnc, nps))
     allocate(e(ng-1, nfnc, nps))
     allocate(h0(ng-1, nfnc))
+    allocate(cr(ng-1, ncomp, ncomp))
     allocate(hr(ng-1, ncomp, ncomp))
     allocate(hc(ncomp, ncomp))
     allocate(ck(ng-1, nfnc))
@@ -1397,6 +1399,8 @@ contains
     do j = 1, ncomp
        do i = 1, j
           ij = i + j*(j-1)/2
+          cr(:, i, j) = c(:, ij, 1) - ulong(:, ij)
+          cr(:, j, i) = cr(:, i, j)
           hr(:, i, j) = c(:, ij, 1) + e(:, ij, 1)
           hr(:, j, i) = hr(:, i, j)
        end do

@@ -299,14 +299,8 @@ elif args.show:
     def plot_cr():
         "Plot direct correlation functions"
         imax = int(args.grcut / w.deltar)
-        plt.plot(w.r[0:imax],
-                 0.5*(w.c[0:imax, 0, 0]-w.ulong[0:imax, 0]+w.c[0:imax, 1, 0]
-                      -w.ulong[0:imax, 1]),
-                 label="$[c_{11}+c_{12}]/2$")
-        plt.plot(w.r[0:imax],
-                 0.5*(w.c[0:imax, 0, 0]-w.ulong[0:imax, 0]-w.c[0:imax, 1, 0]
-                      +w.ulong[0:imax, 1]),
-                 label="$[c_{11}-c_{12}]/2$")
+        plt.plot(w.r[0:imax], 0.5*(w.cr[0:imax, 0, 0] + w.cr[0:imax, 0, 1]), label="$[c_{11}+c_{12}]/2$")
+        plt.plot(w.r[0:imax], 0.5*(w.cr[0:imax, 0, 0] - w.cr[0:imax, 0, 1]), label="$[c_{11}-c_{12}]/2$")
         plt.legend(loc='lower right')
 
     def plot_rhrtail():
@@ -354,9 +348,12 @@ elif args.show:
 
     plt.figure(1)
 
+    title_args = dict(tstar=eval(args.tstar), rhoz=rhoz, soln=str(w.closure_name, 'utf-8'), err=w.error)
+    title = '$T^* = {tstar:g}$ , $\\rho_z^* = {rhoz:g}$ : {soln} solution, error {err:0.1g}'.format(**title_args)
+    
     if args.only: # only do one plot depending on other arguments
 
-        plt.title('%s solution, error = %0.1g' % (str(w.closure_name, 'utf-8'), w.error))
+        plt.title(title)
         if args.tail: # plot log10(r h(r)) versus r
             plot_rhrtail()
         else: # plot pair functions
@@ -365,7 +362,7 @@ elif args.show:
     else: # do four subplots
 
         plt.subplot(2, 2, 1) # pair functions
-        plt.title('%s solution, error = %0.1g' % (str(w.closure_name, 'utf-8'), w.error))
+        plt.suptitle(title)
         plot_gr()
         plt.subplot(2, 2, 2) # structure factors
         plot_sk()
