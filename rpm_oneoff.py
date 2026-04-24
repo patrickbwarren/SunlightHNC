@@ -348,8 +348,12 @@ elif args.show:
 
     plt.figure(1)
 
-    title_args = dict(tstar=eval(args.tstar), rhoz=rhoz, soln=str(w.closure_name, 'utf-8'), err=w.error)
-    title = '$T^* = {tstar:g}$ , $\\rho_z^* = {rhoz:g}$ : {soln} solution, error {err:0.1g}'.format(**title_args)
+    if args.solvated:
+        title_args = dict(tstar=eval(args.tstar), rhoz=rhoz, rhos=rhos, soln=str(w.closure_name, 'utf-8'), err=w.error)
+        title = '$T^* = {tstar:g}$ , $\\rho_z^* = {rhoz:g}$ , $\\rho_s^* = {rhos:g}$ : {soln} solution, error {err:0.1g}'.format(**title_args)
+    else:
+        title_args = dict(tstar=eval(args.tstar), rhoz=rhoz, soln=str(w.closure_name, 'utf-8'), err=w.error)
+        title = '$T^* = {tstar:g}$ , $\\rho_z^* = {rhoz:g}$ : {soln} solution, error {err:0.1g}'.format(**title_args)
     
     if args.only: # only do one plot depending on other arguments
 
